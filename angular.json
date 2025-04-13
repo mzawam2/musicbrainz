@@ -97,6 +97,72 @@
           }
         }
       }
+    },
+    "@nationwide/my-lib": {
+      "projectType": "library",
+      "root": "projects/nationwide/my-lib",
+      "sourceRoot": "projects/nationwide/my-lib/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/nationwide/my-lib/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/nationwide/my-lib/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/nationwide/my-lib/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/nationwide/my-lib/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        }
+      }
+    },
+    "@nationwide/my-lib-b": {
+      "projectType": "library",
+      "root": "projects/nationwide/my-lib-b",
+      "sourceRoot": "projects/nationwide/my-lib-b/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/nationwide/my-lib-b/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/nationwide/my-lib-b/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/nationwide/my-lib-b/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/nationwide/my-lib-b/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        }
+      }
     }
   }
 }

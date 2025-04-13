@@ -3,6 +3,14 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "paths": {
+      "@nationwide/my-lib": [
+        "./dist/nationwide/my-lib"
+      ],
+      "@nationwide/my-lib-b": [
+        "./dist/nationwide/my-lib-b"
+      ]
+    },
     "outDir": "./dist/out-tsc",
     "strict": true,
     "noImplicitOverride": true,
