@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
-import { of, Observable } from 'rxjs';
+import { of } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
@@ -12,27 +12,42 @@ import { DiscographyComponent } from '../discography/discography.component';
   selector: 'app-home',
   imports: [CommonModule, ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss'
+  styleUrl: './home.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HomeComponent implements OnInit {
-  searchControl = new FormControl('');
-  artists: MusicBrainzArtist[] = [];
-  loading = false;
-  error: string | null = null;
-  selectedArtist: MusicBrainzArtist | null = null;
-  currentSearchTerm = '';
+  private musicBrainzService = inject(MusicBrainzService);
   
-  // Label-related properties
-  labels: LabelWithReleaseCount[] = [];
-  labelsLoading = false;
-  labelsError: string | null = null;
+  searchControl = new FormControl('');
+  
+  // Signals for reactive state management
+  artists = signal<MusicBrainzArtist[]>([]);
+  loading = signal(false);
+  error = signal<string | null>(null);
+  selectedArtist = signal<MusicBrainzArtist | null>(null);
+  currentSearchTerm = signal('');
+  
+  // Label-related signals
+  labels = signal<LabelWithReleaseCount[]>([]);
+  labelsLoading = signal(false);
+  labelsError = signal<string | null>(null);
 
-  // Discography-related properties
-  discographyData: EnhancedDiscographyData | null = null;
-  discographyLoading = false;
-  discographyError: string | null = null;
+  // Discography-related signals
+  discographyData = signal<EnhancedDiscographyData | null>(null);
+  discographyLoading = signal(false);
+  discographyError = signal<string | null>(null);
 
-  constructor(private musicBrainzService: MusicBrainzService) {}
+  // Computed values for derived state
+  hasSelectedArtist = computed(() => this.selectedArtist() !== null);
+  showSearchResults = computed(() => this.artists().length > 0 && !this.hasSelectedArtist());
+  canClearSearch = computed(() => this.hasSelectedArtist() || this.currentSearchTerm().length > 0);
+  
+  searchState = computed(() => ({
+    hasQuery: this.currentSearchTerm().length >= 2,
+    hasResults: this.artists().length > 0,
+    isLoading: this.loading(),
+    hasError: this.error() !== null
+  }));
 
   ngOnInit() {
     this.searchControl.valueChanges
@@ -41,49 +56,49 @@ export class HomeComponent implements OnInit {
         distinctUntilChanged(),
         switchMap(query => {
           if (!query || query.length < 2) {
-            this.artists = [];
-            this.error = null;
-            this.currentSearchTerm = '';
+            this.artists.set([]);
+            this.error.set(null);
+            this.currentSearchTerm.set('');
             return of([]);
           }
           
-          this.loading = true;
-          this.error = null;
-          this.currentSearchTerm = query;
+          this.loading.set(true);
+          this.error.set(null);
+          this.currentSearchTerm.set(query);
           
           return this.musicBrainzService.searchArtists(query).pipe(
             catchError(err => {
-              this.error = err.message || 'Failed to search artists';
-              this.loading = false;
+              this.error.set(err.message || 'Failed to search artists');
+              this.loading.set(false);
               return of([]);
             })
           );
         })
       )
       .subscribe(artists => {
-        this.artists = artists;
-        this.loading = false;
+        this.artists.set(artists);
+        this.loading.set(false);
       });
   }
 
   selectArtist(artist: MusicBrainzArtist) {
-    this.selectedArtist = artist;
+    this.selectedArtist.set(artist);
     this.searchControl.setValue(artist.name);
-    this.artists = [];
+    this.artists.set([]);
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
   }
 
   clearSearch() {
     this.searchControl.setValue('');
-    this.selectedArtist = null;
-    this.artists = [];
-    this.error = null;
-    this.labels = [];
-    this.labelsError = null;
-    this.discographyData = null;
-    this.discographyError = null;
-    this.currentSearchTerm = '';
+    this.selectedArtist.set(null);
+    this.artists.set([]);
+    this.error.set(null);
+    this.labels.set([]);
+    this.labelsError.set(null);
+    this.discographyData.set(null);
+    this.discographyError.set(null);
+    this.currentSearchTerm.set('');
   }
 
   highlightSearchTerm(text: string, searchTerm: string): string {
@@ -100,39 +115,40 @@ export class HomeComponent implements OnInit {
   }
 
   private loadArtistLabels(artistId: string) {
-    this.labelsLoading = true;
-    this.labelsError = null;
-    this.labels = [];
+    this.labelsLoading.set(true);
+    this.labelsError.set(null);
+    this.labels.set([]);
 
     this.musicBrainzService.getArtistLabels(artistId).subscribe({
       next: (labels) => {
-        this.labels = labels;
-        this.labelsLoading = false;
+        this.labels.set(labels);
+        this.labelsLoading.set(false);
       },
       error: (error) => {
-        this.labelsError = error.message || 'Failed to load labels';
-        this.labelsLoading = false;
+        this.labelsError.set(error.message || 'Failed to load labels');
+        this.labelsLoading.set(false);
       }
     });
   }
 
   private loadArtistDiscography(artistId: string) {
-    this.discographyLoading = true;
-    this.discographyError = null;
-    this.discographyData = null;
+    this.discographyLoading.set(true);
+    this.discographyError.set(null);
+    this.discographyData.set(null);
 
     this.musicBrainzService.getEnhancedArtistDiscography(artistId).subscribe({
       next: (discography) => {
         // Update the artist information in the discography data with the selected artist
-        if (this.selectedArtist) {
-          discography.artist = this.selectedArtist;
+        const selectedArtist = this.selectedArtist();
+        if (selectedArtist) {
+          discography.artist = selectedArtist;
         }
-        this.discographyData = discography;
-        this.discographyLoading = false;
+        this.discographyData.set(discography);
+        this.discographyLoading.set(false);
       },
       error: (error) => {
-        this.discographyError = error.message || 'Failed to load discography';
-        this.discographyLoading = false;
+        this.discographyError.set(error.message || 'Failed to load discography');
+        this.discographyLoading.set(false);
       }
     });
   }

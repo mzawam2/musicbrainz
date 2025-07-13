@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DiscographyData, EnhancedDiscographyData, EnhancedReleaseGroup } from '../../models/musicbrainz.models';
@@ -9,56 +9,96 @@ import { CollaborationNetworkComponent } from '../collaboration-network/collabor
   selector: 'app-discography',
   imports: [CommonModule, FormsModule, ReleaseCardComponent, CollaborationNetworkComponent],
   templateUrl: './discography.component.html',
-  styleUrl: './discography.component.scss'
+  styleUrl: './discography.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DiscographyComponent implements OnChanges {
-  @Input() discographyData: EnhancedDiscographyData | null = null;
-  @Input() loading = false;
-  @Input() error: string | null = null;
+export class DiscographyComponent {
+  // Input signals
+  discographyData = input<EnhancedDiscographyData | null>(null);
+  loading = input(false);
+  error = input<string | null>(null);
 
-  filteredReleaseGroups: EnhancedReleaseGroup[] = [];
-  searchTerm = '';
-  sortBy: 'date' | 'title' | 'type' = 'date';
-  sortDirection: 'asc' | 'desc' = 'asc';
-  filterByType = '';
-  filterByDecade = '';
-  filterByGenre = '';
-  viewMode: 'grid' | 'list' = 'grid';
+  // Filter and sorting signals
+  searchTerm = signal('');
+  sortBy = signal<'date' | 'title' | 'type'>('date');
+  sortDirection = signal<'asc' | 'desc'>('asc');
+  filterByType = signal('');
+  filterByDecade = signal('');
+  filterByGenre = signal('');
+  viewMode = signal<'grid' | 'list'>('grid');
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['discographyData']) {
-      this.applyFiltersAndSort();
+  // Computed filtered and sorted release groups
+  filteredReleaseGroups = computed(() => {
+    const data = this.discographyData();
+    if (!data) return [];
+    return this.applyFiltersAndSort(data.releaseGroups);
+  });
+
+  // Computed filter options
+  availableTypes = computed(() => {
+    const data = this.discographyData();
+    if (!data) return [];
+    const types = [...new Set(data.releaseGroups.map(item => item['primary-type']).filter(type => type))];
+    return types.sort();
+  });
+
+  availableDecades = computed(() => {
+    const data = this.discographyData();
+    if (!data?.decades) return [];
+    return data.decades.map(d => d.decade).sort();
+  });
+
+  availableGenres = computed(() => {
+    const data = this.discographyData();
+    if (!data?.genres) return [];
+    return data.genres.map(g => g.name).slice(0, 10);
+  });
+
+  // Computed stats
+  totalReleases = computed(() => this.discographyData()?.totalReleases || 0);
+  
+  careerSpan = computed(() => {
+    const data = this.discographyData();
+    if (!data?.careerSpan.start) return '';
+    const start = data.careerSpan.start.split('-')[0];
+    const end = data.careerSpan.end ? data.careerSpan.end.split('-')[0] : 'present';
+    return start === end ? start : `${start} - ${end}`;
+  });
+
+
+  onSearchChange(value: string) {
+    this.searchTerm.set(value);
+  }
+
+  onSortChange(sortBy: 'date' | 'title' | 'type') {
+    this.sortBy.set(sortBy);
+  }
+
+  onFilterChange(filterType: 'type' | 'decade' | 'genre', value: string) {
+    switch (filterType) {
+      case 'type':
+        this.filterByType.set(value);
+        break;
+      case 'decade':
+        this.filterByDecade.set(value);
+        break;
+      case 'genre':
+        this.filterByGenre.set(value);
+        break;
     }
-  }
-
-  onSearchChange() {
-    this.applyFiltersAndSort();
-  }
-
-  onSortChange() {
-    this.applyFiltersAndSort();
-  }
-
-  onFilterChange() {
-    this.applyFiltersAndSort();
   }
 
   toggleSortDirection() {
-    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-    this.applyFiltersAndSort();
+    this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
   }
 
-  private applyFiltersAndSort() {
-    if (!this.discographyData) {
-      this.filteredReleaseGroups = [];
-      return;
-    }
-
-    let filtered = [...this.discographyData.releaseGroups];
+  private applyFiltersAndSort(releaseGroups: EnhancedReleaseGroup[]): EnhancedReleaseGroup[] {
+    let filtered = [...releaseGroups];
 
     // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
+    const searchTerm = this.searchTerm();
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(item => 
         item.title.toLowerCase().includes(searchLower) ||
         (item.disambiguation && item.disambiguation.toLowerCase().includes(searchLower))
@@ -66,32 +106,38 @@ export class DiscographyComponent implements OnChanges {
     }
 
     // Apply type filter
-    if (this.filterByType) {
-      filtered = filtered.filter(item => item['primary-type'] === this.filterByType);
+    const filterByType = this.filterByType();
+    if (filterByType) {
+      filtered = filtered.filter(item => item['primary-type'] === filterByType);
     }
 
     // Apply decade filter
-    if (this.filterByDecade) {
+    const filterByDecade = this.filterByDecade();
+    if (filterByDecade) {
       filtered = filtered.filter(item => {
         if (!item['first-release-date']) return false;
         const year = parseInt(item['first-release-date'].split('-')[0]);
         const decade = `${Math.floor(year / 10) * 10}s`;
-        return decade === this.filterByDecade;
+        return decade === filterByDecade;
       });
     }
 
     // Apply genre filter
-    if (this.filterByGenre) {
+    const filterByGenre = this.filterByGenre();
+    if (filterByGenre) {
       filtered = filtered.filter(item => 
-        item.tags && item.tags.some(tag => tag.name === this.filterByGenre)
+        item.tags && item.tags.some(tag => tag.name === filterByGenre)
       );
     }
 
     // Apply sorting
+    const sortBy = this.sortBy();
+    const sortDirection = this.sortDirection();
+    
     filtered.sort((a, b) => {
       let comparison = 0;
       
-      switch (this.sortBy) {
+      switch (sortBy) {
         case 'title':
           comparison = a.title.localeCompare(b.title);
           break;
@@ -105,52 +151,15 @@ export class DiscographyComponent implements OnChanges {
           break;
       }
 
-      return this.sortDirection === 'desc' ? -comparison : comparison;
+      return sortDirection === 'desc' ? -comparison : comparison;
     });
 
-    this.filteredReleaseGroups = filtered;
+    return filtered;
   }
 
-  get availableTypes(): string[] {
-    if (!this.discographyData) {
-      return [];
-    }
-    
-    const types = [...new Set(this.discographyData.releaseGroups.map(item => item['primary-type']).filter(type => type))];
-    return types.sort();
-  }
-
-  get availableDecades(): string[] {
-    if (!this.discographyData?.decades) {
-      return [];
-    }
-    return this.discographyData.decades.map(d => d.decade).sort();
-  }
-
-  get availableGenres(): string[] {
-    if (!this.discographyData?.genres) {
-      return [];
-    }
-    return this.discographyData.genres.map(g => g.name).slice(0, 10); // Top 10 genres
-  }
-
-  get totalReleases(): number {
-    return this.discographyData?.totalReleases || 0;
-  }
-
-  get careerSpan(): string {
-    if (!this.discographyData?.careerSpan.start) {
-      return '';
-    }
-    
-    const start = this.discographyData.careerSpan.start.split('-')[0];
-    const end = this.discographyData.careerSpan.end ? this.discographyData.careerSpan.end.split('-')[0] : 'present';
-    
-    return start === end ? start : `${start} - ${end}`;
-  }
 
   onViewModeChange(mode: 'grid' | 'list') {
-    this.viewMode = mode;
+    this.viewMode.set(mode);
   }
 
   onReleaseExpand(releaseGroupId: string) {

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { map, catchError, delay, tap } from 'rxjs/operators';
@@ -45,7 +45,7 @@ export class MusicBrainzService {
   // Cache for detailed releases
   private detailedReleaseCache = new Map<string, { data: DetailedRelease, timestamp: number }>();
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   searchArtists(query: string, limit: number = 10): Observable<MusicBrainzArtist[]> {
     const cacheKey = `${query.toLowerCase()}_${limit}`;

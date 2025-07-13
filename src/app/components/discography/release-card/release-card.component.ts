@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, input, output, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, forkJoin } from 'rxjs';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
@@ -8,31 +8,70 @@ import { MusicBrainzService } from '../../../services/musicbrainz.service';
   selector: 'app-release-card',
   imports: [CommonModule],
   templateUrl: './release-card.component.html',
-  styleUrl: './release-card.component.scss'
+  styleUrl: './release-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReleaseCardComponent implements OnInit, OnDestroy {
-  @Input() releaseGroup!: EnhancedReleaseGroup;
-  @Output() expand = new EventEmitter<string>();
-  @Output() collapse = new EventEmitter<string>();
+  // Input and output functions
+  releaseGroup = input.required<EnhancedReleaseGroup>();
+  expand = output<string>();
+  collapse = output<string>();
 
-  detailedReleases: DetailedRelease[] = [];
-  coverArt: CoverArtInfo | null = null;
-  loadingDetails = false;
-  loadingCoverArt = false;
-  error: string | null = null;
+  // Injected services
+  private musicBrainzService = inject(MusicBrainzService);
+
+  // State signals
+  detailedReleases = signal<DetailedRelease[]>([]);
+  coverArt = signal<CoverArtInfo | null>(null);
+  loadingDetails = signal(false);
+  loadingCoverArt = signal(false);
+  error = signal<string | null>(null);
+  isExpanded = signal(false);
+
+  // Computed values
+  primaryType = computed(() => this.releaseGroup()['primary-type'] || 'Other');
+  secondaryTypes = computed(() => this.releaseGroup()['secondary-types']?.join(', ') || '');
+  releaseYear = computed(() => {
+    const firstReleaseDate = this.releaseGroup()['first-release-date'];
+    return firstReleaseDate ? firstReleaseDate.split('-')[0] : 'Unknown';
+  });
+  releaseDate = computed(() => {
+    const firstReleaseDate = this.releaseGroup()['first-release-date'];
+    if (!firstReleaseDate) return 'Unknown date';
+    
+    const date = new Date(firstReleaseDate);
+    if (isNaN(date.getTime())) return firstReleaseDate;
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  });
+  artistCredit = computed(() => {
+    const artistCredit = this.releaseGroup()['artist-credit'];
+    if (!artistCredit || artistCredit.length === 0) return '';
+    
+    return artistCredit
+      .map(credit => credit.name + (credit.joinphrase || ''))
+      .join('');
+  });
 
   private destroy$ = new Subject<void>();
 
-  constructor(private musicBrainzService: MusicBrainzService) {}
-
   ngOnInit() {
+    // Initialize expanded state from input if needed
+    const releaseGroup = this.releaseGroup();
+    if (releaseGroup.expanded) {
+      this.isExpanded.set(true);
+    }
     // Load cover art when we have releases - we'll fetch them first
     // this.loadCoverArtForReleaseGroup();
   }
 
   private loadCoverArtForReleaseGroup() {
     // Get releases for this release group to find cover art
-    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup.id)
+    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (releases) => {
@@ -49,37 +88,40 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   }
 
   toggleExpanded() {
-    if (this.releaseGroup.expanded) {
-      this.releaseGroup.expanded = false;
-      this.collapse.emit(this.releaseGroup.id);
+    const releaseGroup = this.releaseGroup();
+    const currentExpanded = this.isExpanded();
+    
+    if (currentExpanded) {
+      this.isExpanded.set(false);
+      this.collapse.emit(releaseGroup.id);
     } else {
-      this.releaseGroup.expanded = true;
-      this.expand.emit(this.releaseGroup.id);
+      this.isExpanded.set(true);
+      this.expand.emit(releaseGroup.id);
       this.loadDetailedReleases();
     }
   }
 
   private loadDetailedReleases() {
-    if (this.detailedReleases.length > 0) {
+    if (this.detailedReleases().length > 0) {
       console.log('Releases already loaded');
       return;
     }
 
-    this.loadingDetails = true;
-    this.error = null;
+    this.loadingDetails.set(true);
+    this.error.set(null);
 
-    console.log('Loading releases for release group:', this.releaseGroup.id);
+    console.log('Loading releases for release group:', this.releaseGroup().id);
 
     // First, get the releases for this release group
-    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup.id)
+    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (releases) => {
           console.log('Found releases for release group:', releases);
           
           if (releases.length === 0) {
-            this.error = 'No releases found for this release group';
-            this.loadingDetails = false;
+            this.error.set('No releases found for this release group');
+            this.loadingDetails.set(false);
             return;
           }
 
@@ -97,20 +139,20 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (detailedReleases) => {
                 console.log('Received detailed releases:', detailedReleases);
-                this.detailedReleases = detailedReleases.filter(r => r) as DetailedRelease[];
-                this.loadingDetails = false;
+                this.detailedReleases.set(detailedReleases.filter(r => r) as DetailedRelease[]);
+                this.loadingDetails.set(false);
               },
               error: (error) => {
                 console.error('Failed to load release details:', error);
-                this.error = 'Failed to load release details';
-                this.loadingDetails = false;
+                this.error.set('Failed to load release details');
+                this.loadingDetails.set(false);
               }
             });
         },
         error: (error) => {
           console.error('Failed to load releases for release group:', error);
-          this.error = 'Failed to load releases for this release group';
-          this.loadingDetails = false;
+          this.error.set('Failed to load releases for this release group');
+          this.loadingDetails.set(false);
         }
       });
   }
@@ -121,17 +163,17 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   }
 
   private loadCoverArt(releaseId: string) {
-    this.loadingCoverArt = true;
+    this.loadingCoverArt.set(true);
     
     this.musicBrainzService.getCoverArt(releaseId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (coverArt) => {
-          this.coverArt = coverArt;
-          this.loadingCoverArt = false;
+          this.coverArt.set(coverArt);
+          this.loadingCoverArt.set(false);
         },
         error: () => {
-          this.loadingCoverArt = false;
+          this.loadingCoverArt.set(false);
           // Don't show error for missing cover art as it's common
         }
       });
@@ -145,47 +187,6 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  get releaseYear(): string {
-    if (!this.releaseGroup['first-release-date']) {
-      return 'Unknown';
-    }
-    return this.releaseGroup['first-release-date'].split('-')[0];
-  }
-
-  get releaseDate(): string {
-    if (!this.releaseGroup['first-release-date']) {
-      return 'Unknown date';
-    }
-    
-    const date = new Date(this.releaseGroup['first-release-date']);
-    if (isNaN(date.getTime())) {
-      return this.releaseGroup['first-release-date'];
-    }
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }
-
-  get primaryType(): string {
-    return this.releaseGroup['primary-type'] || 'Other';
-  }
-
-  get secondaryTypes(): string {
-    return this.releaseGroup['secondary-types']?.join(', ') || '';
-  }
-
-  get artistCredit(): string {
-    if (!this.releaseGroup['artist-credit'] || this.releaseGroup['artist-credit'].length === 0) {
-      return '';
-    }
-    
-    return this.releaseGroup['artist-credit']
-      .map(credit => credit.name + (credit.joinphrase || ''))
-      .join('');
-  }
 
   getTrackArtists(track: any): string {
     if (!track.recording['artist-credit'] || track.recording['artist-credit'].length === 0) {

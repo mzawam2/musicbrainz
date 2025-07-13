@@ -8,8 +8,8 @@
       placeholder="Search for an artist..."
       class="search-input"
       autocomplete="off"
-      [attr.aria-expanded]="artists.length > 0"
-      [attr.aria-describedby]="error ? 'search-error' : null"
+      [attr.aria-expanded]="artists().length > 0"
+      [attr.aria-describedby]="error() ? 'search-error' : null"
       role="combobox"
       aria-autocomplete="list"
       [attr.aria-activedescendant]="null"
@@ -26,23 +26,23 @@
     }
   </div>
 
-  @if (loading) {
+  @if (loading()) {
     <div class="loading">
       <div class="spinner"></div>
       <span>Searching artists...</span>
     </div>
   }
 
-  @if (error) {
+  @if (error()) {
     <div class="error" id="search-error" role="alert">
-      <p>{{ error }}</p>
+      <p>{{ error() }}</p>
     </div>
   }
 
-  @if (artists.length > 0) {
+  @if (showSearchResults()) {
     <div class="search-results">
       <ul class="artist-list" role="listbox" aria-label="Artist search results">
-        @for (artist of artists; track artist.id; let i = $index) {
+        @for (artist of artists(); track artist.id; let i = $index) {
           <li 
             class="artist-item" 
             (click)="selectArtist(artist)"
@@ -53,10 +53,10 @@
             tabindex="0"
             [attr.aria-selected]="false">
             <div class="artist-info">
-              <h3 [innerHTML]="highlightSearchTerm(artist.name, currentSearchTerm)"></h3>
+              <h3 [innerHTML]="highlightSearchTerm(artist.name, currentSearchTerm())"></h3>
               <p class="artist-details">
                 @if (artist.disambiguation) {
-                  <span class="disambiguation" [innerHTML]="highlightSearchTerm(artist.disambiguation, currentSearchTerm)"></span>
+                  <span class="disambiguation" [innerHTML]="highlightSearchTerm(artist.disambiguation, currentSearchTerm())"></span>
                 }
                 @if (artist.country) {
                   <span class="country">{{ artist.country }}</span>
@@ -76,22 +76,22 @@
     </div>
   }
 
-  @if (selectedArtist) {
+  @if (selectedArtist()) {
     <div class="selected-artist">
       <h2>Selected Artist</h2>
       <div class="artist-card">
-        <h3>{{ selectedArtist.name }}</h3>
+        <h3>{{ selectedArtist()!.name }}</h3>
         <div class="artist-meta">
-          @if (selectedArtist.disambiguation) {
-            <p><strong>Description:</strong> {{ selectedArtist.disambiguation }}</p>
+          @if (selectedArtist()!.disambiguation) {
+            <p><strong>Description:</strong> {{ selectedArtist()!.disambiguation }}</p>
           }
-          @if (selectedArtist.country) {
-            <p><strong>Country:</strong> {{ selectedArtist.country }}</p>
+          @if (selectedArtist()!.country) {
+            <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
           }
-          @if (selectedArtist['life-span']?.begin) {
-            <p><strong>Active:</strong> {{ selectedArtist['life-span']!.begin }}
-              @if (selectedArtist['life-span']!.end) {
-                - {{ selectedArtist['life-span']!.end }}
+          @if (selectedArtist()!['life-span']?.begin) {
+            <p><strong>Active:</strong> {{ selectedArtist()!['life-span']!.begin }}
+              @if (selectedArtist()!['life-span']!.end) {
+                - {{ selectedArtist()!['life-span']!.end }}
               } @else {
                 - present
               }
@@ -103,16 +103,16 @@
     
     <!-- Label Grid Section -->
     <app-label-grid 
-      [labels]="labels"
-      [loading]="labelsLoading"
-      [error]="labelsError">
+      [labels]="labels()"
+      [loading]="labelsLoading()"
+      [error]="labelsError()">
     </app-label-grid>
 
     <!-- Discography Section -->
     <app-discography
-      [discographyData]="discographyData"
-      [loading]="discographyLoading"
-      [error]="discographyError">
+      [discographyData]="discographyData()"
+      [loading]="discographyLoading()"
+      [error]="discographyError()">
     </app-discography>
   }
 </div>

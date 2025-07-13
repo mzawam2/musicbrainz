@@ -1,15 +1,15 @@
 <div class="collaboration-network">
-  @if (collaborations.length > 0) {
+  @if (collaborations().length > 0) {
     <div class="network-header">
       <h3>Collaboration Network</h3>
       <p class="network-summary">
-        {{ artistName }} has collaborated with <strong>{{ collaborations.length }}</strong> artists 
-        across <strong>{{ totalCollaborations }}</strong> releases.
+        {{ artistName() }} has collaborated with <strong>{{ collaborations().length }}</strong> artists 
+        across <strong>{{ totalCollaborations() }}</strong> releases.
       </p>
     </div>
 
     <div class="collaboration-chart">
-      @for (collaboration of topCollaborators; track collaboration.artist.id) {
+      @for (collaboration of topCollaborators(); track collaboration.artist.id) {
         <div class="collaboration-item">
           <div class="collaborator-info">
             <div class="collaborator-name">{{ collaboration.artist.name }}</div>
@@ -48,12 +48,12 @@
         <!-- Central Artist Node -->
         <div class="artist-node central-node">
           <div class="node-content">
-            <span class="node-label">{{ artistName }}</span>
+            <span class="node-label">{{ artistName() }}</span>
           </div>
         </div>
 
         <!-- Collaborator Nodes -->
-        @for (collaboration of topCollaborators.slice(0, 6); track collaboration.artist.id; let i = $index) {
+        @for (collaboration of topCollaborators().slice(0, 6); track collaboration.artist.id; let i = $index) {
           <div 
             class="artist-node collaborator-node" 
             [style.--angle]="(i * 60) + 'deg'"

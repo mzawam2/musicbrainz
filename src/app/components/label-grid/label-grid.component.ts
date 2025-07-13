@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LabelWithReleaseCount } from '../../models/musicbrainz.models';
@@ -8,43 +8,55 @@ import { LabelCardComponent } from '../label-card/label-card.component';
   selector: 'app-label-grid',
   imports: [CommonModule, LabelCardComponent, FormsModule],
   templateUrl: './label-grid.component.html',
-  styleUrl: './label-grid.component.scss'
+  styleUrl: './label-grid.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LabelGridComponent implements OnChanges {
-  @Input() labels: LabelWithReleaseCount[] = [];
-  @Input() loading = false;
-  @Input() error: string | null = null;
+export class LabelGridComponent {
+  // Input signals
+  labels = input<LabelWithReleaseCount[]>([]);
+  loading = input(false);
+  error = input<string | null>(null);
 
-  filteredLabels: LabelWithReleaseCount[] = [];
-  searchTerm = '';
-  sortBy: 'name' | 'releases' | 'type' = 'releases';
-  sortDirection: 'asc' | 'desc' = 'desc';
-  filterByType = '';
+  // Filter and sort signals
+  searchTerm = signal('');
+  sortBy = signal<'name' | 'releases' | 'type'>('releases');
+  sortDirection = signal<'asc' | 'desc'>('desc');
+  filterByType = signal('');
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['labels']) {
-      this.applyFiltersAndSort();
-    }
+  // Computed filtered and sorted labels
+  filteredLabels = computed(() => {
+    return this.applyFiltersAndSort(this.labels());
+  });
+
+  // Computed available types
+  availableTypes = computed(() => {
+    const types = [...new Set(this.labels().map(item => item.label.type).filter(type => type && type !== 'Unknown'))];
+    return types.sort();
+  });
+
+  onSearchChange(value: string) {
+    this.searchTerm.set(value);
   }
 
-  onSearchChange() {
-    this.applyFiltersAndSort();
+  onSortChange(sortBy: 'name' | 'releases' | 'type') {
+    this.sortBy.set(sortBy);
   }
 
-  onSortChange() {
-    this.applyFiltersAndSort();
+  onFilterChange(filterType: string) {
+    this.filterByType.set(filterType);
   }
 
-  onFilterChange() {
-    this.applyFiltersAndSort();
+  toggleSortDirection() {
+    this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
   }
 
-  private applyFiltersAndSort() {
-    let filtered = [...this.labels];
+  private applyFiltersAndSort(labels: LabelWithReleaseCount[]): LabelWithReleaseCount[] {
+    let filtered = [...labels];
 
     // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
+    const searchTerm = this.searchTerm();
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(item => 
         item.label.name.toLowerCase().includes(searchLower) ||
         (item.label.disambiguation && item.label.disambiguation.toLowerCase().includes(searchLower))
@@ -52,15 +64,19 @@ export class LabelGridComponent implements OnChanges {
     }
 
     // Apply type filter
-    if (this.filterByType) {
-      filtered = filtered.filter(item => item.label.type === this.filterByType);
+    const filterByType = this.filterByType();
+    if (filterByType) {
+      filtered = filtered.filter(item => item.label.type === filterByType);
     }
 
     // Apply sorting
+    const sortBy = this.sortBy();
+    const sortDirection = this.sortDirection();
+    
     filtered.sort((a, b) => {
       let comparison = 0;
       
-      switch (this.sortBy) {
+      switch (sortBy) {
         case 'name':
           comparison = a.label.name.localeCompare(b.label.name);
           break;
@@ -72,14 +88,9 @@ export class LabelGridComponent implements OnChanges {
           break;
       }
 
-      return this.sortDirection === 'desc' ? -comparison : comparison;
+      return sortDirection === 'desc' ? -comparison : comparison;
     });
 
-    this.filteredLabels = filtered;
-  }
-
-  get availableTypes(): string[] {
-    const types = [...new Set(this.labels.map(item => item.label.type).filter(type => type && type !== 'Unknown'))];
-    return types.sort();
+    return filtered;
   }
 }

@@ -1,16 +1,16 @@
 <div class="label-grid-container">
-  @if (loading) {
+  @if (loading()) {
     <div class="loading-state">
       <div class="spinner"></div>
       <p>Loading record labels...</p>
     </div>
-  } @else if (error) {
+  } @else if (error()) {
     <div class="error-state">
       <div class="error-icon">⚠️</div>
       <h3>Unable to Load Labels</h3>
-      <p>{{ error }}</p>
+      <p>{{ error() }}</p>
     </div>
-  } @else if (labels.length === 0) {
+  } @else if (labels().length === 0) {
     <div class="empty-state">
       <div class="empty-icon">🏷️</div>
       <h3>No Labels Found</h3>
@@ -19,18 +19,18 @@
   } @else {
     <div class="labels-header">
       <h2>Record Labels</h2>
-      <p class="labels-count">Found {{ labels.length }} {{ labels.length === 1 ? 'label' : 'labels' }}</p>
+      <p class="labels-count">Found {{ labels().length }} {{ labels().length === 1 ? 'label' : 'labels' }}</p>
     </div>
 
-    @if (labels.length > 0) {
+    @if (labels().length > 0) {
       <div class="controls-section">
         <div class="search-filter">
           <label for="label-search" class="sr-only">Search labels</label>
           <input
             id="label-search"
             type="text"
-            [(ngModel)]="searchTerm"
-            (ngModelChange)="onSearchChange()"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="onSearchChange($event)"
             placeholder="Filter labels..."
             class="filter-input"
           />
@@ -39,7 +39,7 @@
         <div class="sort-controls">
           <div class="sort-by">
             <label for="sort-by">Sort by:</label>
-            <select id="sort-by" [(ngModel)]="sortBy" (ngModelChange)="onSortChange()">
+            <select id="sort-by" [ngModel]="sortBy()" (ngModelChange)="onSortChange($event)">
               <option value="releases">Release Count</option>
               <option value="name">Name</option>
               <option value="type">Type</option>
@@ -48,18 +48,18 @@
 
           <div class="sort-direction">
             <label for="sort-direction">Order:</label>
-            <select id="sort-direction" [(ngModel)]="sortDirection" (ngModelChange)="onSortChange()">
+            <select id="sort-direction" [ngModel]="sortDirection()" (ngModelChange)="toggleSortDirection()">
               <option value="desc">Descending</option>
               <option value="asc">Ascending</option>
             </select>
           </div>
 
-          @if (availableTypes.length > 0) {
+          @if (availableTypes().length > 0) {
             <div class="type-filter">
               <label for="type-filter">Type:</label>
-              <select id="type-filter" [(ngModel)]="filterByType" (ngModelChange)="onFilterChange()">
+              <select id="type-filter" [ngModel]="filterByType()" (ngModelChange)="onFilterChange($event)">
                 <option value="">All Types</option>
-                @for (type of availableTypes; track type) {
+                @for (type of availableTypes(); track type) {
                   <option [value]="type">{{ type }}</option>
                 }
               </select>
@@ -68,20 +68,20 @@
         </div>
       </div>
 
-      @if (filteredLabels.length === 0) {
+      @if (filteredLabels().length === 0) {
         <div class="no-results">
           <p>No labels match your current filters.</p>
-          <button type="button" (click)="searchTerm = ''; filterByType = ''; onSearchChange()" class="clear-filters">
+          <button type="button" (click)="searchTerm.set(''); filterByType.set('')" class="clear-filters">
             Clear Filters
           </button>
         </div>
       } @else {
         <div class="results-summary">
-          Showing {{ filteredLabels.length }} of {{ labels.length }} labels
+          Showing {{ filteredLabels().length }} of {{ labels().length }} labels
         </div>
         
         <div class="label-grid">
-          @for (labelData of filteredLabels; track labelData.label.id) {
+          @for (labelData of filteredLabels(); track labelData.label.id) {
             <app-label-card [labelData]="labelData"></app-label-card>
           }
         </div>

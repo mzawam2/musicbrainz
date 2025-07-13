@@ -1,10 +1,10 @@
-<div class="release-card" [attr.data-type]="primaryType.toLowerCase()" [class.expanded]="releaseGroup.expanded">
+<div class="release-card" [attr.data-type]="primaryType().toLowerCase()" [class.expanded]="isExpanded()">
   <!-- Cover Art Section -->
-  @if (coverArt && coverArt.artwork && coverArt.images && coverArt.images.length > 0) {
+  @if (coverArt() && coverArt()!.artwork && coverArt()!.images && (coverArt()!.images?.length || 0) > 0) {
     <div class="cover-art-section">
       <img 
-        [src]="coverArt.images[0].thumbnails['250']" 
-        [alt]="'Cover art for ' + releaseGroup.title"
+        [src]="coverArt()!.images?.[0]?.thumbnails?.['250'] || ''" 
+        [alt]="'Cover art for ' + releaseGroup().title"
         class="cover-art"
 (error)="$any($event.target).style.display='none'"
       />
@@ -13,51 +13,51 @@
 
   <div class="release-main-content">
     <div class="release-header">
-      <div class="release-type-badge" [class]="'type-' + primaryType.toLowerCase()">
-        {{ primaryType }}
+      <div class="release-type-badge" [class]="'type-' + primaryType().toLowerCase()">
+        {{ primaryType() }}
       </div>
-      <div class="release-year">{{ releaseYear }}</div>
+      <div class="release-year">{{ releaseYear() }}</div>
     </div>
     
     <div class="release-content">
-      <h3 class="release-title">{{ releaseGroup.title }}</h3>
+      <h3 class="release-title">{{ releaseGroup().title }}</h3>
       
-      @if (releaseGroup.disambiguation) {
-        <p class="release-disambiguation">{{ releaseGroup.disambiguation }}</p>
+      @if (releaseGroup().disambiguation) {
+        <p class="release-disambiguation">{{ releaseGroup().disambiguation }}</p>
       }
       
       <div class="release-details">
         <div class="release-date">
           <span class="label">Released:</span>
-          <span class="value">{{ releaseDate }}</span>
+          <span class="value">{{ releaseDate() }}</span>
         </div>
         
-        @if (secondaryTypes) {
+        @if (secondaryTypes()) {
           <div class="secondary-types">
             <span class="label">Type:</span>
-            <span class="value">{{ secondaryTypes }}</span>
+            <span class="value">{{ secondaryTypes() }}</span>
           </div>
         }
         
-        @if (artistCredit) {
+        @if (artistCredit()) {
           <div class="artist-credit">
             <span class="label">Artist:</span>
-            <span class="value">{{ artistCredit }}</span>
+            <span class="value">{{ artistCredit() }}</span>
           </div>
         }
 
-        @if (releaseGroup.releases && releaseGroup.releases.length > 0) {
+        @if (releaseGroup().releases && (releaseGroup().releases?.length || 0) > 0) {
           <div class="release-count">
             <span class="label">Releases:</span>
-            <span class="value">{{ releaseGroup.releases.length }} version{{ releaseGroup.releases.length > 1 ? 's' : '' }}</span>
+            <span class="value">{{ releaseGroup().releases?.length || 0 }} version{{ (releaseGroup().releases?.length || 0) > 1 ? 's' : '' }}</span>
           </div>
         }
       </div>
     </div>
     
-    @if (releaseGroup.tags && releaseGroup.tags.length > 0) {
+    @if (releaseGroup().tags && (releaseGroup().tags?.length || 0) > 0) {
       <div class="release-tags">
-        @for (tag of releaseGroup.tags.slice(0, 3); track tag.name) {
+        @for (tag of releaseGroup().tags?.slice(0, 3) || []; track tag.name) {
           <span class="tag">{{ tag.name }}</span>
         }
       </div>
@@ -69,10 +69,10 @@
         type="button" 
         class="expand-btn"
         (click)="toggleExpanded()"
-        [attr.aria-expanded]="releaseGroup.expanded"
-        [attr.aria-label]="releaseGroup.expanded ? 'Collapse release details' : 'Expand release details'"
+        [attr.aria-expanded]="isExpanded()"
+        [attr.aria-label]="isExpanded() ? 'Collapse release details' : 'Expand release details'"
       >
-        @if (releaseGroup.expanded) {
+        @if (isExpanded()) {
           <span>Hide Details</span>
           <span class="icon">▲</span>
         } @else {
@@ -84,28 +84,28 @@
   </div>
 
   <!-- Expanded Details Section -->
-  @if (releaseGroup.expanded) {
+  @if (isExpanded()) {
     <div class="release-details-expanded">
-      @if (loadingDetails) {
+      @if (loadingDetails()) {
         <div class="loading-details">
           <div class="spinner"></div>
           <span>Loading release details...</span>
         </div>
       }
 
-      @if (error) {
+      @if (error()) {
         <div class="error-details" role="alert">
-          <p>{{ error }}</p>
+          <p>{{ error() }}</p>
         </div>
       }
 
-      @if (detailedReleases.length > 0) {
+      @if (detailedReleases().length > 0) {
         <div class="detailed-releases">
-          @for (release of detailedReleases; track release.id) {
+          @for (release of detailedReleases(); track release.id) {
             <div class="detailed-release">
               <div class="release-info">
                 <h4>{{ release.title }}</h4>
-                @if (release.date !== releaseGroup['first-release-date']) {
+                @if (release.date !== releaseGroup()['first-release-date']) {
                   <p class="release-specific-date">Released: {{ release.date }}</p>
                 }
                 @if (release.country) {
