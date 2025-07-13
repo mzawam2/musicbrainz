@@ -27,7 +27,7 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     // Load cover art when we have releases - we'll fetch them first
-    this.loadCoverArtForReleaseGroup();
+    // this.loadCoverArtForReleaseGroup();
   }
 
   private loadCoverArtForReleaseGroup() {

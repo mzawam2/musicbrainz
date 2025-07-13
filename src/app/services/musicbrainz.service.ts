@@ -24,7 +24,7 @@ import {
   providedIn: 'root'
 })
 export class MusicBrainzService {
-  private readonly baseUrl = '/api';
+  private readonly baseUrl = 'https://musicbrainz.org/ws/2';
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
   
   // Cache for artist searches
@@ -473,6 +473,13 @@ export class MusicBrainzService {
 
   private handleError(error: any): Observable<never> {
     console.error('MusicBrainz API Error:', error);
+    console.error('Error details:', {
+      status: error.status,
+      statusText: error.statusText,
+      url: error.url,
+      message: error.message,
+      error: error.error
+    });
     
     if (error.status === 503) {
       return throwError(() => new Error('MusicBrainz service is temporarily unavailable. Please try again later.'));
@@ -480,8 +487,14 @@ export class MusicBrainzService {
       return throwError(() => new Error('Rate limit exceeded. Please wait before making another request.'));
     } else if (error.status === 0) {
       return throwError(() => new Error('Network error. Please check your internet connection. (API requests may be blocked by CORS)'));
+    } else if (error.status === 404) {
+      return throwError(() => new Error('The requested resource was not found.'));
+    } else if (error.status >= 400 && error.status < 500) {
+      return throwError(() => new Error(`Client error (${error.status}): ${error.statusText || 'Bad request'}`));
+    } else if (error.status >= 500) {
+      return throwError(() => new Error(`Server error (${error.status}): ${error.statusText || 'Internal server error'}`));
     } else {
-      return throwError(() => new Error('An error occurred while fetching data from MusicBrainz.'));
+      return throwError(() => new Error(`An error occurred while fetching data from MusicBrainz (${error.status || 'unknown'}): ${error.message || error.statusText || 'Unknown error'}`));
     }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(ng build:*)",
+      "Bash(ng generate:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:musicbrainz.org)",
+      "WebFetch(domain:musicbrainz.org)",
+      "WebFetch(domain:musicbrainz.org)"
+    ],
+    "deny": []
+  }
+}
