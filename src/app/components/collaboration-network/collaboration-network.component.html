@@ -1,0 +1,77 @@
+<div class="collaboration-network">
+  @if (collaborations.length > 0) {
+    <div class="network-header">
+      <h3>Collaboration Network</h3>
+      <p class="network-summary">
+        {{ artistName }} has collaborated with <strong>{{ collaborations.length }}</strong> artists 
+        across <strong>{{ totalCollaborations }}</strong> releases.
+      </p>
+    </div>
+
+    <div class="collaboration-chart">
+      @for (collaboration of topCollaborators; track collaboration.artist.id) {
+        <div class="collaboration-item">
+          <div class="collaborator-info">
+            <div class="collaborator-name">{{ collaboration.artist.name }}</div>
+            <div class="collaboration-stats">
+              <span class="release-count">{{ collaboration.releaseCount }} release{{ collaboration.releaseCount > 1 ? 's' : '' }}</span>
+              <span class="collaboration-type">{{ collaboration.collaborationType }}</span>
+            </div>
+          </div>
+          
+          <div class="collaboration-bar">
+            <div 
+              class="bar-fill" 
+              [style.width]="getCollaborationBarWidth(collaboration)"
+              [title]="collaboration.releaseCount + ' releases (' + getCollaborationPercentage(collaboration) + '%)'"
+            ></div>
+          </div>
+          
+          <div class="collaboration-percentage">
+            {{ getCollaborationPercentage(collaboration) }}%
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (collaborations.length > topCollaborators.length) {
+      <div class="more-collaborators">
+        <p>
+          And {{ collaborations.length - topCollaborators.length }} more collaborator{{ collaborations.length - topCollaborators.length > 1 ? 's' : '' }}...
+        </p>
+      </div>
+    }
+
+    <!-- Network Visualization Placeholder -->
+    <div class="network-visualization">
+      <div class="network-nodes">
+        <!-- Central Artist Node -->
+        <div class="artist-node central-node">
+          <div class="node-content">
+            <span class="node-label">{{ artistName }}</span>
+          </div>
+        </div>
+
+        <!-- Collaborator Nodes -->
+        @for (collaboration of topCollaborators.slice(0, 6); track collaboration.artist.id; let i = $index) {
+          <div 
+            class="artist-node collaborator-node" 
+            [style.--angle]="(i * 60) + 'deg'"
+            [style.--size]="Math.min(collaboration.releaseCount * 8 + 30, 60) + 'px'"
+          >
+            <div class="node-content">
+              <span class="node-label">{{ collaboration.artist.name }}</span>
+              <span class="node-count">{{ collaboration.releaseCount }}</span>
+            </div>
+            <div class="connection-line" [style.--strength]="collaboration.releaseCount"></div>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="no-collaborations">
+      <h3>Collaboration Network</h3>
+      <p>No collaboration data available for this artist.</p>
+    </div>
+  }
+</div>

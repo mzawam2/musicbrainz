@@ -1,0 +1,187 @@
+<div class="discography-container">
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading discography...</span>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error-state" role="alert">
+      <p>{{ error }}</p>
+    </div>
+  }
+
+  @if (discographyData && !loading) {
+    <div class="discography-header">
+      <div class="discography-summary">
+        <h2>Discography</h2>
+        <div class="summary-stats">
+          <span class="stat">
+            <strong>{{ totalReleases }}</strong> releases
+          </span>
+          @if (careerSpan) {
+            <span class="stat">
+              <strong>{{ careerSpan }}</strong>
+            </span>
+          }
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="discography-controls">
+        <!-- Search -->
+        <div class="search-control">
+          <label for="discography-search" class="sr-only">Search discography</label>
+          <input
+            id="discography-search"
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search releases..."
+            class="search-input"
+          />
+        </div>
+
+        <!-- View Mode Toggle -->
+        <div class="view-controls">
+          <div class="view-mode-toggle">
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode === 'grid'"
+              (click)="onViewModeChange('grid')"
+              aria-label="Grid view"
+            >
+              ⊞
+            </button>
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode === 'list'"
+              (click)="onViewModeChange('list')"
+              aria-label="List view"
+            >
+              ☰
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters and Sort -->
+        <div class="filter-controls">
+          <!-- Type Filter -->
+          <div class="filter-group">
+            <label for="type-filter">Type:</label>
+            <select
+              id="type-filter"
+              [(ngModel)]="filterByType"
+              (ngModelChange)="onFilterChange()"
+              class="filter-select"
+            >
+              <option value="">All Types</option>
+              @for (type of availableTypes; track type) {
+                <option [value]="type">{{ type }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Decade Filter -->
+          @if (availableDecades.length > 0) {
+            <div class="filter-group">
+              <label for="decade-filter">Decade:</label>
+              <select
+                id="decade-filter"
+                [(ngModel)]="filterByDecade"
+                (ngModelChange)="onFilterChange()"
+                class="filter-select"
+              >
+                <option value="">All Decades</option>
+                @for (decade of availableDecades; track decade) {
+                  <option [value]="decade">{{ decade }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          <!-- Genre Filter -->
+          @if (availableGenres.length > 0) {
+            <div class="filter-group">
+              <label for="genre-filter">Genre:</label>
+              <select
+                id="genre-filter"
+                [(ngModel)]="filterByGenre"
+                (ngModelChange)="onFilterChange()"
+                class="filter-select"
+              >
+                <option value="">All Genres</option>
+                @for (genre of availableGenres; track genre) {
+                  <option [value]="genre">{{ genre }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          <!-- Sort -->
+          <div class="sort-group">
+            <label for="sort-select">Sort by:</label>
+            <select
+              id="sort-select"
+              [(ngModel)]="sortBy"
+              (ngModelChange)="onSortChange()"
+              class="sort-select"
+            >
+              <option value="date">Release Date</option>
+              <option value="title">Title</option>
+              <option value="type">Type</option>
+            </select>
+            
+            <button
+              type="button"
+              class="sort-direction-btn"
+              (click)="toggleSortDirection()"
+              [attr.aria-label]="'Sort ' + (sortDirection === 'asc' ? 'ascending' : 'descending')"
+              [title]="'Sort ' + (sortDirection === 'asc' ? 'ascending' : 'descending')"
+            >
+              @if (sortDirection === 'asc') {
+                ↑
+              } @else {
+                ↓
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="discography-results">
+      @if (filteredReleaseGroups.length === 0) {
+        <div class="no-results">
+          <p>No releases found matching your criteria.</p>
+        </div>
+      } @else {
+        <div class="results-count">
+          Showing {{ filteredReleaseGroups.length }} of {{ totalReleases }} releases
+        </div>
+        
+        <div class="release-container" [class]="'view-' + viewMode">
+          @for (releaseGroup of filteredReleaseGroups; track releaseGroup.id) {
+            <app-release-card 
+              [releaseGroup]="releaseGroup"
+              (expand)="onReleaseExpand($event)"
+              (collapse)="onReleaseCollapse($event)">
+            </app-release-card>
+          }
+        </div>
+
+        <!-- Collaboration Network Section -->
+        @if (discographyData.collaborations && discographyData.collaborations.length > 0) {
+          <app-collaboration-network
+            [collaborations]="discographyData.collaborations"
+            [artistName]="discographyData.artist.name">
+          </app-collaboration-network>
+        }
+      }
+    </div>
+  }
+</div>

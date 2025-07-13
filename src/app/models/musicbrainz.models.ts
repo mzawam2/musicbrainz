@@ -215,3 +215,199 @@ export interface MusicBrainzReleaseSearchResponse {
   count: number;
   offset: number;
 }
+
+// New interfaces for Phase 1: Artist Discography Explorer
+
+export interface MusicBrainzReleaseGroup {
+  id: string;
+  title: string;
+  'primary-type': 'Album' | 'Single' | 'EP' | 'Broadcast' | 'Other';
+  'primary-type-id': string;
+  'secondary-types'?: string[];
+  'secondary-type-ids'?: string[];
+  'first-release-date': string;
+  disambiguation?: string;
+  'artist-credit'?: Array<{
+    name: string;
+    joinphrase?: string;
+    artist: {
+      id: string;
+      name: string;
+      'sort-name': string;
+      disambiguation?: string;
+    };
+  }>;
+  aliases?: MusicBrainzAlias[];
+  tags?: MusicBrainzTag[];
+  rating?: MusicBrainzRating;
+  releases?: MusicBrainzRelease[];
+}
+
+export interface MusicBrainzReleaseGroupSearchResponse {
+  'release-groups': MusicBrainzReleaseGroup[];
+  count: number;
+  offset: number;
+}
+
+export interface DiscographyData {
+  artist: MusicBrainzArtist;
+  releaseGroups: MusicBrainzReleaseGroup[];
+  totalReleases: number;
+  careerSpan: {
+    start: string;
+    end?: string;
+  };
+}
+
+// Phase 2 & 3: Enhanced interfaces for detailed release information
+
+export interface MusicBrainzTrack {
+  id: string;
+  title: string;
+  length?: number;
+  position: number;
+  number?: string;
+  recording: {
+    id: string;
+    title: string;
+    length?: number;
+    disambiguation?: string;
+    'artist-credit'?: Array<{
+      name: string;
+      joinphrase?: string;
+      artist: {
+        id: string;
+        name: string;
+        'sort-name': string;
+        disambiguation?: string;
+      };
+    }>;
+  };
+}
+
+export interface MusicBrainzMedium {
+  position: number;
+  title?: string;
+  format?: string;
+  'format-id'?: string;
+  'track-count': number;
+  'track-offset'?: number;
+  tracks?: MusicBrainzTrack[];
+}
+
+export interface CoverArtInfo {
+  artwork: boolean;
+  count: number;
+  front: boolean;
+  back: boolean;
+  images?: Array<{
+    id: string;
+    image: string;
+    thumbnails: {
+      small: string;
+      large: string;
+      '250': string;
+      '500': string;
+      '1200': string;
+    };
+    front: boolean;
+    back: boolean;
+    types: string[];
+    edit: number;
+    approved: boolean;
+  }>;
+}
+
+export interface DetailedRelease extends MusicBrainzRelease {
+  media: MusicBrainzMedium[];
+  'cover-art-archive': CoverArtInfo;
+  totalTracks?: number;
+  totalLength?: number;
+}
+
+export interface EnhancedReleaseGroup extends MusicBrainzReleaseGroup {
+  detailedReleases?: DetailedRelease[];
+  coverArt?: CoverArtInfo;
+  totalTracks?: number;
+  averageLength?: number;
+  expanded?: boolean; // UI state for expandable cards
+}
+
+export interface MusicBrainzWork {
+  id: string;
+  title: string;
+  type?: string;
+  'type-id'?: string;
+  disambiguation?: string;
+  'attribute-list'?: Array<{
+    type: string;
+    'type-id': string;
+    value: string;
+    'value-id'?: string;
+  }>;
+  aliases?: MusicBrainzAlias[];
+  rating?: MusicBrainzRating;
+  tags?: MusicBrainzTag[];
+  relations?: Array<{
+    type: string;
+    direction: string;
+    'target-credit'?: string;
+    'target-type': string;
+    work?: MusicBrainzWork;
+    artist?: MusicBrainzArtist;
+    begin?: string;
+    end?: string;
+    ended?: boolean;
+    attributes?: string[];
+  }>;
+}
+
+export interface CollaborationInfo {
+  artist: MusicBrainzArtist;
+  collaborationType: string;
+  releaseCount: number;
+  releases: string[];
+}
+
+export interface EnhancedDiscographyData extends DiscographyData {
+  releaseGroups: EnhancedReleaseGroup[];
+  collaborations?: CollaborationInfo[];
+  genres?: Array<{ name: string; count: number; percentage: number }>;
+  decades?: Array<{ decade: string; count: number; percentage: number }>;
+  totalTracks?: number;
+  totalPlaytime?: number;
+}
+
+// API Response interfaces for Phase 2 & 3
+
+export interface MusicBrainzReleaseDetailResponse {
+  releases: DetailedRelease[];
+  count: number;
+  offset: number;
+}
+
+export interface MusicBrainzWorkSearchResponse {
+  works: MusicBrainzWork[];
+  count: number;
+  offset: number;
+}
+
+export interface CoverArtResponse {
+  images: Array<{
+    id: string;
+    image: string;
+    thumbnails: {
+      small: string;
+      large: string;
+      '250': string;
+      '500': string;
+      '1200': string;
+    };
+    front: boolean;
+    back: boolean;
+    types: string[];
+    edit: number;
+    approved: boolean;
+  }>;
+  release: string;
+}

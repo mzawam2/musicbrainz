@@ -4,12 +4,13 @@ import { CommonModule } from '@angular/common';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
-import { MusicBrainzArtist, LabelWithReleaseCount } from '../../models/musicbrainz.models';
+import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
+import { DiscographyComponent } from '../discography/discography.component';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, ReactiveFormsModule, LabelGridComponent],
+  imports: [CommonModule, ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
@@ -25,6 +26,11 @@ export class HomeComponent implements OnInit {
   labels: LabelWithReleaseCount[] = [];
   labelsLoading = false;
   labelsError: string | null = null;
+
+  // Discography-related properties
+  discographyData: EnhancedDiscographyData | null = null;
+  discographyLoading = false;
+  discographyError: string | null = null;
 
   constructor(private musicBrainzService: MusicBrainzService) {}
 
@@ -65,6 +71,7 @@ export class HomeComponent implements OnInit {
     this.searchControl.setValue(artist.name);
     this.artists = [];
     this.loadArtistLabels(artist.id);
+    this.loadArtistDiscography(artist.id);
   }
 
   clearSearch() {
@@ -74,6 +81,8 @@ export class HomeComponent implements OnInit {
     this.error = null;
     this.labels = [];
     this.labelsError = null;
+    this.discographyData = null;
+    this.discographyError = null;
     this.currentSearchTerm = '';
   }
 
@@ -103,6 +112,27 @@ export class HomeComponent implements OnInit {
       error: (error) => {
         this.labelsError = error.message || 'Failed to load labels';
         this.labelsLoading = false;
+      }
+    });
+  }
+
+  private loadArtistDiscography(artistId: string) {
+    this.discographyLoading = true;
+    this.discographyError = null;
+    this.discographyData = null;
+
+    this.musicBrainzService.getEnhancedArtistDiscography(artistId).subscribe({
+      next: (discography) => {
+        // Update the artist information in the discography data with the selected artist
+        if (this.selectedArtist) {
+          discography.artist = this.selectedArtist;
+        }
+        this.discographyData = discography;
+        this.discographyLoading = false;
+      },
+      error: (error) => {
+        this.discographyError = error.message || 'Failed to load discography';
+        this.discographyLoading = false;
       }
     });
   }
