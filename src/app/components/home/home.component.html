@@ -1,0 +1,86 @@
+<div class="search-container">
+  <div class="search-box">
+    <input 
+      type="text" 
+      [formControl]="searchControl"
+      placeholder="Search for an artist..."
+      class="search-input"
+      autocomplete="off"
+    />
+    
+    @if (searchControl.value && searchControl.value.length > 0) {
+      <button type="button" class="clear-button" (click)="clearSearch()">
+        ✕
+      </button>
+    }
+  </div>
+
+  @if (loading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>Searching artists...</span>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error">
+      <p>{{ error }}</p>
+    </div>
+  }
+
+  @if (artists.length > 0) {
+    <div class="search-results">
+      <ul class="artist-list">
+        @for (artist of artists; track artist.id) {
+          <li class="artist-item" (click)="selectArtist(artist)">
+            <div class="artist-info">
+              <h3>{{ artist.name }}</h3>
+              <p class="artist-details">
+                @if (artist.disambiguation) {
+                  <span class="disambiguation">{{ artist.disambiguation }}</span>
+                }
+                @if (artist.country) {
+                  <span class="country">{{ artist.country }}</span>
+                }
+                @if (artist['life-span']?.begin) {
+                  <span class="life-span">{{ artist['life-span']!.begin }}
+                    @if (artist['life-span']!.end) {
+                      - {{ artist['life-span']!.end }}
+                    }
+                  </span>
+                }
+              </p>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (selectedArtist) {
+    <div class="selected-artist">
+      <h2>Selected Artist</h2>
+      <div class="artist-card">
+        <h3>{{ selectedArtist.name }}</h3>
+        <div class="artist-meta">
+          @if (selectedArtist.disambiguation) {
+            <p><strong>Description:</strong> {{ selectedArtist.disambiguation }}</p>
+          }
+          @if (selectedArtist.country) {
+            <p><strong>Country:</strong> {{ selectedArtist.country }}</p>
+          }
+          @if (selectedArtist['life-span']?.begin) {
+            <p><strong>Active:</strong> {{ selectedArtist['life-span']!.begin }}
+              @if (selectedArtist['life-span']!.end) {
+                - {{ selectedArtist['life-span']!.end }}
+              } @else {
+                - present
+              }
+            </p>
+          }
+        </div>
+        <p class="next-step">Label information will be implemented in the next phase.</p>
+      </div>
+    </div>
+  }
+</div>
