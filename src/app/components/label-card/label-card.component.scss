@@ -1,123 +1,344 @@
 .label-card {
-  background: white;
-  border: 1px solid #e0e0e0;
+  background: #fff;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  margin-bottom: 16px;
   transition: all 0.3s ease;
-  height: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #2196F3;
   }
+
+  &.expanded {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    border-color: #2196F3;
+  }
+
+  // Label type color coding
+  &[data-type="production"] {
+    border-left: 4px solid #4CAF50;
+  }
+
+  &[data-type="original production"] {
+    border-left: 4px solid #8BC34A;
+  }
+
+  &[data-type="bootleg production"] {
+    border-left: 4px solid #FF5722;
+  }
+
+  &[data-type="reissue production"] {
+    border-left: 4px solid #FF9800;
+  }
+
+  &[data-type="holding"] {
+    border-left: 4px solid #9C27B0;
+  }
+
+  &[data-type="rights society"] {
+    border-left: 4px solid #795548;
+  }
+
+  &[data-type="unknown"], &[data-type="other"] {
+    border-left: 4px solid #607D8B;
+  }
+
+  &[data-type="distributor"] {
+    border-left: 4px solid #E91E63;
+  }
+}
+
+.label-main-content {
+  padding: 16px;
 }
 
 .label-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  gap: 1rem;
+  align-items: center;
+  margin-bottom: 12px;
 
-  .label-name {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+  .label-type-badge {
+    background: #f5f5f5;
     color: #333;
-    line-height: 1.3;
-    flex: 1;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    &.type-production {
+      background: #E8F5E8;
+      color: #2E7D32;
+    }
+    
+    &.type-original.production {
+      background: #F1F8E9;
+      color: #558B2F;
+    }
+    
+    &.type-bootleg.production {
+      background: #FBE9E7;
+      color: #D84315;
+    }
+    
+    &.type-reissue.production {
+      background: #FFF3E0;
+      color: #F57C00;
+    }
+    
+    &.type-holding {
+      background: #F3E5F5;
+      color: #7B1FA2;
+    }
+    
+    &.type-rights.society {
+      background: #EFEBE9;
+      color: #5D4037;
+    }
+    
+    &.type-distributor {
+      background: #FCE4EC;
+      color: #C2185B;
+    }
+    
+    &.type-unknown, &.type-other {
+      background: #ECEFF1;
+      color: #455A64;
+    }
   }
 
-  .release-count {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  .release-count-badge {
+    background: #2196F3;
     color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    min-width: 60px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    min-width: 40px;
     text-align: center;
+  }
+}
 
-    .count {
-      font-size: 1.5rem;
-      font-weight: bold;
-      line-height: 1;
-    }
+.label-content {
+  margin-bottom: 16px;
 
-    .count-label {
-      font-size: 0.75rem;
-      opacity: 0.9;
-      margin-top: 2px;
-    }
+  .label-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+  }
+
+  .label-disambiguation {
+    font-size: 0.875rem;
+    color: #666;
+    font-style: italic;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
   }
 }
 
 .label-details {
-  flex: 1;
-  margin-bottom: 1rem;
-
-  .disambiguation {
-    margin: 0 0 0.75rem 0;
-    font-style: italic;
-    color: #666;
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }
-
-  .label-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  
+  > div {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-
-    span {
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
+    align-items: center;
+    font-size: 0.875rem;
+    
+    .label {
       font-weight: 500;
+      color: #666;
+      margin-right: 8px;
+      min-width: 80px;
+    }
+    
+    .value {
+      color: #333;
+      font-weight: 400;
+    }
+  }
+}
 
-      &.label-type {
-        background-color: #e3f2fd;
-        color: #1976d2;
+.label-actions {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+
+  .expand-btn {
+    width: 100%;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: #2196F3;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+
+    &:hover {
+      background: #f5f5f5;
+      color: #1976D2;
+    }
+
+    &:focus {
+      outline: 2px solid #2196F3;
+      outline-offset: 2px;
+    }
+
+    .icon {
+      font-size: 0.75rem;
+      transition: transform 0.2s ease;
+    }
+  }
+}
+
+.label-details-expanded {
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  padding: 16px;
+
+  .expanded-info {
+    .info-section {
+      h4 {
+        margin: 0 0 12px 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
       }
 
-      &.label-code {
-        background-color: #f3e5f5;
-        color: #7b1fa2;
-        font-family: monospace;
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+
+        .info-item {
+          display: flex;
+          align-items: center;
+          
+          .info-label {
+            font-weight: 500;
+            color: #666;
+            margin-right: 8px;
+            min-width: 100px;
+            font-size: 0.875rem;
+          }
+          
+          .info-value {
+            color: #333;
+            font-weight: 400;
+            font-size: 0.875rem;
+          }
+        }
       }
     }
   }
 }
 
-.card-footer {
-  border-top: 1px solid #f0f0f0;
-  padding-top: 0.75rem;
-  margin-top: auto;
+// Grid view styles
+.view-grid .label-card {
+  // Card already has proper styling for grid view
+}
 
-  .label-id {
-    color: #999;
-    font-size: 0.75rem;
-    font-family: monospace;
+// List view styles
+.view-list {
+  .label-card {
+    .label-main-content {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      
+      .label-header {
+        margin-bottom: 0;
+        margin-right: 16px;
+        flex-shrink: 0;
+      }
+      
+      .label-content {
+        flex: 1;
+        margin-bottom: 0;
+        margin-right: 16px;
+        
+        .label-title {
+          margin-bottom: 4px;
+          font-size: 1rem;
+        }
+        
+        .label-disambiguation {
+          margin-bottom: 0;
+        }
+      }
+      
+      .label-details {
+        flex-direction: row;
+        gap: 16px;
+        margin-right: 16px;
+        
+        > div {
+          .label {
+            min-width: auto;
+            margin-right: 4px;
+          }
+        }
+      }
+      
+      .label-actions {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        flex-shrink: 0;
+        
+        .expand-btn {
+          width: auto;
+          padding: 6px 12px;
+        }
+      }
+    }
   }
 }
 
 // Responsive adjustments
 @media (max-width: 768px) {
-  .label-card {
-    padding: 1rem;
-  }
-
-  .label-header {
-    flex-direction: column;
-    align-items: stretch;
-
-    .release-count {
-      align-self: flex-end;
-      min-width: 80px;
+  .view-list {
+    .label-card {
+      .label-main-content {
+        flex-direction: column;
+        align-items: stretch;
+        
+        .label-header,
+        .label-content,
+        .label-details {
+          margin-right: 0;
+          margin-bottom: 8px;
+        }
+        
+        .label-details {
+          flex-direction: column;
+          gap: 8px;
+          
+          > div {
+            .label {
+              min-width: 80px;
+              margin-right: 8px;
+            }
+          }
+        }
+      }
     }
   }
 }

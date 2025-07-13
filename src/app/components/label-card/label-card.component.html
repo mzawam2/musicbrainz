@@ -1,29 +1,84 @@
-<div class="label-card">
-  <div class="label-header">
-    <h3 class="label-name">{{ labelData.label.name }}</h3>
-    <div class="release-count">
-      <span class="count">{{ labelData.releaseCount }}</span>
-      <span class="count-label">{{ labelData.releaseCount === 1 ? 'release' : 'releases' }}</span>
+<div class="label-card" [attr.data-type]="labelType().toLowerCase()" [class.expanded]="isExpanded()">
+  <div class="label-main-content">
+    <div class="label-header">
+      <div class="label-type-badge" [class]="'type-' + labelType().toLowerCase()">
+        {{ labelType() }}
+      </div>
+      <div class="release-count-badge">{{ releaseCount() }}</div>
     </div>
-  </div>
-  
-  <div class="label-details">
-    @if (labelData.label.disambiguation) {
-      <p class="disambiguation">{{ labelData.label.disambiguation }}</p>
-    }
     
-    <div class="label-meta">
-      @if (labelData.label.type && labelData.label.type !== 'Unknown') {
-        <span class="label-type">{{ labelData.label.type }}</span>
+    <div class="label-content">
+      <h3 class="label-title">{{ labelName() }}</h3>
+      
+      @if (disambiguation()) {
+        <p class="label-disambiguation">{{ disambiguation() }}</p>
       }
       
-      @if (labelData.label['label-code'] && labelData.label['label-code'] > 0) {
-        <span class="label-code">LC {{ labelData.label['label-code'] }}</span>
-      }
+      <div class="label-details">
+        <div class="release-info">
+          <span class="label">Releases:</span>
+          <span class="value">{{ releaseCount() }} {{ releaseCount() === 1 ? 'release' : 'releases' }}</span>
+        </div>
+        
+        @if (labelData().label['label-code'] && labelData().label['label-code'] > 0) {
+          <div class="label-code-info">
+            <span class="label">Label Code:</span>
+            <span class="value">LC {{ labelData().label['label-code'] }}</span>
+          </div>
+        }
+      </div>
+    </div>
+    
+    <!-- Expand/Collapse Button -->
+    <div class="label-actions">
+      <button 
+        type="button" 
+        class="expand-btn"
+        (click)="toggleExpanded()"
+        [attr.aria-expanded]="isExpanded()"
+        [attr.aria-label]="isExpanded() ? 'Collapse label details' : 'Expand label details'"
+      >
+        @if (isExpanded()) {
+          <span>Hide Details</span>
+          <span class="icon">▲</span>
+        } @else {
+          <span>Show Details</span>
+          <span class="icon">▼</span>
+        }
+      </button>
     </div>
   </div>
-  
-  <div class="card-footer">
-    <small class="label-id">ID: {{ labelData.label.id }}</small>
-  </div>
+
+  <!-- Expanded Details Section -->
+  @if (isExpanded()) {
+    <div class="label-details-expanded">
+      <div class="expanded-info">
+        <div class="info-section">
+          <h4>Label Information</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">ID:</span>
+              <span class="info-value">{{ labelData().label.id }}</span>
+            </div>
+            @if (labelData().label.type) {
+              <div class="info-item">
+                <span class="info-label">Type:</span>
+                <span class="info-value">{{ labelData().label.type }}</span>
+              </div>
+            }
+            @if (labelData().label['label-code']) {
+              <div class="info-item">
+                <span class="info-label">Label Code:</span>
+                <span class="info-value">LC {{ labelData().label['label-code'] }}</span>
+              </div>
+            }
+            <div class="info-item">
+              <span class="info-label">Total Releases:</span>
+              <span class="info-value">{{ releaseCount() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>

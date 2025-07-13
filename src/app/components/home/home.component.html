@@ -101,6 +101,13 @@
       </div>
     </div>
     
+     <!-- Discography Section -->
+    <app-discography
+      [discographyData]="discographyData()"
+      [loading]="discographyLoading()"
+      [error]="discographyError()">
+    </app-discography>
+
     <!-- Label Grid Section -->
     <app-label-grid 
       [labels]="labels()"
@@ -108,11 +115,5 @@
       [error]="labelsError()">
     </app-label-grid>
 
-    <!-- Discography Section -->
-    <app-discography
-      [discographyData]="discographyData()"
-      [loading]="discographyLoading()"
-      [error]="discographyError()">
-    </app-discography>
   }
 </div>

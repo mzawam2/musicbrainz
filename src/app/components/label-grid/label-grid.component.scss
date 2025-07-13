@@ -1,22 +1,281 @@
 .label-grid-container {
   margin-top: 2rem;
+  background: #f5f5f5;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.labels-header {
-  margin-bottom: 1.5rem;
-  text-align: center;
-
-  h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 2rem;
-    color: #333;
-    font-weight: 600;
+// Loading and error states
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e0e0;
+    border-top: 4px solid #2196F3;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
   }
+  
+  span {
+    font-size: 1rem;
+    color: #666;
+  }
+}
 
-  .labels-count {
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #d32f2f;
+  text-align: center;
+  
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    color: #333;
+  }
+  
+  p {
     margin: 0;
     color: #666;
     font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+// Header section matching discography
+.label-grid-header {
+  margin-bottom: 2rem;
+  
+  .label-grid-summary {
+    margin-bottom: 1.5rem;
+    
+    h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.875rem;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .summary-stats {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      
+      .stat {
+        font-size: 0.875rem;
+        color: #666;
+        
+        strong {
+          color: #333;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+}
+
+// Controls matching discography design
+.label-grid-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .search-control {
+    flex: 1;
+    max-width: 300px;
+    
+    .search-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+      
+      &:focus {
+        outline: none;
+        border-color: #2196F3;
+        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+      }
+      
+      &::placeholder {
+        color: #999;
+      }
+    }
+  }
+  
+  .view-controls {
+    .view-mode-toggle {
+      display: flex;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      
+      .view-mode-btn {
+        padding: 0.5rem 0.75rem;
+        background: #fff;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        color: #666;
+        
+        &:hover {
+          background: #f5f5f5;
+        }
+        
+        &.active {
+          background: #2196F3;
+          color: white;
+        }
+        
+        &:focus {
+          outline: 2px solid #2196F3;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+  
+  .filter-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    
+    .filter-group,
+    .sort-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #666;
+        white-space: nowrap;
+      }
+      
+      .filter-select,
+      .sort-select {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        cursor: pointer;
+        
+        &:focus {
+          outline: none;
+          border-color: #2196F3;
+          box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+        }
+      }
+      
+      .sort-direction-btn {
+        padding: 0.5rem;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        color: #666;
+        
+        &:hover {
+          background: #f5f5f5;
+          border-color: #2196F3;
+        }
+        
+        &:focus {
+          outline: 2px solid #2196F3;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+}
+
+// Results section
+.label-grid-results {
+  .no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #666;
+    
+    p {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+    }
+  }
+  
+  .results-count {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: #666;
+    font-weight: 500;
+  }
+  
+  .label-container {
+    display: grid;
+    gap: 1rem;
+    
+    // Grid view (default)
+    &.view-grid {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      
+      @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    // List view
+    &.view-list {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
   }
 }
 
@@ -33,298 +292,30 @@
   border: 0;
 }
 
-.controls-section {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  border: 1px solid #e9ecef;
-
-  .search-filter {
-    margin-bottom: 1rem;
-
-    .filter-input {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.3s ease;
-
-      &:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-      }
-
-      &::placeholder {
-        color: #999;
-      }
-    }
-  }
-
-  .sort-controls {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    align-items: end;
-
-    > div {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-
-      label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #555;
-      }
-
-      select {
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 0.875rem;
-        background: white;
-        outline: none;
-        cursor: pointer;
-        transition: border-color 0.3s ease;
-
-        &:focus {
-          border-color: #007bff;
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-      }
-    }
-  }
-}
-
-.results-summary {
-  text-align: center;
-  margin-bottom: 1rem;
-  color: #666;
-  font-size: 0.875rem;
-  font-style: italic;
-}
-
-.no-results {
-  text-align: center;
-  padding: 2rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-
-  p {
-    margin: 0 0 1rem 0;
-    color: #666;
-  }
-
-  .clear-filters {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: background-color 0.3s ease;
-
-    &:hover {
-      background: #0056b3;
-    }
-
-    &:focus {
-      outline: 2px solid #007bff;
-      outline-offset: 2px;
-    }
-  }
-}
-
-.label-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-// Loading state
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-  }
-
-  p {
-    margin: 0;
-    color: #666;
-    font-size: 1.1rem;
-  }
-}
-
+// Spinner animation
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
-// Error state
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-
-  .error-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  h3 {
-    margin: 0 0 0.5rem 0;
-    color: #dc2626;
-    font-size: 1.5rem;
-  }
-
-  p {
-    margin: 0;
-    color: #7f1d1d;
-    max-width: 400px;
-    line-height: 1.5;
-  }
-}
-
-// Empty state
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-
-  .empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.6;
-  }
-
-  h3 {
-    margin: 0 0 0.5rem 0;
-    color: #374151;
-    font-size: 1.5rem;
-  }
-
-  p {
-    margin: 0;
-    color: #6b7280;
-    max-width: 400px;
-    line-height: 1.5;
-  }
-}
-
-// Responsive design
+// Responsive adjustments
 @media (max-width: 768px) {
-  .label-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .labels-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .loading-state,
-  .error-state,
-  .empty-state {
-    padding: 2rem 1rem;
-  }
-
-  .controls-section {
-    padding: 1rem;
-
-    .sort-controls {
-      flex-direction: column;
-      gap: 0.75rem;
-
-      > div {
-        width: 100%;
-
-        select {
-          width: 100%;
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
   .label-grid-container {
     margin-top: 1rem;
+    padding: 1.5rem;
+    border-radius: 12px;
   }
-
-  .labels-header {
-    margin-bottom: 1rem;
-
-    h2 {
-      font-size: 1.25rem;
-    }
-
-    .labels-count {
-      font-size: 0.875rem;
-    }
-  }
-
-  .controls-section {
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-
-    .search-filter .filter-input {
-      padding: 0.625rem;
-      font-size: 0.875rem;
-    }
-
-    .sort-controls > div {
-      label {
-        font-size: 0.8rem;
+  
+  .label-grid-controls {
+    .filter-controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+      
+      .filter-group,
+      .sort-group {
+        justify-content: space-between;
       }
-
-      select {
-        padding: 0.375rem;
-        font-size: 0.8rem;
-      }
-    }
-  }
-
-  .results-summary {
-    font-size: 0.8rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .no-results {
-    padding: 1.5rem 1rem;
-
-    .clear-filters {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.8rem;
     }
   }
 }

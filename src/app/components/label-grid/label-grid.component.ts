@@ -22,6 +22,7 @@ export class LabelGridComponent {
   sortBy = signal<'name' | 'releases' | 'type'>('releases');
   sortDirection = signal<'asc' | 'desc'>('desc');
   filterByType = signal('');
+  viewMode = signal<'grid' | 'list'>('grid');
 
   // Computed filtered and sorted labels
   filteredLabels = computed(() => {
@@ -48,6 +49,20 @@ export class LabelGridComponent {
 
   toggleSortDirection() {
     this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
+  }
+
+  onViewModeChange(mode: 'grid' | 'list') {
+    this.viewMode.set(mode);
+  }
+
+  onLabelExpand(labelId: string) {
+    // Handle analytics or other tracking if needed
+    console.log('Label expanded:', labelId);
+  }
+
+  onLabelCollapse(labelId: string) {
+    // Handle analytics or other tracking if needed
+    console.log('Label collapsed:', labelId);
   }
 
   private applyFiltersAndSort(labels: LabelWithReleaseCount[]): LabelWithReleaseCount[] {

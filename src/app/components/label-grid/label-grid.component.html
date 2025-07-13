@@ -2,62 +2,91 @@
   @if (loading()) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Loading record labels...</p>
+      <span>Loading record labels...</span>
     </div>
-  } @else if (error()) {
-    <div class="error-state">
-      <div class="error-icon">⚠️</div>
-      <h3>Unable to Load Labels</h3>
+  }
+
+  @if (error()) {
+    <div class="error-state" role="alert">
       <p>{{ error() }}</p>
     </div>
-  } @else if (labels().length === 0) {
+  }
+
+  @if (labels().length === 0 && !loading()) {
     <div class="empty-state">
       <div class="empty-icon">🏷️</div>
       <h3>No Labels Found</h3>
       <p>This artist doesn't have any releases with label information in the database.</p>
     </div>
-  } @else {
-    <div class="labels-header">
-      <h2>Record Labels</h2>
-      <p class="labels-count">Found {{ labels().length }} {{ labels().length === 1 ? 'label' : 'labels' }}</p>
-    </div>
+  }
 
-    @if (labels().length > 0) {
-      <div class="controls-section">
-        <div class="search-filter">
+  @if (labels().length > 0 && !loading()) {
+    <div class="label-grid-header">
+      <div class="label-grid-summary">
+        <h2>Record Labels</h2>
+        <div class="summary-stats">
+          <span class="stat">
+            <strong>{{ labels().length }}</strong> {{ labels().length === 1 ? 'label' : 'labels' }}
+          </span>
+          @if (filteredLabels().length !== labels().length) {
+            <span class="stat">
+              <strong>{{ filteredLabels().length }}</strong> filtered
+            </span>
+          }
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="label-grid-controls">
+        <!-- Search -->
+        <div class="search-control">
           <label for="label-search" class="sr-only">Search labels</label>
           <input
             id="label-search"
             type="text"
             [ngModel]="searchTerm()"
             (ngModelChange)="onSearchChange($event)"
-            placeholder="Filter labels..."
-            class="filter-input"
+            placeholder="Search labels..."
+            class="search-input"
           />
         </div>
 
-        <div class="sort-controls">
-          <div class="sort-by">
-            <label for="sort-by">Sort by:</label>
-            <select id="sort-by" [ngModel]="sortBy()" (ngModelChange)="onSortChange($event)">
-              <option value="releases">Release Count</option>
-              <option value="name">Name</option>
-              <option value="type">Type</option>
-            </select>
+        <!-- View Mode Toggle -->
+        <div class="view-controls">
+          <div class="view-mode-toggle">
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode() === 'grid'"
+              (click)="onViewModeChange('grid')"
+              aria-label="Grid view"
+            >
+              ⊞
+            </button>
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode() === 'list'"
+              (click)="onViewModeChange('list')"
+              aria-label="List view"
+            >
+              ☰
+            </button>
           </div>
+        </div>
 
-          <div class="sort-direction">
-            <label for="sort-direction">Order:</label>
-            <select id="sort-direction" [ngModel]="sortDirection()" (ngModelChange)="toggleSortDirection()">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-          </div>
-
+        <!-- Filters and Sort -->
+        <div class="filter-controls">
+          <!-- Type Filter -->
           @if (availableTypes().length > 0) {
-            <div class="type-filter">
+            <div class="filter-group">
               <label for="type-filter">Type:</label>
-              <select id="type-filter" [ngModel]="filterByType()" (ngModelChange)="onFilterChange($event)">
+              <select
+                id="type-filter"
+                [ngModel]="filterByType()"
+                (ngModelChange)="onFilterChange($event)"
+                class="filter-select"
+              >
                 <option value="">All Types</option>
                 @for (type of availableTypes(); track type) {
                   <option [value]="type">{{ type }}</option>
@@ -65,27 +94,60 @@
               </select>
             </div>
           }
+
+          <!-- Sort -->
+          <div class="sort-group">
+            <label for="sort-select">Sort by:</label>
+            <select
+              id="sort-select"
+              [ngModel]="sortBy()"
+              (ngModelChange)="onSortChange($event)"
+              class="sort-select"
+            >
+              <option value="releases">Release Count</option>
+              <option value="name">Name</option>
+              <option value="type">Type</option>
+            </select>
+            
+            <button
+              type="button"
+              class="sort-direction-btn"
+              (click)="toggleSortDirection()"
+              [attr.aria-label]="'Sort ' + (sortDirection() === 'asc' ? 'ascending' : 'descending')"
+              [title]="'Sort ' + (sortDirection() === 'asc' ? 'ascending' : 'descending')"
+            >
+              @if (sortDirection() === 'asc') {
+                ↑
+              } @else {
+                ↓
+              }
+            </button>
+          </div>
         </div>
       </div>
+    </div>
 
+    <!-- Results -->
+    <div class="label-grid-results">
       @if (filteredLabels().length === 0) {
         <div class="no-results">
-          <p>No labels match your current filters.</p>
-          <button type="button" (click)="searchTerm.set(''); filterByType.set('')" class="clear-filters">
-            Clear Filters
-          </button>
+          <p>No labels found matching your criteria.</p>
         </div>
       } @else {
-        <div class="results-summary">
+        <div class="results-count">
           Showing {{ filteredLabels().length }} of {{ labels().length }} labels
         </div>
         
-        <div class="label-grid">
+        <div class="label-container" [class]="'view-' + viewMode()">
           @for (labelData of filteredLabels(); track labelData.label.id) {
-            <app-label-card [labelData]="labelData"></app-label-card>
+            <app-label-card 
+              [labelData]="labelData"
+              (expand)="onLabelExpand($event)"
+              (collapse)="onLabelCollapse($event)">
+            </app-label-card>
           }
         </div>
       }
-    }
+    </div>
   }
 </div>
