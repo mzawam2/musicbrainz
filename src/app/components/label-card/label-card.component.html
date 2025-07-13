@@ -1,0 +1,29 @@
+<div class="label-card">
+  <div class="label-header">
+    <h3 class="label-name">{{ labelData.label.name }}</h3>
+    <div class="release-count">
+      <span class="count">{{ labelData.releaseCount }}</span>
+      <span class="count-label">{{ labelData.releaseCount === 1 ? 'release' : 'releases' }}</span>
+    </div>
+  </div>
+  
+  <div class="label-details">
+    @if (labelData.label.disambiguation) {
+      <p class="disambiguation">{{ labelData.label.disambiguation }}</p>
+    }
+    
+    <div class="label-meta">
+      @if (labelData.label.type && labelData.label.type !== 'Unknown') {
+        <span class="label-type">{{ labelData.label.type }}</span>
+      }
+      
+      @if (labelData.label['label-code'] && labelData.label['label-code'] > 0) {
+        <span class="label-code">LC {{ labelData.label['label-code'] }}</span>
+      }
+    </div>
+  </div>
+  
+  <div class="card-footer">
+    <small class="label-id">ID: {{ labelData.label.id }}</small>
+  </div>
+</div>

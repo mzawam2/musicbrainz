@@ -6,7 +6,8 @@ import {
   MusicBrainzArtistSearchResponse, 
   MusicBrainzReleaseSearchResponse,
   MusicBrainzArtist,
-  MusicBrainzRelease 
+  MusicBrainzRelease,
+  LabelWithReleaseCount
 } from '../models/musicbrainz.models';
 
 @Injectable({

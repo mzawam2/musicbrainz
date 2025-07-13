@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
-import { MusicBrainzArtist } from '../../models/musicbrainz.models';
+import { MusicBrainzArtist, LabelWithReleaseCount } from '../../models/musicbrainz.models';
+import { LabelGridComponent } from '../label-grid/label-grid.component';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LabelGridComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
@@ -18,6 +19,11 @@ export class HomeComponent implements OnInit {
   loading = false;
   error: string | null = null;
   selectedArtist: MusicBrainzArtist | null = null;
+  
+  // Label-related properties
+  labels: LabelWithReleaseCount[] = [];
+  labelsLoading = false;
+  labelsError: string | null = null;
 
   constructor(private musicBrainzService: MusicBrainzService) {}
 
@@ -55,6 +61,7 @@ export class HomeComponent implements OnInit {
     this.selectedArtist = artist;
     this.searchControl.setValue(artist.name);
     this.artists = [];
+    this.loadArtistLabels(artist.id);
   }
 
   clearSearch() {
@@ -62,5 +69,24 @@ export class HomeComponent implements OnInit {
     this.selectedArtist = null;
     this.artists = [];
     this.error = null;
+    this.labels = [];
+    this.labelsError = null;
+  }
+
+  private loadArtistLabels(artistId: string) {
+    this.labelsLoading = true;
+    this.labelsError = null;
+    this.labels = [];
+
+    this.musicBrainzService.getArtistLabels(artistId).subscribe({
+      next: (labels) => {
+        this.labels = labels;
+        this.labelsLoading = false;
+      },
+      error: (error) => {
+        this.labelsError = error.message || 'Failed to load labels';
+        this.labelsLoading = false;
+      }
+    });
   }
 }

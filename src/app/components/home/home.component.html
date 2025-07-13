@@ -79,8 +79,14 @@
             </p>
           }
         </div>
-        <p class="next-step">Label information will be implemented in the next phase.</p>
       </div>
     </div>
+    
+    <!-- Label Grid Section -->
+    <app-label-grid 
+      [labels]="labels"
+      [loading]="labelsLoading"
+      [error]="labelsError">
+    </app-label-grid>
   }
 </div>
