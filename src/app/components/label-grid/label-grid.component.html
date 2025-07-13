@@ -21,11 +21,71 @@
       <h2>Record Labels</h2>
       <p class="labels-count">Found {{ labels.length }} {{ labels.length === 1 ? 'label' : 'labels' }}</p>
     </div>
-    
-    <div class="label-grid">
-      @for (labelData of labels; track labelData.label.id) {
-        <app-label-card [labelData]="labelData"></app-label-card>
+
+    @if (labels.length > 0) {
+      <div class="controls-section">
+        <div class="search-filter">
+          <label for="label-search" class="sr-only">Search labels</label>
+          <input
+            id="label-search"
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Filter labels..."
+            class="filter-input"
+          />
+        </div>
+
+        <div class="sort-controls">
+          <div class="sort-by">
+            <label for="sort-by">Sort by:</label>
+            <select id="sort-by" [(ngModel)]="sortBy" (ngModelChange)="onSortChange()">
+              <option value="releases">Release Count</option>
+              <option value="name">Name</option>
+              <option value="type">Type</option>
+            </select>
+          </div>
+
+          <div class="sort-direction">
+            <label for="sort-direction">Order:</label>
+            <select id="sort-direction" [(ngModel)]="sortDirection" (ngModelChange)="onSortChange()">
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+
+          @if (availableTypes.length > 0) {
+            <div class="type-filter">
+              <label for="type-filter">Type:</label>
+              <select id="type-filter" [(ngModel)]="filterByType" (ngModelChange)="onFilterChange()">
+                <option value="">All Types</option>
+                @for (type of availableTypes; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (filteredLabels.length === 0) {
+        <div class="no-results">
+          <p>No labels match your current filters.</p>
+          <button type="button" (click)="searchTerm = ''; filterByType = ''; onSearchChange()" class="clear-filters">
+            Clear Filters
+          </button>
+        </div>
+      } @else {
+        <div class="results-summary">
+          Showing {{ filteredLabels.length }} of {{ labels.length }} labels
+        </div>
+        
+        <div class="label-grid">
+          @for (labelData of filteredLabels; track labelData.label.id) {
+            <app-label-card [labelData]="labelData"></app-label-card>
+          }
+        </div>
       }
-    </div>
+    }
   }
 </div>

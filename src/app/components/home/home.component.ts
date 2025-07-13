@@ -19,6 +19,7 @@ export class HomeComponent implements OnInit {
   loading = false;
   error: string | null = null;
   selectedArtist: MusicBrainzArtist | null = null;
+  currentSearchTerm = '';
   
   // Label-related properties
   labels: LabelWithReleaseCount[] = [];
@@ -36,11 +37,13 @@ export class HomeComponent implements OnInit {
           if (!query || query.length < 2) {
             this.artists = [];
             this.error = null;
+            this.currentSearchTerm = '';
             return of([]);
           }
           
           this.loading = true;
           this.error = null;
+          this.currentSearchTerm = query;
           
           return this.musicBrainzService.searchArtists(query).pipe(
             catchError(err => {
@@ -71,6 +74,20 @@ export class HomeComponent implements OnInit {
     this.error = null;
     this.labels = [];
     this.labelsError = null;
+    this.currentSearchTerm = '';
+  }
+
+  highlightSearchTerm(text: string, searchTerm: string): string {
+    if (!searchTerm || !text) {
+      return text;
+    }
+    
+    const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
+    return text.replace(regex, '<mark class="highlight">$1</mark>');
+  }
+
+  private escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private loadArtistLabels(artistId: string) {

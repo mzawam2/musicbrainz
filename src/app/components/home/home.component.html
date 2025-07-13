@@ -1,15 +1,26 @@
 <div class="search-container">
   <div class="search-box">
+    <label for="artist-search" class="sr-only">Search for an artist</label>
     <input 
+      id="artist-search"
       type="text" 
       [formControl]="searchControl"
       placeholder="Search for an artist..."
       class="search-input"
       autocomplete="off"
+      [attr.aria-expanded]="artists.length > 0"
+      [attr.aria-describedby]="error ? 'search-error' : null"
+      role="combobox"
+      aria-autocomplete="list"
+      [attr.aria-activedescendant]="null"
     />
     
     @if (searchControl.value && searchControl.value.length > 0) {
-      <button type="button" class="clear-button" (click)="clearSearch()">
+      <button 
+        type="button" 
+        class="clear-button" 
+        (click)="clearSearch()"
+        aria-label="Clear search">
         ✕
       </button>
     }
@@ -23,21 +34,29 @@
   }
 
   @if (error) {
-    <div class="error">
+    <div class="error" id="search-error" role="alert">
       <p>{{ error }}</p>
     </div>
   }
 
   @if (artists.length > 0) {
     <div class="search-results">
-      <ul class="artist-list">
-        @for (artist of artists; track artist.id) {
-          <li class="artist-item" (click)="selectArtist(artist)">
+      <ul class="artist-list" role="listbox" aria-label="Artist search results">
+        @for (artist of artists; track artist.id; let i = $index) {
+          <li 
+            class="artist-item" 
+            (click)="selectArtist(artist)"
+            (keydown.enter)="selectArtist(artist)"
+            (keydown.space)="selectArtist(artist)"
+            [attr.id]="'artist-option-' + i"
+            role="option"
+            tabindex="0"
+            [attr.aria-selected]="false">
             <div class="artist-info">
-              <h3>{{ artist.name }}</h3>
+              <h3 [innerHTML]="highlightSearchTerm(artist.name, currentSearchTerm)"></h3>
               <p class="artist-details">
                 @if (artist.disambiguation) {
-                  <span class="disambiguation">{{ artist.disambiguation }}</span>
+                  <span class="disambiguation" [innerHTML]="highlightSearchTerm(artist.disambiguation, currentSearchTerm)"></span>
                 }
                 @if (artist.country) {
                   <span class="country">{{ artist.country }}</span>
