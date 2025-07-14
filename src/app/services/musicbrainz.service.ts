@@ -59,6 +59,7 @@ export class MusicBrainzService {
     const params = new HttpParams()
       .set('query', query)
       .set('limit', limit.toString())
+      .set('inc', 'tags+genres')
       .set('fmt', 'json');
 
     return this.http.get<MusicBrainzArtistSearchResponse>(`${this.baseUrl}/artist`, { params })

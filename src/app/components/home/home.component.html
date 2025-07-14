@@ -97,6 +97,36 @@
               }
             </p>
           }
+          @if (selectedArtist()!.tags && selectedArtist()!.tags!.length > 0) {
+            <div class="artist-tags">
+              <p><strong>Tags:</strong></p>
+              <div class="tags-container">
+                @for (tag of selectedArtist()!.tags!.slice(0, 8); track tag.name) {
+                  <span class="tag" [title]="'Count: ' + tag.count">
+                    {{ tag.name }}
+                  </span>
+                }
+                @if (selectedArtist()!.tags!.length > 8) {
+                  <span class="tag-count">+{{ selectedArtist()!.tags!.length - 8 }} more</span>
+                }
+              </div>
+            </div>
+          }
+          @if (selectedArtist()!.genres && selectedArtist()!.genres!.length > 0) {
+            <div class="artist-genres">
+              <p><strong>Genres:</strong></p>
+              <div class="genres-container">
+                @for (genre of selectedArtist()!.genres!.slice(0, 6); track genre.id) {
+                  <span class="genre" [title]="'Count: ' + genre.count">
+                    {{ genre.name }}
+                  </span>
+                }
+                @if (selectedArtist()!.genres!.length > 6) {
+                  <span class="genre-count">+{{ selectedArtist()!.genres!.length - 6 }} more</span>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
