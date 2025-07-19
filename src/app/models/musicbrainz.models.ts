@@ -212,8 +212,8 @@ export interface MusicBrainzArtistSearchResponse {
 
 export interface MusicBrainzReleaseSearchResponse {
   releases: MusicBrainzRelease[];
-  count: number;
-  offset: number;
+  'release-count': number;
+  'release-offset': number;
 }
 
 // New interfaces for Phase 1: Artist Discography Explorer
@@ -410,4 +410,76 @@ export interface CoverArtResponse {
     approved: boolean;
   }>;
   release: string;
+}
+
+// Label Family Tree interfaces
+
+export interface LabelRelationship {
+  type: 'parent' | 'subsidiary' | 'imprint' | 'reissue-series' | 'holding' | 'renamed-to' | 'other';
+  direction: 'forward' | 'backward';
+  begin?: string;
+  end?: string;
+  ended?: boolean;
+  attributes?: string[];
+  'target-credit'?: string;
+}
+
+export interface ArtistRosterEntry {
+  artist: MusicBrainzArtist;
+  period: {
+    begin?: string;
+    end?: string;
+  };
+  releaseCount: number;
+  releases?: string[];
+  relationshipType?: 'current' | 'former' | 'distributed';
+}
+
+export interface LabelTreeNode {
+  label: MusicBrainzLabel;
+  relationship?: LabelRelationship;
+  children: LabelTreeNode[];
+  artistRoster?: ArtistRosterEntry[];
+  expanded?: boolean;
+  loading?: boolean;
+  depth: number;
+}
+
+export interface LabelFamilyTree {
+  rootLabel: MusicBrainzLabel;
+  tree: LabelTreeNode;
+  totalLabels: number;
+  totalArtists: number;
+  maxDepth: number;
+  lastUpdated: Date;
+}
+
+export interface LabelSearchFilters {
+  relationshipTypes: string[];
+  countries: string[];
+  activeOnly: boolean;
+  hasArtists: boolean;
+  timeRange?: {
+    start?: string;
+    end?: string;
+  };
+}
+
+export interface LabelRelationshipSearchResponse {
+  relations: Array<{
+    type: string;
+    direction: string;
+    'target-type': 'label';
+    label: MusicBrainzLabel;
+    begin?: string;
+    end?: string;
+    ended?: boolean;
+    attributes?: string[];
+  }>;
+}
+
+export interface LabelArtistResponse {
+  artists: MusicBrainzArtist[];
+  count: number;
+  offset: number;
 }

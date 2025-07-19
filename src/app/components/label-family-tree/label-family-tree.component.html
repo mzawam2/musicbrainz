@@ -1,0 +1,169 @@
+<div class="label-family-tree">
+  <!-- Header with search and controls -->
+  <div class="tree-header">
+    <div class="search-section">
+      <h1>Label Family Trees</h1>
+      <p class="description">Explore hierarchical relationships between record labels and their artist rosters</p>
+      
+      <div class="search-controls">
+        <div class="search-input-wrapper">
+          <input 
+            #searchInput
+            type="text" 
+            class="search-input"
+            placeholder="Search for a record label..."
+            [formControl]="searchControl"
+            [disabled]="isSearching()"
+          />
+          @if (isSearching()) {
+            <div class="search-spinner">⟳</div>
+          }
+          @if (searchControl.value && !isSearching()) {
+            <button 
+              class="clear-search-btn"
+              (click)="clearSearch()"
+              type="button"
+              title="Clear search"
+            >×</button>
+          }
+        </div>
+        
+        <button 
+          class="filter-toggle-btn"
+          (click)="toggleFilters()"
+          [class.active]="showFilters()"
+        >
+          Filters
+        </button>
+      </div>
+
+      <!-- Search Results -->
+      @if (hasResults() && isActivelySearching()) {
+        <div class="search-results">
+          @for (label of searchResults(); track label.id) {
+            <div class="search-result-item" (click)="selectLabel(label); $event.stopPropagation()">
+              <div class="label-info">
+                <h3>{{ label.name }}</h3>
+                <div class="label-meta">
+                  <span class="label-type">{{ label.type }}</span>
+                  @if (label.country) {
+                    <span class="label-country">{{ label.country }}</span>
+                  }
+                  @if (label.disambiguation) {
+                    <span class="disambiguation">({{ label.disambiguation }})</span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Filters Panel -->
+    @if (showFilters()) {
+      <div class="filters-panel">
+        <h3>Relationship Types</h3>
+        <div class="filter-checkboxes">
+          @for (type of ['parent', 'subsidiary', 'imprint', 'reissue-series', 'holding', 'renamed-to']; track type) {
+            <label class="filter-checkbox">
+              <input 
+                type="checkbox" 
+                [checked]="filters().relationshipTypes.includes(type)"
+                (change)="toggleRelationshipType(type)"
+              />
+              <span class="checkmark"></span>
+              {{ type | titlecase }}
+            </label>
+          }
+        </div>
+
+        <div class="filter-options">
+          <label class="filter-checkbox">
+            <input 
+              type="checkbox" 
+              [checked]="filters().activeOnly"
+              (change)="updateFilters({ activeOnly: !filters().activeOnly })"
+            />
+            <span class="checkmark"></span>
+            Active labels only
+          </label>
+          
+          <label class="filter-checkbox">
+            <input 
+              type="checkbox" 
+              [checked]="filters().hasArtists"
+              (change)="updateFilters({ hasArtists: !filters().hasArtists })"
+            />
+            <span class="checkmark"></span>
+            Labels with artists only
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Error Display -->
+  @if (error()) {
+    <div class="error-message">
+      <span class="error-icon">⚠</span>
+      {{ error() }}
+    </div>
+  }
+
+  <!-- Main Content Area -->
+  <div class="tree-content">
+    @if (isLoadingTree()) {
+      <div class="loading-tree">
+        <div class="loading-spinner"></div>
+        <p>Loading family tree...</p>
+      </div>
+    } @else if (hasTree()) {
+      <div class="tree-container">
+        <!-- Tree Statistics -->
+        
+
+        <!-- Tree Visualization -->
+        <div class="tree-visualization">
+          @if (filteredTree()?.tree) {
+            <app-tree-node 
+              [node]="filteredTree()!.tree" 
+              (nodeSelected)="selectNode($event)"
+            ></app-tree-node>
+          }
+        </div>
+      </div>
+    } @else if (selectedLabel()) {
+      <div class="no-tree-message">
+        <p>No family tree data available for {{ selectedLabel()?.name }}</p>
+      </div>
+    } @else {
+      <div class="welcome-message">
+        <div class="welcome-content">
+          <h2>Welcome to Label Family Trees</h2>
+          <p>Search for a record label above to explore its family tree and relationships.</p>
+          <div class="feature-list">
+            <ul>
+              <li>View hierarchical label relationships</li>
+              <li>Explore artist rosters and timelines</li>
+              <li>Filter by relationship types</li>
+              <li>Export data in multiple formats</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Artist Roster Side Panel -->
+  @if (showArtistRoster() && selectedNode()) {
+    <div class="artist-roster-overlay" (click)="closeArtistRoster()">
+      <div class="artist-roster-panel" (click)="$event.stopPropagation()">
+        <app-artist-roster 
+          [labelNode]="selectedNode()!" 
+          (close)="closeArtistRoster()"
+        ></app-artist-roster>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,203 @@
+{
+  "feature": "Label Family Trees - Visualize record label relationships and artist rosters",
+  "overview": "Interactive visualization showing hierarchical relationships between record labels, their subsidiaries, imprints, and artist rosters with timeline information.",
+  
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Data Models & Core Structure",
+      "description": "Define TypeScript interfaces and extend existing models",
+      "tasks": [
+        {
+          "id": "1.1",
+          "name": "Extend MusicBrainz models",
+          "files": ["src/app/models/musicbrainz.models.ts"],
+          "description": "Add interfaces for LabelRelationship, ArtistRosterEntry, LabelTreeNode, LabelFamilyTree"
+        },
+        {
+          "id": "1.2", 
+          "name": "Update MusicBrainz service",
+          "files": ["src/app/services/musicbrainz.service.ts"],
+          "description": "Add methods to fetch label relationships and build family trees"
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Tree Visualization Component", 
+      "description": "Create the main visualization component with interactive features",
+      "tasks": [
+        {
+          "id": "2.1",
+          "name": "Create label family tree component",
+          "files": [
+            "src/app/components/label-family-tree/label-family-tree.component.ts",
+            "src/app/components/label-family-tree/label-family-tree.component.html", 
+            "src/app/components/label-family-tree/label-family-tree.component.scss"
+          ],
+          "description": "Main container component with search, filters, and tree rendering"
+        },
+        {
+          "id": "2.2",
+          "name": "Create tree node component",
+          "files": [
+            "src/app/components/label-family-tree/tree-node/tree-node.component.ts",
+            "src/app/components/label-family-tree/tree-node/tree-node.component.html",
+            "src/app/components/label-family-tree/tree-node/tree-node.component.scss"
+          ],
+          "description": "Recursive component for rendering individual label nodes with expand/collapse"
+        },
+        {
+          "id": "2.3",
+          "name": "Create artist roster panel",
+          "files": [
+            "src/app/components/label-family-tree/artist-roster/artist-roster.component.ts",
+            "src/app/components/label-family-tree/artist-roster/artist-roster.component.html",
+            "src/app/components/label-family-tree/artist-roster/artist-roster.component.scss"
+          ],
+          "description": "Side panel showing artist roster for selected label with timeline"
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Interactive Features",
+      "description": "Add search, filtering, and navigation capabilities",
+      "tasks": [
+        {
+          "id": "3.1",
+          "name": "Implement label search",
+          "description": "Search functionality with autocomplete and advanced filters"
+        },
+        {
+          "id": "3.2", 
+          "name": "Add relationship filtering",
+          "description": "Filter by relationship types (parent, subsidiary, imprint, etc.)"
+        },
+        {
+          "id": "3.3",
+          "name": "Timeline controls",
+          "description": "Date range slider to show relationships over time"
+        },
+        {
+          "id": "3.4",
+          "name": "Export functionality", 
+          "description": "Export tree as SVG/PNG and data as JSON/CSV"
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Integration & Polish",
+      "description": "Integrate with existing app structure and add finishing touches",
+      "tasks": [
+        {
+          "id": "4.1",
+          "name": "Add routing",
+          "files": ["src/app/app.routes.ts"],
+          "description": "Add route for label family tree feature"
+        },
+        {
+          "id": "4.2",
+          "name": "Update navigation",
+          "files": ["src/app/app.component.html"],
+          "description": "Add navigation link in main app"
+        },
+        {
+          "id": "4.3",
+          "name": "Add loading states",
+          "description": "Implement proper loading indicators and error handling"
+        },
+        {
+          "id": "4.4",
+          "name": "Responsive design",
+          "description": "Ensure mobile-friendly layout and touch interactions"
+        }
+      ]
+    }
+  ],
+
+  "technical_details": {
+    "visualization_approach": "CSS-based tree layout with flexbox/grid, avoiding heavy charting libraries",
+    "data_flow": "Signals for reactive state management, computed values for derived data",
+    "styling": "SCSS with CSS custom properties for theming",
+    "responsive_strategy": "Mobile-first with collapsible panels and touch-friendly controls",
+    "performance": "Virtual scrolling for large rosters, lazy loading for deep trees"
+  },
+
+  "api_integration": {
+    "musicbrainz_endpoints": [
+      "/label/{id}?inc=label-rels",
+      "/artist?label={id}&limit=100",
+      "/release?label={id}&limit=100"
+    ],
+    "data_aggregation": "Build tree structure from relationship data, cache results with timestamps",
+    "rate_limiting": "Respect MusicBrainz 1 req/sec limit with queuing"
+  },
+
+  "user_interactions": [
+    {
+      "action": "Search for label",
+      "description": "Type-ahead search with label name, disambiguation, and country"
+    },
+    {
+      "action": "Expand/collapse nodes", 
+      "description": "Click label nodes to show/hide children and relationships"
+    },
+    {
+      "action": "View artist roster",
+      "description": "Click label to show artist roster in side panel with timeline"
+    },
+    {
+      "action": "Filter relationships",
+      "description": "Toggle relationship types (parent, subsidiary, imprint, etc.)"
+    },
+    {
+      "action": "Navigate timeline",
+      "description": "Use date range controls to see historical relationships"
+    },
+    {
+      "action": "Export data",
+      "description": "Download tree visualization or raw data in various formats"
+    }
+  ],
+
+  "sample_data_structure": {
+    "tree_example": {
+      "label": {
+        "id": "abc123",
+        "name": "Universal Music Group",
+        "type": "Production"
+      },
+      "children": [
+        {
+          "label": {
+            "id": "def456", 
+            "name": "Island Records",
+            "type": "Production"
+          },
+          "relationship": {
+            "type": "subsidiary",
+            "begin": "1989",
+            "attributes": ["wholly owned"]
+          },
+          "artistRoster": [
+            {
+              "artist": {"id": "xyz789", "name": "Bob Marley"},
+              "period": {"begin": "1972", "end": "1981"},
+              "releaseCount": 15
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "estimated_effort": {
+    "phase_1": "4-6 hours",
+    "phase_2": "8-12 hours", 
+    "phase_3": "6-8 hours",
+    "phase_4": "4-6 hours",
+    "total": "22-32 hours"
+  }
+}

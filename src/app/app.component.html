@@ -1,12 +1,25 @@
-<div class="container">
-  <header>
-    <h1>Artist Label Search</h1>
-    <p>Search for artists and discover their record labels</p>
-  </header>
-  
-  <main>
-    <app-home></app-home>
+<div class="app">
+  <nav class="main-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Music Explorer</h1>
+        <p>Discover artists, labels, and their connections</p>
+      </div>
+      
+      <div class="nav-links">
+        <a routerLink="/discography" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">🎵</span>
+          <span class="nav-text">Artist Discography</span>
+        </a>
+        <a routerLink="/label-family-trees" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">🌳</span>
+          <span class="nav-text">Label Family Trees</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <router-outlet />
   </main>
 </div>
-
-<router-outlet />

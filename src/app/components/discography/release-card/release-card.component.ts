@@ -57,6 +57,7 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
       .join('');
   });
 
+
   private destroy$ = new Subject<void>();
 
   ngOnInit() {
@@ -65,9 +66,8 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     if (releaseGroup.expanded) {
       this.isExpanded.set(true);
     }
-    // Load cover art when we have releases - we'll fetch them first
-    // this.loadCoverArtForReleaseGroup();
   }
+
 
   private loadCoverArtForReleaseGroup() {
     // Get releases for this release group to find cover art
@@ -103,55 +103,67 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
 
   private loadDetailedReleases() {
     if (this.detailedReleases().length > 0) {
-      console.log('Releases already loaded');
+      console.log('Detailed releases already loaded');
       return;
     }
 
     this.loadingDetails.set(true);
     this.error.set(null);
 
-    console.log('Loading releases for release group:', this.releaseGroup().id);
+    console.log('Loading detailed releases for release group:', this.releaseGroup().id);
+    
+    // Check if we already have release data in the release group
+    const releaseGroup = this.releaseGroup();
+    if (releaseGroup.releases && releaseGroup.releases.length > 0) {
+      console.log('Using existing release data from release group:', releaseGroup.releases);
+      this.loadDetailedReleasesFromBasic(releaseGroup.releases);
+    } else {
+      // Fallback to API call if no release data exists
+      console.log('No release data in release group, fetching from API');
+      this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (releases) => {
+            this.loadDetailedReleasesFromBasic(releases);
+          },
+          error: (error) => {
+            console.error('Error loading releases:', error);
+            this.error.set(error.message || 'Failed to load releases');
+            this.loadingDetails.set(false);
+          }
+        });
+    }
+  }
 
-    // First, get the releases for this release group
-    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
+  private loadDetailedReleasesFromBasic(releases: any[]) {
+    console.log('Found releases for release group:', releases);
+    
+    if (releases.length === 0) {
+      this.error.set('No releases found for this release group');
+      this.loadingDetails.set(false);
+      return;
+    }
+
+    // Load details for first few releases (limit to avoid too many API calls)
+    const releasesToLoad = releases.slice(0, 3);
+    console.log('Loading detailed releases for:', releasesToLoad.map(r => r.id));
+    
+    // Use forkJoin to load all release details in parallel
+    const releaseDetailRequests = releasesToLoad.map(release => 
+      this.musicBrainzService.getReleaseDetails(release.id)
+    );
+
+    forkJoin(releaseDetailRequests)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (releases) => {
-          console.log('Found releases for release group:', releases);
-          
-          if (releases.length === 0) {
-            this.error.set('No releases found for this release group');
-            this.loadingDetails.set(false);
-            return;
-          }
-
-          // Load details for first few releases (limit to avoid too many API calls)
-          const releasesToLoad = releases.slice(0, 3);
-          console.log('Loading detailed releases for:', releasesToLoad.map(r => r.id));
-          
-          // Use forkJoin to load all release details in parallel
-          const releaseDetailRequests = releasesToLoad.map(release => 
-            this.musicBrainzService.getReleaseDetails(release.id)
-          );
-
-          forkJoin(releaseDetailRequests)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: (detailedReleases) => {
-                console.log('Received detailed releases:', detailedReleases);
-                this.detailedReleases.set(detailedReleases.filter(r => r) as DetailedRelease[]);
-                this.loadingDetails.set(false);
-              },
-              error: (error) => {
-                console.error('Failed to load release details:', error);
-                this.error.set('Failed to load release details');
-                this.loadingDetails.set(false);
-              }
-            });
+        next: (detailedReleases) => {
+          console.log('Received detailed releases:', detailedReleases);
+          this.detailedReleases.set(detailedReleases.filter(r => r) as DetailedRelease[]);
+          this.loadingDetails.set(false);
         },
         error: (error) => {
-          console.error('Failed to load releases for release group:', error);
-          this.error.set('Failed to load releases for this release group');
+          console.error('Failed to load release details:', error);
+          this.error.set('Failed to load release details');
           this.loadingDetails.set(false);
         }
       });

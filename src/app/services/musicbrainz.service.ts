@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
-import { map, catchError, delay, tap } from 'rxjs/operators';
+import { map, catchError, delay, tap, switchMap } from 'rxjs/operators';
 import { 
   MusicBrainzArtistSearchResponse, 
   MusicBrainzReleaseSearchResponse,
@@ -17,7 +17,14 @@ import {
   LabelWithReleaseCount,
   DiscographyData,
   CoverArtInfo,
-  CollaborationInfo
+  CollaborationInfo,
+  MusicBrainzLabel,
+  LabelRelationshipSearchResponse,
+  LabelArtistResponse,
+  LabelTreeNode,
+  LabelFamilyTree,
+  LabelRelationship,
+  ArtistRosterEntry
 } from '../models/musicbrainz.models';
 
 @Injectable({
@@ -26,6 +33,9 @@ import {
 export class MusicBrainzService {
   private readonly baseUrl = 'https://musicbrainz.org/ws/2';
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  private readonly defaultHeaders = new HttpHeaders({
+    'User-Agent': 'AngularPlayground/1.0 (musicbrainz@example.com)'
+  });
   
   // Cache for artist searches
   private artistSearchCache = new Map<string, { data: MusicBrainzArtist[], timestamp: number }>();
@@ -44,6 +54,12 @@ export class MusicBrainzService {
   
   // Cache for detailed releases
   private detailedReleaseCache = new Map<string, { data: DetailedRelease, timestamp: number }>();
+  
+  // Cache for label family trees
+  private labelTreeCache = new Map<string, { data: LabelFamilyTree, timestamp: number }>();
+  
+  // Cache for label relationships
+  private labelRelationshipCache = new Map<string, { data: LabelTreeNode[], timestamp: number }>();
 
   private http = inject(HttpClient);
 
@@ -62,7 +78,7 @@ export class MusicBrainzService {
       .set('inc', 'tags+genres')
       .set('fmt', 'json');
 
-    return this.http.get<MusicBrainzArtistSearchResponse>(`${this.baseUrl}/artist`, { params })
+    return this.http.get<MusicBrainzArtistSearchResponse>(`${this.baseUrl}/artist`, { params, headers: this.defaultHeaders })
       .pipe(
         delay(1000), // Rate limiting - MusicBrainz allows 1 request per second
         map(response => response.artists),
@@ -84,7 +100,7 @@ export class MusicBrainzService {
       .set('limit', limit.toString())
       .set('fmt', 'json');
 
-    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { params })
+    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { params, headers: this.defaultHeaders })
       .pipe(
         delay(1000), // Rate limiting
         map(response => response.releases),
@@ -120,7 +136,7 @@ export class MusicBrainzService {
       .set('limit', limit.toString())
       .set('fmt', 'json');
 
-    return this.http.get<MusicBrainzReleaseGroupSearchResponse>(`${this.baseUrl}/release-group`, { params })
+    return this.http.get<MusicBrainzReleaseGroupSearchResponse>(`${this.baseUrl}/release-group`, { params, headers: this.defaultHeaders })
       .pipe(
         delay(1000), // Rate limiting
         map(response => {
@@ -138,10 +154,11 @@ export class MusicBrainzService {
   getReleaseGroupReleases(releaseGroupId: string): Observable<MusicBrainzRelease[]> {
     const params = new HttpParams()
       .set('release-group', releaseGroupId)
+      .set('inc', 'labels')  // Include label information
       .set('limit', '25')  // Limit to avoid too many releases
       .set('fmt', 'json');
 
-    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { params })
+    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { params, headers: this.defaultHeaders })
       .pipe(
         delay(1000), // Rate limiting
         map(response => {
@@ -243,10 +260,10 @@ export class MusicBrainzService {
     }
 
     const params = new HttpParams()
-      .set('inc', 'recordings+media+artist-credits')
+      .set('inc', 'recordings+media+artist-credits+labels')
       .set('fmt', 'json');
 
-    return this.http.get<DetailedRelease>(`${this.baseUrl}/release/${releaseId}`, { params })
+    return this.http.get<DetailedRelease>(`${this.baseUrl}/release/${releaseId}`, { params, headers: this.defaultHeaders })
       .pipe(
         delay(1000), // Rate limiting
         map(release => this.enhanceReleaseWithCalculatedData(release)),
@@ -410,6 +427,275 @@ export class MusicBrainzService {
     return Array.from(collaborationMap.values())
       .sort((a, b) => b.releaseCount - a.releaseCount)
       .slice(0, 10); // Top 10 collaborators
+  }
+
+  // Label Family Tree methods
+
+  searchLabels(query: string, limit: number = 10): Observable<MusicBrainzLabel[]> {
+    const params = new HttpParams()
+      .set('query', query)
+      .set('limit', limit.toString())
+      .set('fmt', 'json');
+
+    return this.http.get<{ labels: MusicBrainzLabel[] }>(`${this.baseUrl}/label`, { params, headers: this.defaultHeaders })
+      .pipe(
+        delay(1000), // Rate limiting
+        map(response => response.labels),
+        catchError(this.handleError)
+      );
+  }
+
+  getLabelRelationships(labelId: string): Observable<LabelTreeNode[]> {
+    const cached = this.labelRelationshipCache.get(labelId);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return of(cached.data);
+    }
+
+    const params = new HttpParams()
+      .set('inc', 'label-rels')
+      .set('fmt', 'json');
+
+    return this.http.get<MusicBrainzLabel>(`${this.baseUrl}/label/${labelId}`, { params, headers: this.defaultHeaders })
+      .pipe(
+        delay(1000), // Rate limiting
+        map(labelData => this.buildLabelTreeNodes(labelData)),
+        tap(nodes => {
+          this.labelRelationshipCache.set(labelId, { data: nodes, timestamp: Date.now() });
+          this.cleanupCache(this.labelRelationshipCache);
+        }),
+        catchError(this.handleError)
+      );
+  }
+
+  getLabelArtists(labelId: string, maxReleases: number = 3000): Observable<ArtistRosterEntry[]> {
+    return this.getAllLabelReleases(labelId, maxReleases).pipe(
+      map(releases => this.extractUniqueArtistsFromReleases(releases, labelId)),
+      catchError(this.handleError)
+    );
+  }
+
+  private getAllLabelReleases(labelId: string, maxReleases: number = 3000): Observable<MusicBrainzRelease[]> {
+    const limit = 100; // Max per request
+    
+    return this.fetchLabelReleasesRecursively(labelId, 0, limit, maxReleases, []);
+  }
+
+  private fetchLabelReleasesRecursively(
+    labelId: string, 
+    offset: number, 
+    limit: number, 
+    maxReleases: number, 
+    allReleases: MusicBrainzRelease[]
+  ): Observable<MusicBrainzRelease[]> {
+    const params = new HttpParams()
+      .set('label', labelId)
+      .set('inc', 'artist-credits')
+      .set('limit', limit.toString())
+      .set('offset', offset.toString())
+      .set('fmt', 'json');
+
+    console.log(`Fetching releases for label ${labelId}, offset: ${offset}, limit: ${limit}`);
+
+    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { 
+      params, 
+      headers: this.defaultHeaders 
+    }).pipe(
+      delay(1000), // Rate limiting
+      tap(response => {
+        console.log(`Received ${response.releases.length} releases, total count: ${response['release-count']}`);
+      }),
+      switchMap(response => {
+        const newReleases = [...allReleases, ...response.releases];
+        const totalCount = response['release-count'] || 0;
+        const hasMoreData = offset + limit < totalCount && newReleases.length < maxReleases;
+        
+        console.log(`Current total releases: ${newReleases.length}, hasMoreData: ${hasMoreData}`);
+        
+        if (hasMoreData) {
+          // Recursively fetch next page
+          return this.fetchLabelReleasesRecursively(labelId, offset + limit, limit, maxReleases, newReleases);
+        } else {
+          // Return all collected releases
+          console.log(`Finished fetching. Total releases: ${newReleases.length}`);
+          return of(newReleases);
+        }
+      })
+    );
+  }
+
+  buildLabelFamilyTree(rootLabelId: string, maxDepth: number = 3): Observable<LabelFamilyTree> {
+    const cached = this.labelTreeCache.get(rootLabelId);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return of(cached.data);
+    }
+
+    return this.buildLabelTreeRecursively(rootLabelId, 0, maxDepth).pipe(
+      map(rootNode => {
+        const totalLabels = this.countLabelsInTree(rootNode);
+        const totalArtists = this.countArtistsInTree(rootNode);
+        
+        const familyTree: LabelFamilyTree = {
+          rootLabel: rootNode.label,
+          tree: rootNode,
+          totalLabels,
+          totalArtists,
+          maxDepth: this.calculateTreeDepth(rootNode),
+          lastUpdated: new Date()
+        };
+
+        this.labelTreeCache.set(rootLabelId, { data: familyTree, timestamp: Date.now() });
+        this.cleanupCache(this.labelTreeCache);
+        
+        return familyTree;
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  private buildLabelTreeRecursively(labelId: string, currentDepth: number, maxDepth: number): Observable<LabelTreeNode> {
+    if (currentDepth >= maxDepth) {
+      return this.getBasicLabelInfo(labelId).pipe(
+        map(label => ({
+          label,
+          children: [],
+          depth: currentDepth,
+          expanded: false,
+          loading: false
+        }))
+      );
+    }
+
+    return this.getBasicLabelInfo(labelId).pipe(
+      map(label => ({
+        label,
+        children: [], // Will be populated by relationships
+        depth: currentDepth,
+        expanded: currentDepth === 0, // Expand root node by default
+        loading: false
+      }))
+    );
+  }
+
+  private getBasicLabelInfo(labelId: string): Observable<MusicBrainzLabel> {
+    const params = new HttpParams()
+      .set('fmt', 'json');
+
+    return this.http.get<MusicBrainzLabel>(`${this.baseUrl}/label/${labelId}`, { params, headers: this.defaultHeaders })
+      .pipe(
+        delay(1000), // Rate limiting
+        catchError(this.handleError)
+      );
+  }
+
+  private buildLabelTreeNodes(labelData: any): LabelTreeNode[] {
+    // This would build tree nodes from the relationship data in the API response
+    // For now, return empty array as the exact structure depends on the actual API response
+    return [];
+  }
+
+  private extractUniqueArtistsFromReleases(releases: MusicBrainzRelease[], labelId: string): ArtistRosterEntry[] {
+    const artistMap = new Map<string, { 
+      artist: MusicBrainzArtist; 
+      releaseCount: number;
+      firstReleaseDate?: string;
+      lastReleaseDate?: string;
+    }>();
+
+    releases.forEach(release => {
+      if (release['artist-credit']) {
+        release['artist-credit'].forEach(credit => {
+          if (credit.artist) {
+            const artistId = credit.artist.id;
+            const releaseDate = release.date;
+            const existing = artistMap.get(artistId);
+            
+            if (existing) {
+              existing.releaseCount++;
+              // Update date range
+              if (releaseDate) {
+                if (!existing.firstReleaseDate || releaseDate < existing.firstReleaseDate) {
+                  existing.firstReleaseDate = releaseDate;
+                }
+                if (!existing.lastReleaseDate || releaseDate > existing.lastReleaseDate) {
+                  existing.lastReleaseDate = releaseDate;
+                }
+              }
+            } else {
+              artistMap.set(artistId, {
+                artist: credit.artist,
+                releaseCount: 1,
+                firstReleaseDate: releaseDate,
+                lastReleaseDate: releaseDate
+              });
+            }
+          }
+        });
+      }
+    });
+
+    return Array.from(artistMap.values())
+      .map(({ artist, releaseCount, firstReleaseDate, lastReleaseDate }) => ({
+        artist,
+        period: {
+          begin: firstReleaseDate || artist['life-span']?.begin,
+          end: lastReleaseDate !== firstReleaseDate ? lastReleaseDate : artist['life-span']?.end
+        },
+        releaseCount,
+        relationshipType: this.determineRelationshipType(artist, lastReleaseDate)
+      }))
+      .sort((a, b) => b.releaseCount - a.releaseCount); // Sort by release count descending
+  }
+
+  private determineRelationshipType(artist: MusicBrainzArtist, lastReleaseDate?: string): 'current' | 'former' {
+    const currentYear = new Date().getFullYear();
+    
+    // If artist has ended (disbanded/died), they're former
+    if (artist['life-span']?.end) {
+      return 'former';
+    }
+    
+    // If no release date info, assume current
+    if (!lastReleaseDate) {
+      return 'current';
+    }
+    
+    // If last release was within the last 5 years, consider current
+    const lastReleaseYear = parseInt(lastReleaseDate.split('-')[0]);
+    if (!isNaN(lastReleaseYear) && (currentYear - lastReleaseYear) <= 5) {
+      return 'current';
+    }
+    
+    // Otherwise, consider former
+    return 'former';
+  }
+
+  private buildArtistRosterEntries(artists: MusicBrainzArtist[], labelId: string): ArtistRosterEntry[] {
+    return artists.map(artist => ({
+      artist,
+      period: {
+        begin: artist['life-span']?.begin,
+        end: artist['life-span']?.end
+      },
+      releaseCount: 0, // Would need additional API calls to count releases
+      relationshipType: 'current'
+    }));
+  }
+
+  private countLabelsInTree(node: LabelTreeNode): number {
+    return 1 + node.children.reduce((sum, child) => sum + this.countLabelsInTree(child), 0);
+  }
+
+  private countArtistsInTree(node: LabelTreeNode): number {
+    const nodeArtists = node.artistRoster?.length || 0;
+    const childArtists = node.children.reduce((sum, child) => sum + this.countArtistsInTree(child), 0);
+    return nodeArtists + childArtists;
+  }
+
+  private calculateTreeDepth(node: LabelTreeNode): number {
+    if (node.children.length === 0) {
+      return node.depth;
+    }
+    return Math.max(...node.children.map(child => this.calculateTreeDepth(child)));
   }
 
   private aggregateLabels(releases: MusicBrainzRelease[]): LabelWithReleaseCount[] {

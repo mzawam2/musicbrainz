@@ -1,4 +1,9 @@
 <div class="search-container">
+  <div class="search-header">
+    <h1>Artist Discography</h1>
+    <p class="description">Search for artists to explore their complete discography, label relationships, and musical evolution</p>
+  </div>
+
   <div class="search-box">
     <label for="artist-search" class="sr-only">Search for an artist</label>
     <input 
@@ -15,7 +20,10 @@
       [attr.aria-activedescendant]="null"
     />
     
-    @if (searchControl.value && searchControl.value.length > 0) {
+    @if (loading()) {
+      <div class="search-spinner">⟳</div>
+    }
+    @if (searchControl.value && searchControl.value.length > 0 && !loading()) {
       <button 
         type="button" 
         class="clear-button" 

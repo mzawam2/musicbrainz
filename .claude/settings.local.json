@@ -7,7 +7,8 @@
       "Bash(npx tsc:*)",
       "WebFetch(domain:musicbrainz.org)",
       "WebFetch(domain:musicbrainz.org)",
-      "WebFetch(domain:musicbrainz.org)"
+      "WebFetch(domain:musicbrainz.org)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,342 @@
+.tree-node {
+  position: relative;
+  margin: 1rem 0;
+
+  // Connection lines styling
+  .connection-lines {
+    position: absolute;
+    top: 0;
+    left: -2rem;
+    
+    .vertical-line {
+      position: absolute;
+      left: 0;
+      top: -1rem;
+      width: 2px;
+      height: 2rem;
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .horizontal-line {
+      position: absolute;
+      left: 0;
+      top: 1rem;
+      width: 2rem;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  // Node content container
+  .node-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-left: 2rem;
+
+    .expand-btn {
+      width: 2rem;
+      height: 2rem;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+      flex-shrink: 0;
+      margin-top: 1rem;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.7);
+        transform: scale(1.1);
+      }
+
+      &.expanded {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.7);
+      }
+
+      .expand-icon {
+        line-height: 1;
+      }
+    }
+
+    .expand-placeholder {
+      width: 2rem;
+      height: 2rem;
+      flex-shrink: 0;
+      margin-top: 1rem;
+    }
+
+    .label-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      flex: 1;
+      min-width: 300px;
+
+      &.root {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+        border-color: rgba(59, 130, 246, 0.5);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
+      }
+
+      &.clickable {
+        cursor: pointer;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+      }
+
+      .label-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+
+        .label-icon {
+          font-size: 2rem;
+          flex-shrink: 0;
+        }
+
+        .label-info {
+          flex: 1;
+          min-width: 0;
+
+          .label-name {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            line-height: 1.2;
+            word-wrap: break-word;
+          }
+
+          .label-disambiguation {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-style: italic;
+            margin-top: 0.25rem;
+          }
+        }
+
+        .artist-count-badge {
+          background: rgba(34, 197, 94, 0.2);
+          border: 1px solid rgba(34, 197, 94, 0.5);
+          color: rgba(34, 197, 94, 1);
+          padding: 0.4rem 0.8rem;
+          border-radius: 1rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          white-space: nowrap;
+          backdrop-filter: blur(5px);
+        }
+      }
+
+      .label-details {
+        display: grid;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.9rem;
+
+          .detail-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+            min-width: 100px;
+          }
+
+          .detail-value {
+            color: white;
+            font-weight: 600;
+            text-align: right;
+            flex: 1;
+
+            &.relationship-type {
+              background: rgba(168, 85, 247, 0.2);
+              border: 1px solid rgba(168, 85, 247, 0.5);
+              color: rgba(168, 85, 247, 1);
+              padding: 0.2rem 0.6rem;
+              border-radius: 0.5rem;
+              font-size: 0.8rem;
+              display: inline-block;
+            }
+          }
+        }
+      }
+
+      .relationship-attributes {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+
+        .attribute-tag {
+          background: rgba(249, 115, 22, 0.2);
+          border: 1px solid rgba(249, 115, 22, 0.5);
+          color: rgba(249, 115, 22, 1);
+          padding: 0.2rem 0.6rem;
+          border-radius: 0.5rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  // Children container
+  .children-container {
+    margin-left: 3rem;
+    margin-top: 1rem;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: -1rem;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  // Depth-based styling
+  &.depth-0 .label-card {
+    border-width: 2px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  &.depth-1 .label-card {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  &.depth-2 .label-card {
+    background: rgba(255, 255, 255, 0.08);
+    .label-header .label-name {
+      font-size: 1.2rem;
+    }
+  }
+
+  &.depth-3 .label-card {
+    background: rgba(255, 255, 255, 0.06);
+    .label-header .label-name {
+      font-size: 1.1rem;
+    }
+  }
+
+  &.depth-4, &.depth-5 {
+    .label-card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1rem;
+      
+      .label-header .label-name {
+        font-size: 1rem;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .tree-node {
+    .node-content {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      margin-left: 1rem;
+
+      .expand-btn {
+        align-self: flex-start;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+
+      .expand-placeholder {
+        display: none;
+      }
+
+      .label-card {
+        min-width: unset;
+
+        .label-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+
+          .artist-count-badge {
+            align-self: flex-start;
+          }
+        }
+
+        .label-details .detail-row {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.2rem;
+
+          .detail-value {
+            text-align: left;
+          }
+        }
+      }
+    }
+
+    .children-container {
+      margin-left: 1.5rem;
+
+      &::before {
+        left: -0.5rem;
+      }
+    }
+
+    .connection-lines {
+      display: none;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .tree-node {
+    .expand-btn {
+      display: none;
+    }
+
+    .label-card {
+      background: white !important;
+      color: black !important;
+      border: 1px solid #ccc !important;
+
+      .label-header .label-name {
+        color: black !important;
+      }
+
+      .detail-value {
+        color: black !important;
+      }
+    }
+
+    .connection-lines {
+      .vertical-line, .horizontal-line {
+        background: #ccc !important;
+      }
+    }
+  }
+}

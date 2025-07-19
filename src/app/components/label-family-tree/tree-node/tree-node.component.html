@@ -1,0 +1,107 @@
+<div class="tree-node" [class]="depthClass()">
+  <!-- Connection Lines -->
+  @if (node().depth > 0) {
+    <div class="connection-lines">
+      <div class="vertical-line"></div>
+      <div class="horizontal-line"></div>
+    </div>
+  }
+  
+  <!-- Node Content -->
+  <div class="node-content">
+    <!-- Expand/Collapse Button -->
+    @if (hasChildren()) {
+      <button 
+        class="expand-btn"
+        (click)="toggleExpansion()"
+        [class.expanded]="isExpanded()"
+        [attr.aria-label]="isExpanded() ? 'Collapse' : 'Expand'"
+      >
+        <span class="expand-icon">{{ isExpanded() ? '−' : '+' }}</span>
+      </button>
+    } @else {
+      <div class="expand-placeholder"></div>
+    }
+    
+    <!-- Label Card -->
+    <div 
+      class="label-card"
+      (click)="selectNode()"
+      [class.root]="!node().relationship"
+      [class.clickable]="artistCount() > 0"
+    >
+      <!-- Label Header -->
+      <div class="label-header">
+        <div class="label-icon">{{ getLabelTypeIcon() }}</div>
+        <div class="label-info">
+          <h3 class="label-name">{{ node().label.name }}</h3>
+          @if (node().label.disambiguation) {
+            <div class="label-disambiguation">({{ node().label.disambiguation }})</div>
+          }
+        </div>
+        @if (artistCount() > 0) {
+          <div class="artist-count-badge">
+            {{ artistCount() }} artist{{ artistCount() === 1 ? '' : 's' }}
+          </div>
+        }
+      </div>
+      
+      <!-- Label Details -->
+      <div class="label-details">
+        <div class="detail-row">
+          <span class="detail-label">Type:</span>
+          <span class="detail-value">{{ node().label.type }}</span>
+        </div>
+        
+        @if (node().label.country) {
+          <div class="detail-row">
+            <span class="detail-label">Country:</span>
+            <span class="detail-value">{{ node().label.country }}</span>
+          </div>
+        }
+        
+        @if (node().relationship) {
+          <div class="detail-row">
+            <span class="detail-label">Relationship:</span>
+            <span class="detail-value relationship-type">{{ relationshipText() }}</span>
+          </div>
+        }
+        
+        @if (formatDateRange()) {
+          <div class="detail-row">
+            <span class="detail-label">Period:</span>
+            <span class="detail-value">{{ formatDateRange() }}</span>
+          </div>
+        }
+        
+        @if (node().label['label-code']) {
+          <div class="detail-row">
+            <span class="detail-label">Label Code:</span>
+            <span class="detail-value">{{ node().label['label-code'] }}</span>
+          </div>
+        }
+      </div>
+      
+      <!-- Relationship Attributes -->
+      @if (hasAttributes()) {
+        <div class="relationship-attributes">
+          @for (attribute of relationshipAttributes(); track attribute) {
+            <span class="attribute-tag">{{ attribute }}</span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  
+  <!-- Children Nodes -->
+  @if (hasChildren() && isExpanded()) {
+    <div class="children-container">
+      @for (child of node().children; track child.label.id) {
+        <app-tree-node 
+          [node]="child" 
+          (nodeSelected)="onChildNodeSelected($event)"
+        ></app-tree-node>
+      }
+    </div>
+  }
+</div>
