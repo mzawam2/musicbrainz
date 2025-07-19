@@ -1,219 +1,209 @@
-<div class="artist-roster-panel">
-  <!-- Header -->
-  <div class="roster-header">
-    <div class="header-content">
-      <div class="label-info">
-        <h2>{{ labelNode().label.name }}</h2>
-        <div class="label-meta">
-          <span class="label-type">{{ labelNode().label.type }}</span>
-          @if (labelNode().label.country) {
-            <span class="label-country">{{ labelNode().label.country }}</span>
-          }
-        </div>
-      </div>
-      
-      <button class="close-btn" (click)="onClose()" aria-label="Close">
-        <span class="close-icon">×</span>
-      </button>
-    </div>
-    
-    <!-- Statistics -->
-    @if (hasRoster()) {
-      <div class="roster-stats">
-        <div class="stat-item">
-          <span class="stat-value">{{ rosterStats().total }}</span>
-          <span class="stat-label">Total Artists</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ rosterStats().current }}</span>
-          <span class="stat-label">Current</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ rosterStats().former }}</span>
-          <span class="stat-label">Former</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ rosterStats().totalReleases }}</span>
-          <span class="stat-label">Total Releases</span>
-        </div>
-      </div>
-    }
-  </div>
-
-  <!-- Controls -->
-  @if (hasRoster()) {
-    <div class="roster-controls">
-      <!-- Sort Controls -->
-      <div class="sort-controls">
-        <span class="control-label">Sort by:</span>
-        <div class="sort-buttons">
-          <button 
-            class="sort-btn"
-            [class.active]="sortBy() === 'name'"
-            (click)="setSortBy('name')"
-          >
-            Name
-            @if (sortBy() === 'name') {
-              <span class="sort-indicator">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
-            }
-          </button>
-          <button 
-            class="sort-btn"
-            [class.active]="sortBy() === 'period'"
-            (click)="setSortBy('period')"
-          >
-            Period
-            @if (sortBy() === 'period') {
-              <span class="sort-indicator">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
-            }
-          </button>
-          <button 
-            class="sort-btn"
-            [class.active]="sortBy() === 'releases'"
-            (click)="setSortBy('releases')"
-          >
-            Releases
-            @if (sortBy() === 'releases') {
-              <span class="sort-indicator">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
-            }
-          </button>
-        </div>
-      </div>
-
-      <!-- Filter Controls -->
-      <div class="filter-controls">
-        <span class="control-label">Filter:</span>
-        <div class="filter-buttons">
-          <button 
-            class="filter-btn"
-            [class.active]="filterType() === 'all'"
-            (click)="setFilter('all')"
-          >
-            All
-          </button>
-          <button 
-            class="filter-btn"
-            [class.active]="filterType() === 'current'"
-            (click)="setFilter('current')"
-          >
-            Current
-          </button>
-          <button 
-            class="filter-btn"
-            [class.active]="filterType() === 'former'"
-            (click)="setFilter('former')"
-          >
-            Former
-          </button>
-          <button 
-            class="filter-btn"
-            [class.active]="filterType() === 'distributed'"
-            (click)="setFilter('distributed')"
-          >
-            Distributed
-          </button>
-        </div>
-      </div>
-
-      <!-- Export Button -->
-      <button class="export-btn" (click)="exportRoster()">
-        Export CSV
-      </button>
+<div class="artist-roster-container">
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading artist roster...</span>
     </div>
   }
 
-  <!-- Content -->
-  <div class="roster-content">
-    @if (isLoading()) {
-      <div class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>Loading artist roster...</p>
+  @if (error()) {
+    <div class="error-state" role="alert">
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (hasRoster() && !isLoading()) {
+    <div class="artist-roster-header">
+      <div class="roster-summary">
+        <h3>Artist Roster</h3>
+        <div class="summary-stats">
+          <span class="stat">
+            <strong>{{ rosterStats().total }}</strong> artists
+          </span>
+          <span class="stat">
+            <strong>{{ rosterStats().current }}</strong> current
+          </span>
+          <span class="stat">
+            <strong>{{ rosterStats().former }}</strong> former
+          </span>
+          <span class="stat">
+            <strong>{{ rosterStats().totalReleases }}</strong> total releases
+          </span>
+        </div>
       </div>
-    } @else if (error()) {
-      <div class="error-state">
-        <span class="error-icon">⚠</span>
-        <p>{{ error() }}</p>
-      </div>
-    } @else if (hasRoster()) {
-      <div class="artist-list">
-        @for (entry of filteredAndSortedRoster(); track entry.artist.id) {
-          <div class="artist-item">
-            <div class="artist-header">
-              <div class="artist-icon">{{ getArtistTypeIcon(entry.artist) }}</div>
-              <div class="artist-info">
-                <h3 class="artist-name">{{ entry.artist.name }}</h3>
-                @if (entry.artist.disambiguation) {
-                  <div class="artist-disambiguation">({{ entry.artist.disambiguation }})</div>
-                }
-              </div>
-              <div class="artist-badges">
-                @if (entry.relationshipType) {
-                  <span class="relationship-badge" [class]="getRelationshipBadgeClass(entry.relationshipType)">
-                    {{ entry.relationshipType | titlecase }}
-                  </span>
-                }
-              </div>
-            </div>
-            
-            <div class="artist-details">
-              <div class="detail-grid">
-                @if (entry.artist.type) {
-                  <div class="detail-item">
-                    <span class="detail-label">Type:</span>
-                    <span class="detail-value">{{ entry.artist.type }}</span>
-                  </div>
-                }
-                
-                @if (entry.artist.country) {
-                  <div class="detail-item">
-                    <span class="detail-label">Country:</span>
-                    <span class="detail-value">{{ entry.artist.country }}</span>
-                  </div>
-                }
-                
-                <div class="detail-item">
-                  <span class="detail-label">Period:</span>
-                  <span class="detail-value">{{ formatPeriod(entry) }}</span>
-                </div>
-                
-                <div class="detail-item">
-                  <span class="detail-label">Releases:</span>
-                  <span class="detail-value">{{ entry.releaseCount }}</span>
-                </div>
-                
-                @if (entry.artist['life-span']?.begin) {
-                  <div class="detail-item">
-                    <span class="detail-label">Active:</span>
-                    <span class="detail-value">
-                      {{ entry.artist['life-span']!.begin }}
-                      @if (entry.artist['life-span']!.end) {
-                        - {{ entry.artist['life-span']!.end }}
-                      } @else if (!entry.artist['life-span']!.ended) {
-                        - present
-                      }
-                    </span>
-                  </div>
-                }
-              </div>
-            </div>
-            
-            <!-- Artist Tags -->
-            @if (entry.artist.tags && entry.artist.tags.length > 0) {
-              <div class="artist-tags">
-                @for (tag of entry.artist.tags.slice(0, 5); track tag.name) {
-                  <span class="tag">{{ tag.name }}</span>
-                }
-              </div>
-            }
+
+      <!-- Controls -->
+      <div class="roster-controls">
+        <!-- View Mode Toggle -->
+        <div class="view-controls">
+          <div class="view-mode-toggle">
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode() === 'grid'"
+              (click)="onViewModeChange('grid')"
+              aria-label="Grid view"
+            >
+              ⊞
+            </button>
+            <button
+              type="button"
+              class="view-mode-btn"
+              [class.active]="viewMode() === 'list'"
+              (click)="onViewModeChange('list')"
+              aria-label="List view"
+            >
+              ☰
+            </button>
           </div>
-        }
+        </div>
+
+        <!-- Filters and Sort -->
+        <div class="filter-controls">
+          <!-- Filter Controls -->
+          <div class="filter-group">
+            <label for="artist-filter">Filter:</label>
+            <select
+              id="artist-filter"
+              [ngModel]="filterType()"
+              (ngModelChange)="setFilter($event)"
+              class="filter-select"
+            >
+              <option value="all">All Artists</option>
+              <option value="current">Current</option>
+              <option value="former">Former</option>
+              <option value="distributed">Distributed</option>
+            </select>
+          </div>
+
+          <!-- Sort Controls -->
+          <div class="sort-group">
+            <label for="sort-select">Sort by:</label>
+            <select
+              id="sort-select"
+              [ngModel]="sortBy()"
+              (ngModelChange)="setSortBy($event)"
+              class="sort-select"
+            >
+              <option value="name">Name</option>
+              <option value="period">Period</option>
+              <option value="releases">Releases</option>
+            </select>
+            
+            <button
+              type="button"
+              class="sort-direction-btn"
+              (click)="setSortBy(sortBy())"
+              [attr.aria-label]="'Sort ' + (sortDirection() === 'asc' ? 'ascending' : 'descending')"
+              [title]="'Sort ' + (sortDirection() === 'asc' ? 'ascending' : 'descending')"
+            >
+              @if (sortDirection() === 'asc') {
+                ↑
+              } @else {
+                ↓
+              }
+            </button>
+          </div>
+
+          <!-- Export Button -->
+          <button class="export-btn" (click)="exportRoster()">
+            Export CSV
+          </button>
+        </div>
       </div>
-    } @else {
-      <div class="empty-state">
-        <div class="empty-icon">🎤</div>
-        <h3>No Artists Found</h3>
-        <p>This label doesn't have any artists in our database, or the artist roster information is not available.</p>
-      </div>
-    }
-  </div>
+    </div>
+
+    <!-- Results -->
+    <div class="roster-results">
+      @if (filteredAndSortedRoster().length === 0) {
+        <div class="no-results">
+          <p>No artists found matching your criteria.</p>
+        </div>
+      } @else {
+        <div class="results-count">
+          Showing {{ filteredAndSortedRoster().length }} of {{ rosterStats().total }} artists
+        </div>
+        
+        <div class="artist-container" [class]="'view-' + viewMode()">
+          @for (entry of filteredAndSortedRoster(); track entry.artist.id) {
+            <div class="artist-card">
+              <div class="artist-header">
+                <div class="artist-icon">{{ getArtistTypeIcon(entry.artist) }}</div>
+                <div class="artist-info">
+                  <h4 class="artist-name">{{ entry.artist.name }}</h4>
+                  @if (entry.artist.disambiguation) {
+                    <div class="artist-disambiguation">({{ entry.artist.disambiguation }})</div>
+                  }
+                </div>
+                <div class="artist-badges">
+                  @if (entry.relationshipType) {
+                    <span class="relationship-badge" [class]="getRelationshipBadgeClass(entry.relationshipType)">
+                      {{ entry.relationshipType | titlecase }}
+                    </span>
+                  }
+                </div>
+              </div>
+              
+              <div class="artist-details">
+                <div class="detail-grid">
+                  @if (entry.artist.type) {
+                    <div class="detail-item">
+                      <span class="detail-label">Type:</span>
+                      <span class="detail-value">{{ entry.artist.type }}</span>
+                    </div>
+                  }
+                  
+                  @if (entry.artist.country) {
+                    <div class="detail-item">
+                      <span class="detail-label">Country:</span>
+                      <span class="detail-value">{{ entry.artist.country }}</span>
+                    </div>
+                  }
+                  
+                  <div class="detail-item">
+                    <span class="detail-label">Period:</span>
+                    <span class="detail-value">{{ formatPeriod(entry) }}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <span class="detail-label">Releases:</span>
+                    <span class="detail-value">{{ entry.releaseCount }}</span>
+                  </div>
+                  
+                  @if (entry.artist['life-span']?.begin) {
+                    <div class="detail-item">
+                      <span class="detail-label">Active:</span>
+                      <span class="detail-value">
+                        {{ entry.artist['life-span']!.begin }}
+                        @if (entry.artist['life-span']!.end) {
+                          - {{ entry.artist['life-span']!.end }}
+                        } @else if (!entry.artist['life-span']!.ended) {
+                          - present
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+              
+              <!-- Artist Tags -->
+              @if (entry.artist.tags && entry.artist.tags.length > 0) {
+                <div class="artist-tags">
+                  @for (tag of entry.artist.tags.slice(0, 5); track tag.name) {
+                    <span class="tag">{{ tag.name }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else if (!isLoading()) {
+    <div class="empty-state">
+      <div class="empty-icon">🎤</div>
+      <h3>No Artists Found</h3>
+      <p>This label doesn't have any artists in our database, or the artist roster information is not available.</p>
+    </div>
+  }
 </div>

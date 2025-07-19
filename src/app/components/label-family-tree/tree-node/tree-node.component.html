@@ -28,7 +28,6 @@
       class="label-card"
       (click)="selectNode()"
       [class.root]="!node().relationship"
-      [class.clickable]="artistCount() > 0"
     >
       <!-- Label Header -->
       <div class="label-header">
@@ -39,11 +38,6 @@
             <div class="label-disambiguation">({{ node().label.disambiguation }})</div>
           }
         </div>
-        @if (artistCount() > 0) {
-          <div class="artist-count-badge">
-            {{ artistCount() }} artist{{ artistCount() === 1 ? '' : 's' }}
-          </div>
-        }
       </div>
       
       <!-- Label Details -->
@@ -104,4 +98,8 @@
       }
     </div>
   }
+  
+  <!-- Artist Roster Section -->
+ 
+    <app-artist-roster [labelNode]="node()"></app-artist-roster>
 </div>

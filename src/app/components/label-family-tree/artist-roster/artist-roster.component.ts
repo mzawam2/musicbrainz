@@ -1,12 +1,13 @@
 import { Component, input, output, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
 import { LabelTreeNode, ArtistRosterEntry } from '../../../models/musicbrainz.models';
 
 @Component({
   selector: 'app-artist-roster',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './artist-roster.component.html',
   styleUrls: ['./artist-roster.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -17,8 +18,6 @@ export class ArtistRosterComponent implements OnInit {
   // Input signals
   labelNode = input.required<LabelTreeNode>();
   
-  // Output events
-  close = output<void>();
   
   // State signals
   artistRoster = signal<ArtistRosterEntry[]>([]);
@@ -27,6 +26,7 @@ export class ArtistRosterComponent implements OnInit {
   sortBy = signal<'name' | 'period' | 'releases'>('name');
   sortDirection = signal<'asc' | 'desc'>('asc');
   filterType = signal<'all' | 'current' | 'former' | 'distributed'>('all');
+  viewMode = signal<'grid' | 'list'>('grid');
   
   // Computed values
   filteredAndSortedRoster = computed(() => {
@@ -103,9 +103,6 @@ export class ArtistRosterComponent implements OnInit {
     });
   }
 
-  onClose(): void {
-    this.close.emit();
-  }
 
   setSortBy(field: 'name' | 'period' | 'releases'): void {
     if (this.sortBy() === field) {
@@ -120,6 +117,10 @@ export class ArtistRosterComponent implements OnInit {
 
   setFilter(type: 'all' | 'current' | 'former' | 'distributed'): void {
     this.filterType.set(type);
+  }
+
+  onViewModeChange(mode: 'grid' | 'list'): void {
+    this.viewMode.set(mode);
   }
 
   formatPeriod(entry: ArtistRosterEntry): string {

@@ -5,7 +5,6 @@ import { ChangeDetectionStrategy } from '@angular/core';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { TreeNodeComponent } from './tree-node/tree-node.component';
-import { ArtistRosterComponent } from './artist-roster/artist-roster.component';
 import { 
   MusicBrainzLabel, 
   LabelFamilyTree, 
@@ -15,7 +14,7 @@ import {
 
 @Component({
   selector: 'app-label-family-tree',
-  imports: [CommonModule, ReactiveFormsModule, TreeNodeComponent, ArtistRosterComponent],
+  imports: [CommonModule, ReactiveFormsModule, TreeNodeComponent],
   templateUrl: './label-family-tree.component.html',
   styleUrls: ['./label-family-tree.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,8 +47,6 @@ export class LabelFamilyTreeComponent implements OnDestroy {
 
   // UI state signals
   showFilters = signal(false);
-  selectedNode = signal<LabelTreeNode | null>(null);
-  showArtistRoster = signal(false);
 
   // Computed values
   filteredTree = computed(() => {
@@ -154,13 +151,7 @@ export class LabelFamilyTreeComponent implements OnDestroy {
   }
 
   selectNode(node: LabelTreeNode): void {
-    this.selectedNode.set(node);
-    this.showArtistRoster.set(true);
-  }
-
-  closeArtistRoster(): void {
-    this.showArtistRoster.set(false);
-    this.selectedNode.set(null);
+    // Node selection is now handled within tree-node component
   }
 
   clearSearch(): void {

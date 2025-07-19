@@ -155,15 +155,4 @@
     }
   </div>
 
-  <!-- Artist Roster Side Panel -->
-  @if (showArtistRoster() && selectedNode()) {
-    <div class="artist-roster-overlay" (click)="closeArtistRoster()">
-      <div class="artist-roster-panel" (click)="$event.stopPropagation()">
-        <app-artist-roster 
-          [labelNode]="selectedNode()!" 
-          (close)="closeArtistRoster()"
-        ></app-artist-roster>
-      </div>
-    </div>
-  }
 </div>

@@ -1,16 +1,17 @@
-import { Component, input, output, signal, computed } from '@angular/core';
+import { Component, input, output, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { LabelTreeNode } from '../../../models/musicbrainz.models';
+import { ArtistRosterComponent } from '../artist-roster/artist-roster.component';
 
 @Component({
   selector: 'app-tree-node',
-  imports: [CommonModule],
+  imports: [CommonModule, ArtistRosterComponent],
   templateUrl: './tree-node.component.html',
   styleUrls: ['./tree-node.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TreeNodeComponent {
+export class TreeNodeComponent implements OnInit {
   // Input signals
   node = input.required<LabelTreeNode>();
   
