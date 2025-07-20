@@ -1,4 +1,4 @@
-# Artist Label Search - Angular Playground
+# Artist Label Search - Musicbrainz
 
 An Angular 19 application that allows users to search for music artists and discover their record labels using the MusicBrainz API.
 
