@@ -38,8 +38,9 @@ export class HomeComponent implements OnInit {
   discographyError = signal<string | null>(null);
 
   // Computed values for derived state
+  
   hasSelectedArtist = computed(() => this.selectedArtist() !== null);
-  showSearchResults = computed(() => this.artists().length > 0 && !this.hasSelectedArtist());
+  showSearchResults = computed(() => this.artists().length > 0 && this.currentSearchTerm().length >= 2);
   canClearSearch = computed(() => this.hasSelectedArtist() || this.currentSearchTerm().length > 0);
   
   searchState = computed(() => ({
