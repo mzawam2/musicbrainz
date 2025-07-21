@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, ElementRef, ViewChild, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, effect, ElementRef, ViewChild, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
@@ -12,6 +12,15 @@ import {
   LabelTreeNode 
 } from '../../models/musicbrainz.models';
 
+interface LabelFamilyTreeComponentState {
+  selectedLabel: MusicBrainzLabel | null;
+  searchTerm: string;
+  familyTree: LabelFamilyTree | null;
+  filters: LabelSearchFilters;
+  showFilters: boolean;
+  timestamp: number;
+}
+
 @Component({
   selector: 'app-label-family-tree',
   imports: [CommonModule, ReactiveFormsModule, TreeNodeComponent],
@@ -19,9 +28,14 @@ import {
   styleUrls: ['./label-family-tree.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LabelFamilyTreeComponent implements OnDestroy {
+export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private destroy$ = new Subject<void>();
+
+  // State persistence constants
+  private readonly STATE_STORAGE_KEY = 'labelFamilyTreeComponent_state';
+  private readonly STATE_EXPIRY_HOURS = 24;
+  private isRestoringFromCache = false;
 
   @ViewChild('searchInput', { static: false }) searchInput!: ElementRef<HTMLInputElement>;
 
@@ -62,7 +76,15 @@ export class LabelFamilyTreeComponent implements OnDestroy {
 
   constructor() {
     // Set up debounced search using FormControl
-    this.searchControl.valueChanges
+  
+
+    // Handle form control disabled state
+   
+  }
+
+  ngOnInit() {
+    console.log('🔄 LabelFamilyTreeComponent ngOnInit - attempting to restore state');
+      this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
@@ -72,9 +94,12 @@ export class LabelFamilyTreeComponent implements OnDestroy {
         this.isActivelySearching.set(true);
         this.performSearch(query || '');
       });
+    this.restoreState();
   }
 
   ngOnDestroy(): void {
+    console.log('🔄 LabelFamilyTreeComponent ngOnDestroy - saving state before destruction');
+    this.saveState();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -161,6 +186,8 @@ export class LabelFamilyTreeComponent implements OnDestroy {
     this.familyTree.set(null);
     this.isActivelySearching.set(false);
     this.error.set(null);
+    // Clear persisted state when user manually clears search
+    this.clearPersistedState();
   }
 
   private applyFiltersToTree(tree: LabelFamilyTree): LabelFamilyTree {
@@ -247,5 +274,97 @@ export class LabelFamilyTreeComponent implements OnDestroy {
     
     addNodeToCsv(node, parentName);
     return csv;
+  }
+
+  private saveState(): void {
+    try {
+      const state: LabelFamilyTreeComponentState = {
+        selectedLabel: this.selectedLabel(),
+        searchTerm: this.searchControl.value || '',
+        familyTree: this.familyTree(),
+        filters: this.filters(),
+        showFilters: this.showFilters(),
+        timestamp: Date.now()
+      };
+
+      sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
+      console.log('🔄 Saved label family tree component state:', {
+        hasSelectedLabel: !!state.selectedLabel,
+        searchTerm: state.searchTerm,
+        hasFamilyTree: !!state.familyTree,
+        showFilters: state.showFilters
+      });
+    } catch (error) {
+      console.error('Failed to save label family tree component state:', error);
+    }
+  }
+
+  private restoreState(): void {
+    try {
+      const savedState = sessionStorage.getItem(this.STATE_STORAGE_KEY);
+      if (!savedState) {
+        console.log('🔄 No saved state found');
+        // Ensure clean state for fresh component load
+        this.isSearching.set(false);
+        this.isActivelySearching.set(false);
+        this.searchResults.set([]);
+        return;
+      }
+
+      const state: LabelFamilyTreeComponentState = JSON.parse(savedState);
+      const now = Date.now();
+      const stateAge = now - state.timestamp;
+      const maxAge = this.STATE_EXPIRY_HOURS * 60 * 60 * 1000;
+
+      if (stateAge > maxAge) {
+        console.log('🔄 Saved state expired, clearing storage');
+        sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+        // Ensure clean state when cache expires
+        this.isSearching.set(false);
+        this.isActivelySearching.set(false);
+        this.searchResults.set([]);
+        return;
+      }
+
+      console.log('🔄 Restoring label family tree component state:', {
+        hasSelectedLabel: !!state.selectedLabel,
+        searchTerm: state.searchTerm,
+        hasFamilyTree: !!state.familyTree,
+        showFilters: state.showFilters,
+        ageMinutes: Math.round(stateAge / (1000 * 60))
+      });
+
+      // Restore the state
+      if (state.selectedLabel) {
+        this.selectedLabel.set(state.selectedLabel);
+        this.searchControl.setValue(state.searchTerm, { emitEvent: false });
+        // Clear search results and searching state when restoring selected label
+        this.searchResults.set([]);
+        this.isActivelySearching.set(false);
+        this.isSearching.set(false); // Ensure search loading state is false
+      }
+
+      if (state.familyTree) {
+        this.familyTree.set(state.familyTree);
+      }
+
+      if (state.filters) {
+        this.filters.set(state.filters);
+      }
+
+      this.showFilters.set(state.showFilters);
+
+    } catch (error) {
+      console.error('Failed to restore label family tree component state:', error);
+      sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+      // Ensure clean state on restoration error
+      this.isSearching.set(false);
+      this.isActivelySearching.set(false);
+      this.searchResults.set([]);
+    }
+  }
+
+  private clearPersistedState(): void {
+    sessionStorage.removeItem(this.STATE_STORAGE_KEY);
   }
 }

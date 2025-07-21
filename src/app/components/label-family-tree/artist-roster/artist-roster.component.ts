@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, input, output, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
@@ -82,16 +82,22 @@ export class ArtistRosterComponent implements OnInit {
   private loadArtistRoster(): void {
     // If roster is already available in the node, use it
     if (this.labelNode().artistRoster && this.labelNode().artistRoster!.length > 0) {
+      console.log('🔄 Using artist roster from tree node cache for', this.labelNode().label.name);
       this.artistRoster.set(this.labelNode().artistRoster!);
       return;
     }
     
-    // Otherwise, fetch from the service
+    // Check if this is a recently restored component that might have stale data
+    // In this case, we should still try the service call as it may have cached data
+    console.log('🔄 Loading artist roster for label:', this.labelNode().label.name);
+    
+    // Otherwise, fetch from the service (which has its own caching)
     this.isLoading.set(true);
     this.error.set(null);
     
     this.musicBrainzService.getLabelArtists(this.labelNode().label.id).subscribe({
       next: (roster) => {
+        console.log('🔄 Loaded', roster.length, 'artists for', this.labelNode().label.name);
         this.artistRoster.set(roster);
         this.isLoading.set(false);
       },

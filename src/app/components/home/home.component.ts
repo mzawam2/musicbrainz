@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
@@ -8,6 +8,15 @@ import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } fro
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
 
+// Interface for persisting component state
+interface HomeComponentState {
+  selectedArtist: MusicBrainzArtist | null;
+  searchTerm: string;
+  labels: LabelWithReleaseCount[];
+  discographyData: EnhancedDiscographyData | null;
+  timestamp: number;
+}
+
 @Component({
   selector: 'app-home',
   imports: [CommonModule, ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
@@ -15,8 +24,13 @@ import { DiscographyComponent } from '../discography/discography.component';
   styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
+  
+  // Constants for state persistence
+  private readonly STATE_STORAGE_KEY = 'homeComponent_state';
+  private readonly STATE_EXPIRY_HOURS = 24; // State expires after 24 hours
+  private isRestoringFromCache = false;
   
   searchControl = new FormControl('');
   
@@ -51,6 +65,11 @@ export class HomeComponent implements OnInit {
   }));
 
   ngOnInit() {
+    console.log('🔄 HomeComponent ngOnInit - starting component initialization');
+    
+    // Restore state from storage if available
+    this.restoreState();
+    
     this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
@@ -82,10 +101,17 @@ export class HomeComponent implements OnInit {
       });
   }
 
+  ngOnDestroy() {
+    console.log('🔄 HomeComponent ngOnDestroy - saving state before destruction');
+    // Save state when component is destroyed
+    this.saveState();
+  }
+
   selectArtist(artist: MusicBrainzArtist) {
     this.selectedArtist.set(artist);
-    this.searchControl.setValue(artist.name);
+    this.searchControl.setValue(artist.name, { emitEvent: false }); // Prevent triggering search
     this.artists.set([]);
+    this.currentSearchTerm.set(''); // Clear search term to hide results
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
   }
@@ -100,6 +126,8 @@ export class HomeComponent implements OnInit {
     this.discographyData.set(null);
     this.discographyError.set(null);
     this.currentSearchTerm.set('');
+    // Clear persisted state when user manually clears search
+    this.clearPersistedState();
   }
 
   highlightSearchTerm(text: string, searchTerm: string): string {
@@ -116,6 +144,12 @@ export class HomeComponent implements OnInit {
   }
 
   private loadArtistLabels(artistId: string) {
+    // Skip API call if we're restoring from cache
+    if (this.isRestoringFromCache) {
+      console.log('🔄 Skipping label loading - restoring from cache');
+      return;
+    }
+
     this.labelsLoading.set(true);
     this.labelsError.set(null);
     this.labels.set([]);
@@ -133,6 +167,12 @@ export class HomeComponent implements OnInit {
   }
 
   private loadArtistDiscography(artistId: string) {
+    // Skip API call if we're restoring from cache
+    if (this.isRestoringFromCache) {
+      console.log('🔄 Skipping discography loading - restoring from cache');
+      return;
+    }
+
     this.discographyLoading.set(true);
     this.discographyError.set(null);
     this.discographyData.set(null);
@@ -152,5 +192,115 @@ export class HomeComponent implements OnInit {
         this.discographyLoading.set(false);
       }
     });
+  }
+
+  // State persistence methods
+  private saveState(): void {
+    try {
+      const state: HomeComponentState = {
+        selectedArtist: this.selectedArtist(),
+        searchTerm: this.searchControl.value || '',
+        labels: this.labels(),
+        discographyData: this.discographyData(),
+        timestamp: Date.now()
+      };
+      
+      sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
+      console.log('🔄 Saved home component state:', {
+        hasSelectedArtist: !!state.selectedArtist,
+        searchTerm: state.searchTerm,
+        labelsCount: state.labels.length,
+        hasDiscography: !!state.discographyData
+      });
+    } catch (error) {
+      console.error('Failed to save home component state:', error);
+    }
+  }
+
+  private restoreState(): void {
+    try {
+      const savedState = sessionStorage.getItem(this.STATE_STORAGE_KEY);
+      if (!savedState) {
+        console.log('🔄 No saved state found');
+        return;
+      }
+
+      const state: HomeComponentState = JSON.parse(savedState);
+      const now = Date.now();
+      const stateAge = now - state.timestamp;
+      const maxAge = this.STATE_EXPIRY_HOURS * 60 * 60 * 1000;
+
+      if (stateAge > maxAge) {
+        console.log('🔄 Saved state expired, clearing storage');
+        sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+        return;
+      }
+
+      console.log('🔄 Restoring home component state:', {
+        hasSelectedArtist: !!state.selectedArtist,
+        searchTerm: state.searchTerm,
+        labelsCount: state.labels.length,
+        hasDiscography: !!state.discographyData,
+        ageMinutes: Math.round(stateAge / (1000 * 60))
+      });
+
+      // Set flag to prevent API calls during restoration
+      this.isRestoringFromCache = true;
+
+      // Restore the state
+      if (state.selectedArtist) {
+        this.selectedArtist.set(state.selectedArtist);
+        this.searchControl.setValue(state.searchTerm, { emitEvent: false });
+        this.currentSearchTerm.set(state.searchTerm);
+      }
+
+      if (state.labels && state.labels.length > 0) {
+        this.labels.set(state.labels);
+      }
+
+      if (state.discographyData) {
+        this.discographyData.set(state.discographyData);
+      }
+
+      // Clear the flag after restoration is complete
+      setTimeout(() => {
+        this.isRestoringFromCache = false;
+      }, 0);
+
+      // Keep the saved state for now - it will be overwritten on next save
+      // sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+      
+    } catch (error) {
+      console.error('Failed to restore home component state:', error);
+      sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+    }
+  }
+
+  private clearPersistedState(): void {
+    sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+  }
+
+
+
+  // Debug method to manually test state persistence - remove in production
+  debugState() {
+    console.group('🔄 Manual State Debug');
+    
+    console.log('Current component state:', {
+      selectedArtist: this.selectedArtist()?.name || 'None',
+      searchTerm: this.searchControl.value,
+      labelsCount: this.labels().length,
+      discographyData: !!this.discographyData()
+    });
+    
+    // Check what's in storage
+    const savedState = sessionStorage.getItem(this.STATE_STORAGE_KEY);
+    console.log('SessionStorage state:', savedState ? JSON.parse(savedState) : 'None');
+    
+    // Test save manually
+    console.log('Testing manual save...');
+    this.saveState();
+    
+    console.groupEnd();
   }
 }

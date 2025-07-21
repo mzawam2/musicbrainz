@@ -60,6 +60,9 @@ export class MusicBrainzService {
   
   // Cache for label relationships
   private labelRelationshipCache = new Map<string, { data: LabelTreeNode[], timestamp: number }>();
+  
+  // Cache for label artist rosters
+  private labelArtistCache = new Map<string, { data: ArtistRosterEntry[], timestamp: number }>();
 
   private http = inject(HttpClient);
 
@@ -468,8 +471,23 @@ export class MusicBrainzService {
   }
 
   getLabelArtists(labelId: string, maxReleases: number = 3000): Observable<ArtistRosterEntry[]> {
+    const cacheKey = `${labelId}_${maxReleases}`;
+    
+    // Check cache first
+    const cached = this.labelArtistCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      console.log('🔄 Using cached artist roster for label:', labelId);
+      return of(cached.data);
+    }
+
+    console.log('🔄 Fetching fresh artist roster for label:', labelId);
     return this.getAllLabelReleases(labelId, maxReleases).pipe(
       map(releases => this.extractUniqueArtistsFromReleases(releases, labelId)),
+      tap(roster => {
+        // Cache the result
+        this.labelArtistCache.set(cacheKey, { data: roster, timestamp: Date.now() });
+        this.cleanupCache(this.labelArtistCache);
+      }),
       catchError(this.handleError)
     );
   }
