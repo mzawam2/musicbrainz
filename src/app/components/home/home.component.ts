@@ -1,8 +1,9 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { Router, NavigationEnd } from '@angular/router';
+import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
+import { of, Subject } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
@@ -26,11 +27,14 @@ interface HomeComponentState {
 })
 export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
+  private router = inject(Router);
+  private destroy$ = new Subject<void>();
   
   // Constants for state persistence
   private readonly STATE_STORAGE_KEY = 'homeComponent_state';
   private readonly STATE_EXPIRY_HOURS = 24; // State expires after 24 hours
   private isRestoringFromCache = false;
+  private pendingAutoSelectArtist: MusicBrainzArtist | null = null;
   
   searchControl = new FormControl('');
   
@@ -67,13 +71,31 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnInit() {
     console.log('🔄 HomeComponent ngOnInit - starting component initialization');
     
-    // Restore state from storage if available
-    this.restoreState();
+    // Check for navigation state first (artist from roster)
+    this.checkNavigationState();
+    
+    // If no navigation state, restore from cache
+    if (!this.pendingAutoSelectArtist) {
+      console.log('🔄 No navigation state, attempting to restore from cache');
+      this.restoreState();
+    }
+    
+    // Listen for navigation events to capture state
+    this.router.events
+      .pipe(
+        filter(event => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        // Check for navigation state after navigation completes
+        this.checkNavigationState();
+      });
     
     this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
+        takeUntil(this.destroy$),
         switchMap(query => {
           if (!query || query.length < 2) {
             this.artists.set([]);
@@ -105,6 +127,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     console.log('🔄 HomeComponent ngOnDestroy - saving state before destruction');
     // Save state when component is destroyed
     this.saveState();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   selectArtist(artist: MusicBrainzArtist) {
@@ -281,6 +305,85 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
 
+
+  private checkNavigationState(): void {
+    // Try multiple ways to get navigation state
+    const navigation = this.router.getCurrentNavigation();
+    const navigationState = navigation?.extras?.state;
+    const historyState = window.history.state;
+    
+    console.log('🔄 Checking navigation state:', { 
+      hasNavigation: !!navigation, 
+      hasNavigationState: !!navigationState,
+      navigationState: navigationState,
+      historyState: historyState
+    });
+    
+    // Check navigation state first
+    if (navigationState?.['selectedArtist'] && navigationState?.['fromArtistRoster']) {
+      console.log('🔄 Found navigation state with artist:', navigationState['selectedArtist'].name);
+      this.initializeWithArtist(navigationState['selectedArtist']);
+      return;
+    }
+    
+    // Fallback to history state
+    if (historyState?.selectedArtist && historyState?.fromArtistRoster) {
+      console.log('🔄 Found history state with artist:', historyState.selectedArtist.name);
+      this.initializeWithArtist(historyState.selectedArtist);
+      return;
+    }
+    
+    console.log('🔄 No valid navigation state found');
+  }
+
+  private initializeWithArtist(artist: MusicBrainzArtist): void {
+    console.log('🔄 Initializing with artist from navigation:', artist.name);
+    
+    // Set the pending artist first
+    this.pendingAutoSelectArtist = artist;
+    
+    // Clear error states
+    this.error.set(null);
+    
+    // Populate search box and trigger search manually
+    this.searchControl.setValue(artist.name, { emitEvent: false });
+    this.currentSearchTerm.set(artist.name);
+    
+    // Trigger the search manually to ensure it runs
+    this.loading.set(true);
+    this.musicBrainzService.searchArtists(artist.name).subscribe({
+      next: (artists) => {
+        console.log('🔄 Search completed for navigation artist, found', artists.length, 'artists');
+        this.artists.set(artists);
+        this.loading.set(false);
+        
+        // Auto-select the exact artist
+        const matchingArtist = artists.find(a => a.id === artist.id);
+        if (matchingArtist) {
+          console.log('🔄 Auto-selecting exact matching artist:', matchingArtist.name);
+          setTimeout(() => {
+            this.selectArtist(matchingArtist);
+            this.pendingAutoSelectArtist = null;
+          }, 100);
+        } else {
+          console.log('🔄 Artist not found in search results, selecting directly');
+          // If the exact artist isn't in search results, select it directly
+          this.selectArtist(artist);
+          this.pendingAutoSelectArtist = null;
+        }
+      },
+      error: (error) => {
+        console.error('🔄 Search failed for navigation artist:', error);
+        this.error.set(error.message || 'Failed to search artists');
+        this.loading.set(false);
+        
+        // If search fails, select the artist directly
+        console.log('🔄 Search failed, selecting artist directly');
+        this.selectArtist(artist);
+        this.pendingAutoSelectArtist = null;
+      }
+    });
+  }
 
   // Debug method to manually test state persistence - remove in production
   debugState() {

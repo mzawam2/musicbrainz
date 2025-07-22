@@ -130,7 +130,16 @@
               <div class="artist-header">
                 <div class="artist-icon">{{ getArtistTypeIcon(entry.artist) }}</div>
                 <div class="artist-info">
-                  <h4 class="artist-name">{{ entry.artist.name }}</h4>
+                  <h4 class="artist-name">
+                    <button 
+                      type="button" 
+                      class="artist-name-link" 
+                      (click)="navigateToArtistDiscography(entry)"
+                      [title]="'View discography for ' + entry.artist.name"
+                      [attr.aria-label]="'Navigate to discography for ' + entry.artist.name">
+                      {{ entry.artist.name }}
+                    </button>
+                  </h4>
                   @if (entry.artist.disambiguation) {
                     <div class="artist-disambiguation">({{ entry.artist.disambiguation }})</div>
                   }
