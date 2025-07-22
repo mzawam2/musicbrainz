@@ -8,7 +8,16 @@
     </div>
     
     <div class="label-content">
-      <h3 class="label-title">{{ labelName() }}</h3>
+      <h3 class="label-title">
+        <button 
+          type="button" 
+          class="label-name-link" 
+          (click)="navigateToFamilyTree()"
+          [title]="'View family tree for ' + labelName()"
+          [attr.aria-label]="'Navigate to family tree for ' + labelName()">
+          {{ labelName() }}
+        </button>
+      </h3>
       
       @if (disambiguation()) {
         <p class="label-disambiguation">{{ disambiguation() }}</p>

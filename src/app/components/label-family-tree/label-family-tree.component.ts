@@ -2,7 +2,8 @@ import { Component, inject, signal, computed, effect, ElementRef, ViewChild, OnD
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { Router, NavigationEnd } from '@angular/router';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil, filter } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { TreeNodeComponent } from './tree-node/tree-node.component';
 import { 
@@ -30,12 +31,14 @@ interface LabelFamilyTreeComponentState {
 })
 export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
+  private router = inject(Router);
   private destroy$ = new Subject<void>();
 
   // State persistence constants
   private readonly STATE_STORAGE_KEY = 'labelFamilyTreeComponent_state';
   private readonly STATE_EXPIRY_HOURS = 24;
   private isRestoringFromCache = false;
+  private pendingAutoSelectLabel: MusicBrainzLabel | null = null;
 
   @ViewChild('searchInput', { static: false }) searchInput!: ElementRef<HTMLInputElement>;
 
@@ -76,15 +79,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   constructor() {
     // Set up debounced search using FormControl
-  
-
-    // Handle form control disabled state
-   
-  }
-
-  ngOnInit() {
-    console.log('🔄 LabelFamilyTreeComponent ngOnInit - attempting to restore state');
-      this.searchControl.valueChanges
+    this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
@@ -94,7 +89,39 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         this.isActivelySearching.set(true);
         this.performSearch(query || '');
       });
-    this.restoreState();
+
+    // Handle form control disabled state
+    effect(() => {
+      if (this.isSearching()) {
+        this.searchControl.disable();
+      } else {
+        this.searchControl.enable();
+      }
+    });
+
+    // Listen for navigation events to capture state
+    this.router.events
+      .pipe(
+        filter(event => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        // Check for navigation state after navigation completes
+        this.checkNavigationState();
+      });
+  }
+
+  ngOnInit() {
+    console.log('🔄 LabelFamilyTreeComponent ngOnInit - starting initialization');
+    
+    // Try to check navigation state immediately
+    this.checkNavigationState();
+    
+    // If no navigation state was found, restore from cache
+    if (!this.pendingAutoSelectLabel) {
+      console.log('🔄 No navigation state, attempting to restore from cache');
+      this.restoreState();
+    }
   }
 
   ngOnDestroy(): void {
@@ -118,12 +145,37 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       next: (labels) => {
         this.searchResults.set(labels);
         this.isSearching.set(false);
+        
+        // Check if we need to auto-select a label from navigation
+        if (this.pendingAutoSelectLabel) {
+          const matchingLabel = labels.find(label => label.id === this.pendingAutoSelectLabel!.id);
+          if (matchingLabel) {
+            console.log('🔄 Auto-selecting label from navigation:', matchingLabel.name);
+            // Small delay to let the search results render first
+            setTimeout(() => {
+              this.selectLabel(matchingLabel);
+              this.pendingAutoSelectLabel = null;
+            }, 100);
+          } else {
+            console.log('🔄 Label not found in search results, selecting directly');
+            // If the exact label isn't in search results, select it directly
+            this.selectLabel(this.pendingAutoSelectLabel);
+            this.pendingAutoSelectLabel = null;
+          }
+        }
       },
       error: (error) => {
         console.error('Search error:', error);
         this.error.set(error.message || 'Search failed');
         this.isSearching.set(false);
         this.searchResults.set([]);
+        
+        // If search fails but we have a pending label, select it directly
+        if (this.pendingAutoSelectLabel) {
+          console.log('🔄 Search failed, selecting label directly');
+          this.selectLabel(this.pendingAutoSelectLabel);
+          this.pendingAutoSelectLabel = null;
+        }
       }
     });
   }
@@ -366,5 +418,51 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   private clearPersistedState(): void {
     sessionStorage.removeItem(this.STATE_STORAGE_KEY);
+  }
+
+  private checkNavigationState(): void {
+    // Try multiple ways to get navigation state
+    const navigation = this.router.getCurrentNavigation();
+    const navigationState = navigation?.extras?.state;
+    const historyState = window.history.state;
+    
+    console.log('🔄 Checking navigation state:', { 
+      hasNavigation: !!navigation, 
+      hasNavigationState: !!navigationState,
+      navigationState: navigationState,
+      historyState: historyState
+    });
+    
+    // Check navigation state first
+    if (navigationState?.['selectedLabel'] && navigationState?.['fromLabelCard']) {
+      console.log('🔄 Found navigation state with label:', navigationState['selectedLabel'].name);
+      this.initializeWithLabel(navigationState['selectedLabel']);
+      return;
+    }
+    
+    // Fallback to history state
+    if (historyState?.selectedLabel && historyState?.fromLabelCard) {
+      console.log('🔄 Found history state with label:', historyState.selectedLabel.name);
+      this.initializeWithLabel(historyState.selectedLabel);
+      return;
+    }
+    
+    console.log('🔄 No valid navigation state found');
+  }
+
+  private initializeWithLabel(label: MusicBrainzLabel): void {
+    console.log('🔄 Initializing with label from navigation:', label.name);
+    
+    // Populate search box and trigger search to show the label in results
+    this.searchControl.setValue(label.name, { emitEvent: true });
+    
+    // Clear error states
+    this.error.set(null);
+    
+    // Note: The search will populate searchResults, then we'll auto-select
+    // We need to wait for the search to complete before selecting
+    // This will be handled by the search subscription, but we need to 
+    // mark this label for auto-selection
+    this.pendingAutoSelectLabel = label;
   }
 }
