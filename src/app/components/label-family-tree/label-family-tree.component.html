@@ -13,7 +13,6 @@
             class="search-input"
             placeholder="Search for a record label..."
             [formControl]="searchControl"
-            [disabled]="isSearching()"
           />
           @if (isSearching()) {
             <div class="search-spinner">⟳</div>

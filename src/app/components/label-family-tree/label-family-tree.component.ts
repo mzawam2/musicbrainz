@@ -90,14 +90,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         this.performSearch(query || '');
       });
 
-    // Handle form control disabled state
-    effect(() => {
-      if (this.isSearching()) {
-        this.searchControl.disable();
-      } else {
-        this.searchControl.enable();
-      }
-    });
+    // Visual loading indicators replace form control disable/enable to prevent focus loss
 
     // Listen for navigation events to capture state
     this.router.events
