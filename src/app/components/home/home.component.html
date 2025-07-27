@@ -110,13 +110,10 @@
             <div class="artist-tags">
               <p><strong>Tags:</strong></p>
               <div class="tags-container">
-                @for (tag of selectedArtist()!.tags!.slice(0, 8); track tag.name) {
+                @for (tag of selectedArtist()!.tags!; track tag.name) {
                   <span class="tag" [title]="'Count: ' + tag.count">
                     {{ tag.name }}
                   </span>
-                }
-                @if (selectedArtist()!.tags!.length > 8) {
-                  <span class="tag-count">+{{ selectedArtist()!.tags!.length - 8 }} more</span>
                 }
               </div>
             </div>

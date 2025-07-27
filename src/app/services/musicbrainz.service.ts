@@ -99,7 +99,7 @@ export class MusicBrainzService {
   getArtistReleases(artistId: string, limit: number = 100): Observable<MusicBrainzRelease[]> {
     const params = new HttpParams()
       .set('artist', artistId)
-      .set('inc', 'labels')
+      .set('inc', 'labels+tags+genres')
       .set('limit', limit.toString())
       .set('fmt', 'json');
 
@@ -137,6 +137,7 @@ export class MusicBrainzService {
     const params = new HttpParams()
       .set('artist', artistId)
       .set('limit', limit.toString())
+      .set('inc', 'tags+genres')
       .set('fmt', 'json');
 
     return this.http.get<MusicBrainzReleaseGroupSearchResponse>(`${this.baseUrl}/release-group`, { params, headers: this.defaultHeaders })
@@ -157,7 +158,7 @@ export class MusicBrainzService {
   getReleaseGroupReleases(releaseGroupId: string): Observable<MusicBrainzRelease[]> {
     const params = new HttpParams()
       .set('release-group', releaseGroupId)
-      .set('inc', 'labels')  // Include label information
+      .set('inc', 'labels+tags+genres')  // Include label information and tags/genres
       .set('limit', '25')  // Limit to avoid too many releases
       .set('fmt', 'json');
 
@@ -263,7 +264,7 @@ export class MusicBrainzService {
     }
 
     const params = new HttpParams()
-      .set('inc', 'recordings+media+artist-credits+labels')
+      .set('inc', 'recordings+media+artist-credits+labels+tags+genres')
       .set('fmt', 'json');
 
     return this.http.get<DetailedRelease>(`${this.baseUrl}/release/${releaseId}`, { params, headers: this.defaultHeaders })
@@ -507,7 +508,7 @@ export class MusicBrainzService {
   ): Observable<MusicBrainzRelease[]> {
     const params = new HttpParams()
       .set('label', labelId)
-      .set('inc', 'artist-credits')
+      .set('inc', 'artist-credits+tags+genres')
       .set('limit', limit.toString())
       .set('offset', offset.toString())
       .set('fmt', 'json');
