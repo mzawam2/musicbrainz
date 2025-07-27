@@ -87,6 +87,22 @@
             </div>
           </div>
         </div>
+        
+        @if (labelData().releases && labelData().releases.length > 0) {
+          <div class="releases-section">
+            <h4>All Releases</h4>
+            <div class="releases-list">
+              @for (release of labelData().releases; track release.id) {
+                <div class="release-item">
+                  <span class="release-title">{{ release.title }}</span>
+                  @if (release.date) {
+                    <span class="release-date">({{ release.date }})</span>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
       </div>
     </div>
   }

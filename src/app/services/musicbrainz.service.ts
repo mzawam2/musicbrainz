@@ -717,7 +717,7 @@ export class MusicBrainzService {
   }
 
   private aggregateLabels(releases: MusicBrainzRelease[]): LabelWithReleaseCount[] {
-    const labelMap = new Map<string, { label: any, count: number }>();
+    const labelMap = new Map<string, { label: any, count: number, releases: Map<string, {id: string, title: string, date?: string}> }>();
 
     releases.forEach(release => {
       if (release['label-info'] && release['label-info'].length > 0) {
@@ -726,8 +726,18 @@ export class MusicBrainzService {
             const labelId = labelInfo.label.id;
             const existingLabel = labelMap.get(labelId);
             
+            const releaseInfo = {
+              id: release.id,
+              title: release.title,
+              date: release.date
+            };
+            
             if (existingLabel) {
               existingLabel.count++;
+              // Only add if title is unique
+              if (!existingLabel.releases.has(release.title)) {
+                existingLabel.releases.set(release.title, releaseInfo);
+              }
             } else {
               // Create a simplified label object from the label-info
               const label = {
@@ -751,7 +761,9 @@ export class MusicBrainzService {
                 ipis: []
               };
 
-              labelMap.set(labelId, { label, count: 1 });
+              const releasesMap = new Map<string, {id: string, title: string, date?: string}>();
+              releasesMap.set(release.title, releaseInfo);
+              labelMap.set(labelId, { label, count: 1, releases: releasesMap });
             }
           }
         });
@@ -762,7 +774,16 @@ export class MusicBrainzService {
     return Array.from(labelMap.values())
       .map(item => ({
         label: item.label,
-        releaseCount: item.count
+        releaseCount: item.count,
+        releases: Array.from(item.releases.values()).sort((a, b) => {
+          // Sort releases by date (newest first), then by title
+          if (a.date && b.date) {
+            return b.date.localeCompare(a.date);
+          }
+          if (a.date && !b.date) return -1;
+          if (!a.date && b.date) return 1;
+          return a.title.localeCompare(b.title);
+        })
       }))
       .sort((a, b) => b.releaseCount - a.releaseCount);
   }

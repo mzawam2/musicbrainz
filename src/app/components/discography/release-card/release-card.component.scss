@@ -63,8 +63,16 @@
 .release-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .release-type-badge {
@@ -140,6 +148,23 @@
 
   .value {
     color: #333;
+  }
+}
+
+.release-labels-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .label-name {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #bbdefb;
+    margin: 2px 0;
   }
 }
 
@@ -393,6 +418,12 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 
   .track-item {

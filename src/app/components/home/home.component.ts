@@ -54,6 +54,29 @@ export class HomeComponent implements OnInit, OnDestroy {
   discographyData = signal<EnhancedDiscographyData | null>(null);
   discographyLoading = signal(false);
   discographyError = signal<string | null>(null);
+  enhancedDiscography = computed(() => {
+    if (this.discographyData() !== null && this.labels().length > 0) {
+      const discographyData: EnhancedDiscographyData = this.discographyData()!;
+      const labels: LabelWithReleaseCount[] = this.labels();
+      
+      const enhancedReleaseGroups = discographyData.releaseGroups.map(releaseGroup => {
+        if (releaseGroup.title) {
+          const releaseLabels = labels.find(label => label.releases?.some(r => r.title === releaseGroup.title));
+          return {
+            ...releaseGroup,
+            labels: releaseLabels ? [releaseLabels] : []
+          };
+        }
+        return releaseGroup;
+      });
+
+      return {
+        ...discographyData,
+        releaseGroups: enhancedReleaseGroups
+      };
+    }
+    return null;
+  });
 
   // Computed values for derived state
   
@@ -61,6 +84,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   showSearchResults = computed(() => this.artists().length > 0 && this.currentSearchTerm().length >= 2);
   canClearSearch = computed(() => this.hasSelectedArtist() || this.currentSearchTerm().length > 0);
   
+
   searchState = computed(() => ({
     hasQuery: this.currentSearchTerm().length >= 2,
     hasResults: this.artists().length > 0,

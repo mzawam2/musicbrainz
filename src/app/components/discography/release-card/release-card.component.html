@@ -13,8 +13,17 @@
 
   <div class="release-main-content">
     <div class="release-header">
-      <div class="release-type-badge" [class]="'type-' + primaryType().toLowerCase()">
-        {{ primaryType() }}
+      <div class="header-left">
+        <div class="release-type-badge" [class]="'type-' + primaryType().toLowerCase()">
+          {{ primaryType() }}
+        </div>
+        @if (releaseGroup().labels && (releaseGroup().labels?.length || 0) > 0) {
+          <div class="release-labels-header">
+            @for (label of releaseGroup().labels || []; track label.label.id) {
+              <span class="label-name">{{ label.label.name }}</span>
+            }
+          </div>
+        }
       </div>
       <div class="release-year">{{ releaseYear() }}</div>
     </div>
@@ -52,6 +61,7 @@
             <span class="value">{{ releaseGroup().releases?.length || 0 }} version{{ (releaseGroup().releases?.length || 0) > 1 ? 's' : '' }}</span>
           </div>
         }
+
       </div>
     </div>
     

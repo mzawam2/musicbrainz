@@ -114,6 +114,11 @@ export interface MusicBrainzLabel {
 export interface LabelWithReleaseCount {
   label: MusicBrainzLabel;
   releaseCount: number;
+  releases: Array<{
+    id: string;
+    title: string;
+    date?: string;
+  }>;
 }
 
 export interface MusicBrainzRelease {
@@ -331,6 +336,7 @@ export interface EnhancedReleaseGroup extends MusicBrainzReleaseGroup {
   totalTracks?: number;
   averageLength?: number;
   expanded?: boolean; // UI state for expandable cards
+  labels?: LabelWithReleaseCount[];
 }
 
 export interface MusicBrainzWork {
