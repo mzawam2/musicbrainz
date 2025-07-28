@@ -103,26 +103,6 @@
           }
         }
 
-        .filter-toggle-btn {
-          margin-left: 30px;
-          padding: 1rem 2rem;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-radius: 50px;
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-          flex-shrink: 0;
-          white-space: nowrap;
-
-          &:hover, &.active {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
-          }
-        }
       }
 
       .search-results {
@@ -175,72 +155,6 @@
       }
     }
 
-    .filters-panel {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-
-      h3 {
-        margin: 0 0 1rem;
-        font-size: 1.2rem;
-      }
-
-      .filter-checkboxes {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-      }
-
-      .filter-options {
-        display: flex;
-        gap: 2rem;
-        flex-wrap: wrap;
-      }
-
-      .filter-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        user-select: none;
-
-        input[type="checkbox"] {
-          display: none;
-        }
-
-        .checkmark {
-          width: 20px;
-          height: 20px;
-          border: 2px solid rgba(255, 255, 255, 0.5);
-          border-radius: 4px;
-          position: relative;
-          transition: all 0.3s ease;
-
-          &::after {
-            content: '✓';
-            position: absolute;
-            top: -2px;
-            left: 2px;
-            color: white;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-          }
-        }
-
-        input:checked + .checkmark {
-          background: #667eea;
-          border-color: #667eea;
-
-          &::after {
-            opacity: 1;
-          }
-        }
-      }
-    }
   }
 
   .error-message {
@@ -435,16 +349,6 @@
         }
       }
 
-      .filters-panel {
-        .filter-checkboxes {
-          grid-template-columns: 1fr;
-        }
-
-        .filter-options {
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-      }
     }
 
     .tree-content {

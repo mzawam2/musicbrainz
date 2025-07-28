@@ -9,7 +9,7 @@ import { TreeNodeComponent } from './tree-node/tree-node.component';
 import { 
   MusicBrainzLabel, 
   LabelFamilyTree, 
-  LabelSearchFilters, 
+ 
   LabelTreeNode 
 } from '../../models/musicbrainz.models';
 
@@ -17,8 +17,6 @@ interface LabelFamilyTreeComponentState {
   selectedLabel: MusicBrainzLabel | null;
   searchTerm: string;
   familyTree: LabelFamilyTree | null;
-  filters: LabelSearchFilters;
-  showFilters: boolean;
   timestamp: number;
 }
 
@@ -54,25 +52,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   error = signal<string | null>(null);
   isActivelySearching = signal(false);
 
-  // Filter signals
-  filters = signal<LabelSearchFilters>({
-    relationshipTypes: ['parent', 'subsidiary', 'imprint'],
-    countries: [],
-    activeOnly: false,
-    hasArtists: false
-  });
 
-  // UI state signals
-  showFilters = signal(false);
-
-  // Computed values
-  filteredTree = computed(() => {
-    const tree = this.familyTree();
-    if (!tree) return null;
-    
-    // Apply filters to the tree structure
-    return this.applyFiltersToTree(tree);
-  });
 
   hasResults = computed(() => this.searchResults().length > 0);
   hasTree = computed(() => this.familyTree() !== null);
@@ -203,22 +183,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleFilters(): void {
-    this.showFilters.set(!this.showFilters());
-  }
-
-  updateFilters(newFilters: Partial<LabelSearchFilters>): void {
-    this.filters.update(current => ({ ...current, ...newFilters }));
-  }
-
-  toggleRelationshipType(type: string): void {
-    this.filters.update(current => {
-      const types = current.relationshipTypes.includes(type)
-        ? current.relationshipTypes.filter(t => t !== type)
-        : [...current.relationshipTypes, type];
-      return { ...current, relationshipTypes: types };
-    });
-  }
 
   selectNode(node: LabelTreeNode): void {
     // Node selection is now handled within tree-node component
@@ -235,38 +199,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.clearPersistedState();
   }
 
-  private applyFiltersToTree(tree: LabelFamilyTree): LabelFamilyTree {
-    const filters = this.filters();
-    
-    // Clone the tree and apply filters
-    const filteredTreeNode = this.filterTreeNode(tree.tree, filters);
-    
-    return {
-      ...tree,
-      tree: filteredTreeNode
-    };
-  }
-
-  private filterTreeNode(node: LabelTreeNode, filters: LabelSearchFilters): LabelTreeNode {
-    // Apply relationship type filter
-    const shouldInclude = !node.relationship || 
-      filters.relationshipTypes.includes(node.relationship.type);
-
-    if (!shouldInclude) {
-      return { ...node, children: [] };
-    }
-
-    // Recursively filter children
-    const filteredChildren = node.children
-      .map(child => this.filterTreeNode(child, filters))
-      .filter(child => child.children.length > 0 || !child.relationship ||
-        filters.relationshipTypes.includes(child.relationship.type));
-
-    return {
-      ...node,
-      children: filteredChildren
-    };
-  }
 
   exportTree(format: 'json' | 'csv'): void {
     const tree = this.filteredTree();
@@ -327,8 +259,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         selectedLabel: this.selectedLabel(),
         searchTerm: this.searchControl.value || '',
         familyTree: this.familyTree(),
-        filters: this.filters(),
-        showFilters: this.showFilters(),
         timestamp: Date.now()
       };
 
@@ -336,8 +266,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       console.log('🔄 Saved label family tree component state:', {
         hasSelectedLabel: !!state.selectedLabel,
         searchTerm: state.searchTerm,
-        hasFamilyTree: !!state.familyTree,
-        showFilters: state.showFilters
+        hasFamilyTree: !!state.familyTree
       });
     } catch (error) {
       console.error('Failed to save label family tree component state:', error);
@@ -375,7 +304,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         hasSelectedLabel: !!state.selectedLabel,
         searchTerm: state.searchTerm,
         hasFamilyTree: !!state.familyTree,
-        showFilters: state.showFilters,
         ageMinutes: Math.round(stateAge / (1000 * 60))
       });
 
@@ -393,11 +321,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         this.familyTree.set(state.familyTree);
       }
 
-      if (state.filters) {
-        this.filters.set(state.filters);
-      }
-
-      this.showFilters.set(state.showFilters);
 
     } catch (error) {
       console.error('Failed to restore label family tree component state:', error);
