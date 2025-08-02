@@ -1,154 +1,131 @@
 <div class="search-container">
   <div class="search-header">
     <h1>Artist Discography</h1>
-    <p class="description">Search for artists to explore their complete discography, label relationships, and musical evolution</p>
+    <p class="description">Search for artists to explore their complete discography, label relationships, and musical
+      evolution</p>
   </div>
 
   <div class="search-box">
     <label for="artist-search" class="sr-only">Search for an artist</label>
-    <input 
-      id="artist-search"
-      type="text" 
-      [formControl]="searchControl"
-      placeholder="Search for an artist..."
-      class="search-input"
-      autocomplete="off"
-      [attr.aria-expanded]="artists().length > 0"
-      [attr.aria-describedby]="error() ? 'search-error' : null"
-      role="combobox"
-      aria-autocomplete="list"
-      [attr.aria-activedescendant]="null"
-    />
-    
+    <input id="artist-search" type="text" [formControl]="searchControl" placeholder="Search for an artist..."
+      class="search-input" autocomplete="off" [attr.aria-expanded]="artists().length > 0"
+      [attr.aria-describedby]="error() ? 'search-error' : null" role="combobox" aria-autocomplete="list"
+      [attr.aria-activedescendant]="null" />
+
     @if (loading()) {
-      <div class="search-spinner">⟳</div>
+    <div class="search-spinner">⟳</div>
     }
     @if (searchControl.value && searchControl.value.length > 0 && !loading()) {
-      <button 
-        type="button" 
-        class="clear-button" 
-        (click)="clearSearch()"
-        aria-label="Clear search">
-        ✕
-      </button>
+    <button type="button" class="clear-button" (click)="clearSearch()" aria-label="Clear search">
+      ✕
+    </button>
     }
 
   </div>
 
   @if (loading()) {
-    <div class="loading">
-      <div class="spinner"></div>
-      <span>Searching artists...</span>
-    </div>
+  <div class="loading">
+    <div class="spinner"></div>
+    <span>Searching artists...</span>
+  </div>
   }
 
   @if (error()) {
-    <div class="error" id="search-error" role="alert">
-      <p>{{ error() }}</p>
-    </div>
+  <div class="error" id="search-error" role="alert">
+    <p>{{ error() }}</p>
+  </div>
   }
 
   @if (showSearchResults()) {
-    <div class="search-results">
-      <ul class="artist-list" role="listbox" aria-label="Artist search results">
-        @for (artist of artists(); track artist.id; let i = $index) {
-          <li 
-            class="artist-item" 
-            (click)="selectArtist(artist)"
-            (keydown.enter)="selectArtist(artist)"
-            (keydown.space)="selectArtist(artist)"
-            [attr.id]="'artist-option-' + i"
-            role="option"
-            tabindex="0"
-            [attr.aria-selected]="false">
-            <div class="artist-info">
-              <h3 [innerHTML]="highlightSearchTerm(artist.name, currentSearchTerm())"></h3>
-              <p class="artist-details">
-                @if (artist.disambiguation) {
-                  <span class="disambiguation" [innerHTML]="highlightSearchTerm(artist.disambiguation, currentSearchTerm())"></span>
-                }
-                @if (artist.country) {
-                  <span class="country">{{ artist.country }}</span>
-                }
-                @if (artist['life-span']?.begin) {
-                  <span class="life-span">{{ artist['life-span']!.begin }}
-                    @if (artist['life-span']!.end) {
-                      - {{ artist['life-span']!.end }}
-                    }
-                  </span>
-                }
-              </p>
-            </div>
-          </li>
-        }
-      </ul>
-    </div>
+  <div class="search-results">
+    <ul class="artist-list" role="listbox" aria-label="Artist search results">
+      @for (artist of artists(); track artist.id; let i = $index) {
+      <li class="artist-item" (click)="selectArtist(artist)" (keydown.enter)="selectArtist(artist)"
+        (keydown.space)="selectArtist(artist)" [attr.id]="'artist-option-' + i" role="option" tabindex="0"
+        [attr.aria-selected]="false">
+        <div class="artist-info">
+          <h3 [innerHTML]="highlightSearchTerm(artist.name, currentSearchTerm())"></h3>
+          <p class="artist-details">
+            @if (artist.disambiguation) {
+            <span class="disambiguation"
+              [innerHTML]="highlightSearchTerm(artist.disambiguation, currentSearchTerm())"></span>
+            }
+            @if (artist.country) {
+            <span class="country">{{ artist.country }}</span>
+            }
+            @if (artist['life-span']?.begin) {
+            <span class="life-span">{{ artist['life-span']!.begin }}
+              @if (artist['life-span']!.end) {
+              - {{ artist['life-span']!.end }}
+              }
+            </span>
+            }
+          </p>
+        </div>
+      </li>
+      }
+    </ul>
+  </div>
   }
 
   @if (selectedArtist()) {
-    <div class="selected-artist">
-      <h2>Selected Artist</h2>
+  <div class="selected-artist">
+    <div class="tree-container">
       <div class="artist-card">
         <h3>{{ selectedArtist()!.name }}</h3>
         <div class="artist-meta">
           @if (selectedArtist()!.disambiguation) {
-            <p><strong>Description:</strong> {{ selectedArtist()!.disambiguation }}</p>
+          <p><strong>Description:</strong> {{ selectedArtist()!.disambiguation }}</p>
           }
           @if (selectedArtist()!.country) {
-            <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
+          <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
           }
           @if (selectedArtist()!['life-span']?.begin) {
-            <p><strong>Active:</strong> {{ selectedArtist()!['life-span']!.begin }}
-              @if (selectedArtist()!['life-span']!.end) {
-                - {{ selectedArtist()!['life-span']!.end }}
-              } @else {
-                - present
-              }
-            </p>
+          <p><strong>Active:</strong> {{ selectedArtist()!['life-span']!.begin }}
+            @if (selectedArtist()!['life-span']!.end) {
+            - {{ selectedArtist()!['life-span']!.end }}
+            } @else {
+            - present
+            }
+          </p>
           }
           @if (selectedArtist()!.tags && selectedArtist()!.tags!.length > 0) {
-            <div class="artist-tags">
-              <p><strong>Tags:</strong></p>
-              <div class="tags-container">
-                @for (tag of selectedArtist()!.tags!; track tag.name) {
-                  <span class="tag" [title]="'Count: ' + tag.count">
-                    {{ tag.name }}
-                  </span>
-                }
-              </div>
+          <div class="artist-tags">
+            <p><strong>Tags:</strong></p>
+            <div class="tags-container">
+              @for (tag of selectedArtist()!.tags!; track tag.name) {
+              <span class="tag" [title]="'Count: ' + tag.count">
+                {{ tag.name }}
+              </span>
+              }
             </div>
+          </div>
           }
           @if (selectedArtist()!.genres && selectedArtist()!.genres!.length > 0) {
-            <div class="artist-genres">
-              <p><strong>Genres:</strong></p>
-              <div class="genres-container">
-                @for (genre of selectedArtist()!.genres!.slice(0, 6); track genre.id) {
-                  <span class="genre" [title]="'Count: ' + genre.count">
-                    {{ genre.name }}
-                  </span>
-                }
-                @if (selectedArtist()!.genres!.length > 6) {
-                  <span class="genre-count">+{{ selectedArtist()!.genres!.length - 6 }} more</span>
-                }
-              </div>
+          <div class="artist-genres">
+            <p><strong>Genres:</strong></p>
+            <div class="genres-container">
+              @for (genre of selectedArtist()!.genres!.slice(0, 6); track genre.id) {
+              <span class="genre" [title]="'Count: ' + genre.count">
+                {{ genre.name }}
+              </span>
+              }
+              @if (selectedArtist()!.genres!.length > 6) {
+              <span class="genre-count">+{{ selectedArtist()!.genres!.length - 6 }} more</span>
+              }
             </div>
+          </div>
           }
         </div>
       </div>
+      <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
+      </app-label-grid>
+      <app-discography [discographyData]="enhancedDiscography()" [loading]="discographyLoading()"
+        [error]="discographyError()">
+      </app-discography>
     </div>
-    
-    <!-- Label Grid Section -->
-    <app-label-grid 
-      [labels]="labels()"
-      [loading]="labelsLoading()"
-      [error]="labelsError()">
-    </app-label-grid>
+  </div>
 
-     <!-- Discography Section -->
-    <app-discography
-      [discographyData]="enhancedDiscography()"
-      [loading]="discographyLoading()"
-      [error]="discographyError()">
-    </app-discography>
+
   }
 </div>

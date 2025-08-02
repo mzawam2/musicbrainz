@@ -76,9 +76,9 @@
 
         <!-- Tree Visualization -->
         <div class="tree-visualization">
-          @if (filteredTree()?.tree) {
+          @if (familyTree()?.tree) {
             <app-tree-node 
-              [node]="filteredTree()!.tree" 
+              [node]="familyTree()!.tree" 
               (nodeSelected)="selectNode($event)"
             ></app-tree-node>
           }

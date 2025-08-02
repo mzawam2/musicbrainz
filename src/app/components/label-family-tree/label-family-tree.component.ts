@@ -201,7 +201,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
 
   exportTree(format: 'json' | 'csv'): void {
-    const tree = this.filteredTree();
+    const tree = this.familyTree();
     if (!tree) return;
 
     if (format === 'json') {
