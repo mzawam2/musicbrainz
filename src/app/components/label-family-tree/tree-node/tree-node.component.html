@@ -82,6 +82,30 @@
           }
         </div>
       }
+      
+      <!-- Label Bio Section -->
+      <div class="label-bio">
+        @if (isLoadingLabelBio()) {
+          <div class="bio-loading">
+            <div class="spinner"></div>
+            <span>Loading biography...</span>
+          </div>
+        } @else if (labelBio()) {
+          <div class="bio-content">
+            <p><strong>About:</strong></p>
+            <div class="bio-text">
+              {{ labelBio() }}
+            </div>
+            <div class="bio-source">
+              <small>Source: Wikipedia</small>
+            </div>
+          </div>
+        } @else if (labelBioError()) {
+          <div class="bio-error">
+            <small>Biography not available</small>
+          </div>
+        }
+      </div>
     </div>
   </div>
   

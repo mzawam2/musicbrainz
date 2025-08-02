@@ -21,6 +21,11 @@ export class TreeNodeComponent implements OnInit {
   // Internal state
   isExpanded = signal(false);
   
+  // Bio-related signals
+  labelBio = signal<string | null>(null);
+  isLoadingLabelBio = signal(false);
+  labelBioError = signal<string | null>(null);
+  
   // Computed values
   hasChildren = computed(() => this.node().children.length > 0);
   artistCount = computed(() => this.node().artistRoster?.length || 0);
@@ -40,6 +45,9 @@ export class TreeNodeComponent implements OnInit {
   ngOnInit(): void {
     // Set initial expanded state based on node properties
     this.isExpanded.set(this.node().expanded || false);
+    
+    // Load label biography
+    this.loadLabelBio(this.node().label.name);
   }
   
   toggleExpansion(): void {
@@ -108,5 +116,70 @@ export class TreeNodeComponent implements OnInit {
       default:
         return '🏷️';
     }
+  }
+
+  private loadLabelBio(labelName: string) {
+    // Simple Wikipedia API call to get label summary
+    this.isLoadingLabelBio.set(true);
+    this.labelBioError.set(null);
+    this.labelBio.set(null);
+
+    // Try with different search terms with label-specific suffixes
+    const searchTerms = [
+      `${labelName} (record label)`,
+      `${labelName} Records`,
+      `${labelName} (label)`,
+      `${labelName} Music`,
+      labelName
+    ];
+
+    this.tryLabelWikipediaSearch(searchTerms, 0);
+  }
+
+  private tryLabelWikipediaSearch(searchTerms: string[], index: number) {
+    if (index >= searchTerms.length) {
+      this.labelBioError.set('Biography not available');
+      this.isLoadingLabelBio.set(false);
+      return;
+    }
+
+    // Use the Wikipedia API to get the full intro section
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(searchTerms[index])}&prop=extracts&exintro=1&explaintext=1&origin=*`;
+    
+    fetch(searchUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Biography not found');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.query && data.query.pages) {
+          const pages = data.query.pages;
+          const pageId = Object.keys(pages)[0];
+          const page = pages[pageId];
+          
+          if (page.extract && page.extract.trim() && !page.missing) {
+            // Found a valid biography
+            let extract = page.extract;
+            // Keep more content for labels but still limit for card space
+            if (extract.length > 600) {
+              extract = extract.substring(0, 600) + '...';
+            }
+            this.labelBio.set(extract);
+            this.isLoadingLabelBio.set(false);
+          } else {
+            // Try next search term
+            this.tryLabelWikipediaSearch(searchTerms, index + 1);
+          }
+        } else {
+          // Try next search term
+          this.tryLabelWikipediaSearch(searchTerms, index + 1);
+        }
+      })
+      .catch(error => {
+        // Try next search term on error
+        this.tryLabelWikipediaSearch(searchTerms, index + 1);
+      });
   }
 }

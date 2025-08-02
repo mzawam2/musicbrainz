@@ -256,8 +256,27 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.bioError.set(null);
     this.artistBio.set(null);
 
-    // Use Wikipedia API to get page summary
-    const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
+    // Try with different search terms with common suffixes
+    const searchTerms = [
+      `${artistName} (band)`,
+      `${artistName} (musician)`,
+      `${artistName} (singer)`,
+      `${artistName} (artist)`,
+      artistName
+    ];
+
+    this.tryWikipediaSearch(searchTerms, 0);
+  }
+
+  private tryWikipediaSearch(searchTerms: string[], index: number) {
+    if (index >= searchTerms.length) {
+      this.bioError.set('Biography not available');
+      this.isLoadingBio.set(false);
+      return;
+    }
+
+    // Use the Wikipedia API to get the full intro section
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(searchTerms[index])}&prop=extracts&exintro=1&explaintext=1&origin=*`;
     
     fetch(searchUrl)
       .then(response => {
@@ -267,22 +286,32 @@ export class HomeComponent implements OnInit, OnDestroy {
         return response.json();
       })
       .then(data => {
-        if (data.extract) {
-          // Truncate if too long
-          let extract = data.extract;
-          if (extract.length > 500) {
-            extract = extract.substring(0, 500) + '...';
+        if (data.query && data.query.pages) {
+          const pages = data.query.pages;
+          const pageId = Object.keys(pages)[0];
+          const page = pages[pageId];
+          
+          if (page.extract && page.extract.trim() && !page.missing) {
+            // Found a valid biography
+            let extract = page.extract;
+            // Keep more content since we're getting the full intro
+            if (extract.length > 1000) {
+              extract = extract.substring(0, 1000) + '...';
+            }
+            this.artistBio.set(extract);
+            this.isLoadingBio.set(false);
+          } else {
+            // Try next search term
+            this.tryWikipediaSearch(searchTerms, index + 1);
           }
-          this.artistBio.set(extract);
         } else {
-          this.bioError.set('Biography not available');
+          // Try next search term
+          this.tryWikipediaSearch(searchTerms, index + 1);
         }
-        this.isLoadingBio.set(false);
       })
       .catch(error => {
-        console.error('Error loading artist biography:', error);
-        this.bioError.set('Biography not available');
-        this.isLoadingBio.set(false);
+        // Try next search term on error
+        this.tryWikipediaSearch(searchTerms, index + 1);
       });
   }
 

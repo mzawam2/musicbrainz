@@ -194,6 +194,62 @@
           font-weight: 500;
         }
       }
+
+      .label-bio {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+
+        .bio-loading {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 0.9rem;
+
+          .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+        }
+
+        .bio-content {
+          p {
+            margin: 0 0 0.75rem 0;
+            font-weight: 600;
+            color: white;
+            font-size: 0.9rem;
+          }
+
+          .bio-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+            max-height: 150px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+          }
+
+          .bio-source {
+            small {
+              color: rgba(255, 255, 255, 0.6);
+              font-style: italic;
+            }
+          }
+        }
+
+        .bio-error {
+          small {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+          }
+        }
+      }
     }
   }
 
