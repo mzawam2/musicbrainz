@@ -312,7 +312,8 @@
     }
 
     .artist-tags,
-    .artist-genres {
+    .artist-genres,
+    .artist-bio {
       margin-top: 1.5rem;
       padding-top: 1rem;
       border-top: 1px solid rgba(255, 255, 255, 0.2);
@@ -368,6 +369,51 @@
           font-size: 0.875rem;
           font-style: italic;
           align-self: center;
+        }
+      }
+    }
+
+    .artist-bio {
+      .bio-loading {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+
+      .bio-content {
+        .bio-text {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 1rem;
+          line-height: 1.6;
+          margin-bottom: 0.5rem;
+          max-height: 120px;
+          overflow-y: auto;
+          padding-right: 0.5rem;
+        }
+
+        .bio-source {
+          small {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+          }
+        }
+      }
+
+      .bio-error {
+        small {
+          color: rgba(255, 255, 255, 0.6);
+          font-style: italic;
         }
       }
     }

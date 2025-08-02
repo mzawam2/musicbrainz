@@ -54,6 +54,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   discographyData = signal<EnhancedDiscographyData | null>(null);
   discographyLoading = signal(false);
   discographyError = signal<string | null>(null);
+  
+  // Biography-related signals
+  artistBio = signal<string | null>(null);
+  isLoadingBio = signal(false);
+  bioError = signal<string | null>(null);
   enhancedDiscography = computed(() => {
     if (this.discographyData() !== null && this.labels().length > 0) {
       const discographyData: EnhancedDiscographyData = this.discographyData()!;
@@ -162,6 +167,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.currentSearchTerm.set(''); // Clear search term to hide results
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
+    this.loadArtistBio(artist.name);
   }
 
   clearSearch() {
@@ -173,6 +179,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.labelsError.set(null);
     this.discographyData.set(null);
     this.discographyError.set(null);
+    this.artistBio.set(null);
+    this.bioError.set(null);
     this.currentSearchTerm.set('');
     // Clear persisted state when user manually clears search
     this.clearPersistedState();
@@ -240,6 +248,42 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.discographyLoading.set(false);
       }
     });
+  }
+
+  private loadArtistBio(artistName: string) {
+    // Simple Wikipedia API call to get artist summary
+    this.isLoadingBio.set(true);
+    this.bioError.set(null);
+    this.artistBio.set(null);
+
+    // Use Wikipedia API to get page summary
+    const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
+    
+    fetch(searchUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Biography not found');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.extract) {
+          // Truncate if too long
+          let extract = data.extract;
+          if (extract.length > 500) {
+            extract = extract.substring(0, 500) + '...';
+          }
+          this.artistBio.set(extract);
+        } else {
+          this.bioError.set('Biography not available');
+        }
+        this.isLoadingBio.set(false);
+      })
+      .catch(error => {
+        console.error('Error loading artist biography:', error);
+        this.bioError.set('Biography not available');
+        this.isLoadingBio.set(false);
+      });
   }
 
   // State persistence methods

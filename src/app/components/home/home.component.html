@@ -116,6 +116,30 @@
             </div>
           </div>
           }
+          
+          <!-- Artist Bio Section -->
+          <div class="artist-bio">
+            @if (isLoadingBio()) {
+              <div class="bio-loading">
+                <div class="spinner"></div>
+                <span>Loading biography...</span>
+              </div>
+            } @else if (artistBio()) {
+              <div class="bio-content">
+                <p><strong>Biography:</strong></p>
+                <div class="bio-text">
+                  {{ artistBio() }}
+                </div>
+                <div class="bio-source">
+                  <small>Source: Wikipedia</small>
+                </div>
+              </div>
+            } @else if (bioError()) {
+              <div class="bio-error">
+                <small>Biography not available</small>
+              </div>
+            }
+          </div>
         </div>
       </div>
       <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
