@@ -15,6 +15,7 @@ interface HomeComponentState {
   searchTerm: string;
   labels: LabelWithReleaseCount[];
   discographyData: EnhancedDiscographyData | null;
+  artistBio: string | null;
   timestamp: number;
 }
 
@@ -323,6 +324,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         searchTerm: this.searchControl.value || '',
         labels: this.labels(),
         discographyData: this.discographyData(),
+        artistBio: this.artistBio(),
         timestamp: Date.now()
       };
       
@@ -381,6 +383,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       if (state.discographyData) {
         this.discographyData.set(state.discographyData);
+      }
+
+      if (state.artistBio) {
+        this.artistBio.set(state.artistBio);
       }
 
       // Clear the flag after restoration is complete
