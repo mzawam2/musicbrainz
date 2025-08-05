@@ -2,20 +2,19 @@ import { Component, input, output, signal, computed, inject, OnInit, effect } fr
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
 import { LabelTreeNode, ArtistRosterEntry } from '../../../models/musicbrainz.models';
 
 @Component({
   selector: 'app-artist-roster',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './artist-roster.component.html',
   styleUrls: ['./artist-roster.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ArtistRosterComponent implements OnInit {
   private musicBrainzService = inject(MusicBrainzService);
-  private router = inject(Router);
 
   // Input signals
   labelNode = input.required<LabelTreeNode>();
@@ -217,20 +216,4 @@ export class ArtistRosterComponent implements OnInit {
     return csv;
   }
 
-  navigateToArtistDiscography(entry: ArtistRosterEntry): void {
-    console.log('🔄 Artist roster clicked! Navigating to discography for artist:', entry.artist.name);
-    console.log('🔄 Artist data being passed:', entry.artist);
-    
-    // Navigate with state
-    this.router.navigate(['/'], {
-      state: { 
-        selectedArtist: entry.artist,
-        fromArtistRoster: true 
-      }
-    }).then(success => {
-      console.log('🔄 Navigation result:', success);
-    }).catch(error => {
-      console.error('🔄 Navigation error:', error);
-    });
-  }
 }

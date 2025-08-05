@@ -9,14 +9,14 @@
     
     <div class="label-content">
       <h3 class="label-title">
-        <button 
-          type="button" 
+        <a 
           class="label-name-link" 
-          (click)="navigateToFamilyTree()"
+          [routerLink]="['/label-family-trees']"
+          [state]="{ selectedLabel: labelData().label, fromLabelCard: true }"
           [title]="'View family tree for ' + labelName()"
           [attr.aria-label]="'Navigate to family tree for ' + labelName()">
           {{ labelName() }}
-        </button>
+        </a>
       </h3>
       
       @if (disambiguation()) {
