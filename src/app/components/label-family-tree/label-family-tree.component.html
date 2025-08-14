@@ -72,19 +72,58 @@
         
         <div class="tree-actions">
           <!-- Spotify Playlist Creation -->
-          <button 
-            class="spotify-btn"
-            (click)="createSpotifyPlaylistFromSelectedLabel()"
-            [disabled]="isCreatingPlaylist()"
-            title="Create Spotify playlist from label releases">
-            @if (isCreatingPlaylist()) {
-              <span class="spinner"></span>
-              Creating...
-            } @else {
-              <span class="spotify-icon">♪</span>
-              Create Playlist
-            }
-          </button>
+          <div class="spotify-controls">
+            <div class="track-count-control">
+              <label for="tracks-per-album">Tracks per album:</label>
+              <div class="track-input-group">
+                <input 
+                  id="tracks-per-album"
+                  type="number" 
+                  min="1" 
+                  max="50" 
+                  [value]="tracksPerAlbum()"
+                  [disabled]="useAllTracks()"
+                  (input)="updateTracksPerAlbum(+$any($event.target).value)"
+                  class="track-count-input"
+                  [class.disabled]="useAllTracks()"
+                  title="Number of tracks to include from each album (1-50)">
+                <button 
+                  type="button"
+                  class="reset-tracks-btn"
+                  [disabled]="useAllTracks()"
+                  (click)="resetTracksPerAlbum()"
+                  title="Reset to default (5 tracks)">
+                  ↻
+                </button>
+              </div>
+            </div>
+            
+            <div class="all-tracks-control">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="useAllTracks()"
+                  (change)="toggleAllTracks()"
+                  class="all-tracks-checkbox">
+                <span class="checkbox-text">Use all tracks from each album</span>
+              </label>
+              <p class="track-mode-description">{{ trackModeDescription() }}</p>
+            </div>
+            
+            <button 
+              class="spotify-btn"
+              (click)="createSpotifyPlaylistFromSelectedLabel()"
+              [disabled]="isCreatingPlaylist()"
+              title="Create Spotify playlist from label releases">
+              @if (isCreatingPlaylist()) {
+                <span class="spinner"></span>
+                Creating...
+              } @else {
+                <span class="spotify-icon">♪</span>
+                Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
+              }
+            </button>
+          </div>
           
           <!-- Export Controls -->
           <div class="export-controls">

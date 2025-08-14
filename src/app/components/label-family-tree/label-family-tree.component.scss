@@ -356,7 +356,160 @@
   .tree-actions {
     display: flex;
     gap: 1rem;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .spotify-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      
+      @media (max-width: 768px) {
+        width: 100%;
+      }
+      
+      .track-count-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        
+        label {
+          color: white;
+          font-size: 0.9rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        
+        .track-input-group {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          
+          .track-count-input {
+            width: 60px;
+            padding: 6px 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            
+            &:focus {
+              outline: none;
+              border-color: #1DB954;
+              background: rgba(255, 255, 255, 0.2);
+            }
+            
+            &:disabled,
+            &.disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            &::placeholder {
+              color: rgba(255, 255, 255, 0.6);
+            }
+          }
+          
+          .reset-tracks-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            
+            &:hover:not(:disabled) {
+              background: rgba(255, 255, 255, 0.3);
+              border-color: rgba(255, 255, 255, 0.5);
+            }
+            
+            &:active:not(:disabled) {
+              transform: scale(0.95);
+            }
+            
+            &:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+              background: rgba(255, 255, 255, 0.1);
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+          }
+        }
+      }
+      
+      .all-tracks-control {
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: white;
+          font-size: 0.9rem;
+          cursor: pointer;
+          user-select: none;
+          
+          .all-tracks-checkbox {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            
+            &:checked {
+              background: #1DB954;
+              border-color: #1DB954;
+              
+              &::after {
+                content: '✓';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+              }
+            }
+            
+            &:hover {
+              border-color: rgba(255, 255, 255, 0.5);
+              background: rgba(255, 255, 255, 0.2);
+              
+              &:checked {
+                background: #1aa34a;
+                border-color: #1aa34a;
+              }
+            }
+          }
+          
+          .checkbox-text {
+            font-weight: 500;
+          }
+        }
+        
+        .track-mode-description {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-style: italic;
+        }
+      }
+    }
 
     .spotify-btn {
       background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);

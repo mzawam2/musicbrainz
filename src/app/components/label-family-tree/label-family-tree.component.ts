@@ -58,6 +58,8 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   showSpotifyCreator = signal(false);
   isCreatingPlaylist = signal(false);
   createdPlaylist = signal<SpotifyPlaylist | null>(null);
+  tracksPerAlbum = signal(5); // Default number of tracks per album
+  useAllTracks = signal(false); // Whether to use all tracks from each album
   
   // Cache for all releases from the family tree
   allReleases = signal<any[]>([]);
@@ -66,6 +68,15 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   hasResults = computed(() => this.searchResults().length > 0);
   hasTree = computed(() => this.familyTree() !== null);
+  
+  // Computed property for better UI feedback
+  trackModeDescription = computed(() => {
+    if (this.useAllTracks()) {
+      return 'All tracks from each album will be included';
+    }
+    const count = this.tracksPerAlbum();
+    return `${count} track${count === 1 ? '' : 's'} from each album will be included`;
+  });
 
   constructor() {
     // Set up debounced search using FormControl
@@ -527,6 +538,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     }
 
     if (!this.spotifyService.isAuthenticated()) {
+      console.log('🎵 User not authenticated, initiating Spotify auth');
       this.spotifyService.initiateAuth();
       return;
     }
@@ -552,13 +564,11 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
           // Use the cached release details - filter for Albums and EPs
           const artistReleases = artistData.releaseDetails
-    
-            .slice(0, 3) // Limit to 3 releases per artist
-            .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
+              .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
               artistName: artistData.artistName,
               releaseName: release.title,
               releaseId: release.id,
-              trackCount: 5 // Default track count
+              trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum() // Use all tracks or user-specified count
             }));
           
           console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} - NO API CALLS`);
@@ -587,9 +597,14 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       
       if (playlist) {
         this.createdPlaylist.set(playlist);
-        console.log('Playlist created successfully:', playlist.name);
+        console.log('🎵 Playlist created successfully:', playlist.name);
       } else {
-        this.error.set('Failed to create playlist on Spotify');
+        console.error('🎵 Playlist creation returned null - check Spotify authentication and API calls');
+        if (!this.spotifyService.isAuthenticated()) {
+          this.error.set('Spotify authentication expired. Please reconnect and try again.');
+        } else {
+          this.error.set('Failed to create playlist on Spotify. Check console for details.');
+        }
       }
 
     } catch (error) {
@@ -606,5 +621,34 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.closeSpotifyCreator();
     }, 3000);
+  }
+
+  /**
+   * Update the tracks per album count with validation
+   */
+  updateTracksPerAlbum(value: number): void {
+    const clampedValue = Math.max(1, Math.min(50, value));
+    this.tracksPerAlbum.set(clampedValue);
+  }
+
+  /**
+   * Reset tracks per album to default
+   */
+  resetTracksPerAlbum(): void {
+    this.tracksPerAlbum.set(5);
+  }
+
+  /**
+   * Toggle all tracks mode
+   */
+  toggleAllTracks(): void {
+    this.useAllTracks.set(!this.useAllTracks());
+  }
+
+  /**
+   * Get the effective track count for display
+   */
+  getEffectiveTrackCount(): string {
+    return this.useAllTracks() ? 'all' : this.tracksPerAlbum().toString();
   }
 }
