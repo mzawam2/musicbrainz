@@ -4,51 +4,41 @@
     <div class="search-section">
       <h1>Label Family Trees</h1>
       <p class="description">Explore hierarchical relationships between record labels and their artist rosters</p>
-      
+
       <div class="search-controls">
         <div class="search-input-wrapper">
-          <input 
-            #searchInput
-            type="text" 
-            class="search-input"
-            placeholder="Search for a record label..."
-            [formControl]="searchControl"
-          />
+          <input #searchInput type="text" class="search-input" placeholder="Search for a record label..."
+            [formControl]="searchControl" />
           @if (isSearching()) {
-            <div class="search-spinner">⟳</div>
+          <div class="search-spinner">⟳</div>
           }
           @if (searchControl.value && !isSearching()) {
-            <button 
-              class="clear-search-btn"
-              (click)="clearSearch()"
-              type="button"
-              title="Clear search"
-            >×</button>
+          <button class="clear-search-btn" (click)="clearSearch()" type="button" title="Clear search">×</button>
           }
         </div>
-        
+
       </div>
 
       <!-- Search Results -->
       @if (hasResults() && isActivelySearching()) {
-        <div class="search-results">
-          @for (label of searchResults(); track label.id) {
-            <div class="search-result-item" (click)="selectLabel(label); $event.stopPropagation()">
-              <div class="label-info">
-                <h3>{{ label.name }}</h3>
-                <div class="label-meta">
-                  <span class="label-type">{{ label.type }}</span>
-                  @if (label.country) {
-                    <span class="label-country">{{ label.country }}</span>
-                  }
-                  @if (label.disambiguation) {
-                    <span class="disambiguation">({{ label.disambiguation }})</span>
-                  }
-                </div>
-              </div>
+      <div class="search-results">
+        @for (label of searchResults(); track label.id) {
+        <div class="search-result-item" (click)="selectLabel(label); $event.stopPropagation()">
+          <div class="label-info">
+            <h3>{{ label.name }}</h3>
+            <div class="label-meta">
+              <span class="label-type">{{ label.type }}</span>
+              @if (label.country) {
+              <span class="label-country">{{ label.country }}</span>
+              }
+              @if (label.disambiguation) {
+              <span class="disambiguation">({{ label.disambiguation }})</span>
+              }
             </div>
-          }
+          </div>
         </div>
+        }
+      </div>
       }
     </div>
 
@@ -56,54 +46,88 @@
 
   <!-- Error Display -->
   @if (error()) {
-    <div class="error-message">
-      <span class="error-icon">⚠</span>
-      {{ error() }}
-    </div>
+  <div class="error-message">
+    <span class="error-icon">⚠</span>
+    {{ error() }}
+  </div>
   }
 
   <!-- Main Content Area -->
   <div class="tree-content">
     @if (isLoadingTree()) {
-      <div class="loading-tree">
-        <div class="loading-spinner"></div>
-        <p>Loading family tree...</p>
-      </div>
+    <div class="loading-tree">
+      <div class="loading-spinner"></div>
+      <p>Loading family tree...</p>
+    </div>
     } @else if (hasTree()) {
-      <div class="tree-container">
-        <!-- Tree Statistics -->
-        
-
-        <!-- Tree Visualization -->
-        <div class="tree-visualization">
-          @if (familyTree()?.tree) {
-            <app-tree-node 
-              [node]="familyTree()!.tree" 
-              (nodeSelected)="selectNode($event)"
-            ></app-tree-node>
+    <div class="tree-container">
+      <!-- Tree Statistics and Actions -->
+      <div class="tree-header-actions">
+        <div class="tree-stats">
+          <h3>{{ selectedLabel()?.name }} Family Tree</h3>
+          @if (familyTree()) {
+            <p>{{ familyTree()!.totalLabels }} labels • {{ familyTree()!.totalArtists }} artists</p>
           }
         </div>
-      </div>
-    } @else if (selectedLabel()) {
-      <div class="no-tree-message">
-        <p>No family tree data available for {{ selectedLabel()?.name }}</p>
-      </div>
-    } @else {
-      <div class="welcome-message">
-        <div class="welcome-content">
-          <h2>Welcome to Label Family Trees</h2>
-          <p>Search for a record label above to explore its family tree and relationships.</p>
-          <div class="feature-list">
-            <ul>
-              <li>View hierarchical label relationships</li>
-              <li>Explore artist rosters and timelines</li>
-              <li>Filter by relationship types</li>
-              <li>Export data in multiple formats</li>
-            </ul>
+        
+        <div class="tree-actions">
+          <!-- Spotify Playlist Creation -->
+          <button 
+            class="spotify-btn"
+            (click)="createSpotifyPlaylistFromSelectedLabel()"
+            [disabled]="isCreatingPlaylist()"
+            title="Create Spotify playlist from label releases">
+            @if (isCreatingPlaylist()) {
+              <span class="spinner"></span>
+              Creating...
+            } @else {
+              <span class="spotify-icon">♪</span>
+              Create Playlist
+            }
+          </button>
+          
+          <!-- Export Controls -->
+          <div class="export-controls">
+            <button class="export-btn" (click)="exportTree('json')" title="Export as JSON">
+              Export JSON
+            </button>
+            <button class="export-btn" (click)="exportTree('csv')" title="Export as CSV">
+              Export CSV
+            </button>
           </div>
         </div>
       </div>
-    }
+
+      <!-- Tree Visualization -->
+      <div class="tree-visualization">
+        @if (familyTree()?.tree) {
+        <app-tree-node [node]="familyTree()!.tree" (nodeSelected)="selectNode($event)"></app-tree-node>
+        }
+      </div>
+      
+      <!-- Spotify Success Message -->
+      @if (createdPlaylist()) {
+        <div class="spotify-success">
+          <div class="success-content">
+            <h4>✓ Spotify Playlist Created!</h4>
+            <p><strong>{{ createdPlaylist()?.name }}</strong></p>
+            <p>{{ createdPlaylist()?.tracks?.total || 0 }} songs added</p>
+            <a 
+              [href]="createdPlaylist()?.external_urls?.spotify" 
+              target="_blank" 
+              class="open-spotify-link">
+              Open in Spotify
+            </a>
+          </div>
+          <button class="close-success" (click)="createdPlaylist.set(null)" type="button">×</button>
+        </div>
+      }
+    </div>
+    } @else if (selectedLabel()) {
+    <div class="no-tree-message">
+      <p>No family tree data available for {{ selectedLabel()?.name }}</p>
+    </div>
+    } 
   </div>
 
 </div>

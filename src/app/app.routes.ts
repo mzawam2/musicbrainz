@@ -13,5 +13,9 @@ export const routes: Routes = [
   {
     path: 'label-family-trees',
     loadComponent: () => import('./components/label-family-tree/label-family-tree.component').then(m => m.LabelFamilyTreeComponent)
+  },
+  {
+    path: 'spotify-callback',
+    loadComponent: () => import('./components/spotify-callback/spotify-callback.component').then(m => m.SpotifyCallbackComponent)
   }
 ];

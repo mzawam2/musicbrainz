@@ -389,6 +389,7 @@
   }
 }
 
+
 // Responsive adjustments
 @media (max-width: 768px) {
   .view-list {
@@ -416,6 +417,13 @@
           }
         }
       }
+    }
+  }
+
+  .label-actions {
+    .expand-btn {
+      font-size: 0.8rem;
+      padding: 8px 12px;
     }
   }
 }

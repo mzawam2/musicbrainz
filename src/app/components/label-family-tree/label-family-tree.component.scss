@@ -328,6 +328,185 @@
   100% { transform: rotate(360deg); }
 }
 
+// Tree header actions (Spotify and Export)
+.tree-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+
+  .tree-stats {
+    h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      opacity: 0.8;
+      font-size: 0.9rem;
+    }
+  }
+
+  .tree-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+
+    .spotify-btn {
+      background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #1aa34a 0%, #1bc45a 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+      }
+
+      &:disabled {
+        background: rgba(255, 255, 255, 0.3);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .spotify-icon {
+        font-size: 1.1rem;
+        font-weight: bold;
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid transparent;
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    .export-controls {
+      display: flex;
+      gap: 0.5rem;
+
+      .export-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+          border-color: rgba(255, 255, 255, 0.5);
+          transform: translateY(-1px);
+        }
+      }
+    }
+  }
+}
+
+// Spotify success message
+.spotify-success {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(29, 185, 84, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 350px;
+  z-index: 1000;
+  animation: slideInUp 0.3s ease-out;
+
+  .success-content {
+    flex: 1;
+
+    h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0.25rem 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .open-spotify-link {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.2);
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.3);
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .close-success {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 // Responsive design
 @media (max-width: 768px) {
   .label-family-tree {
@@ -355,15 +534,29 @@
       .tree-container {
         padding: 1rem;
 
-        .tree-stats {
+        .tree-header-actions {
           flex-direction: column;
           gap: 1rem;
-        }
+          text-align: center;
 
-        .export-controls {
-          flex-direction: column;
+          .tree-actions {
+            flex-direction: column;
+            gap: 1rem;
+
+            .export-controls {
+              flex-direction: column;
+              gap: 0.5rem;
+            }
+          }
         }
       }
+    }
+
+    .spotify-success {
+      bottom: 1rem;
+      right: 1rem;
+      left: 1rem;
+      max-width: none;
     }
 
     .artist-roster-overlay {

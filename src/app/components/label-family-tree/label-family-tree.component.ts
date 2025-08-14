@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil, filter } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
+import { SpotifyService, PlaylistCreationRequest, SpotifyPlaylist } from '../../services/spotify.service';
 import { TreeNodeComponent } from './tree-node/tree-node.component';
 import { 
   MusicBrainzLabel, 
@@ -29,6 +30,7 @@ interface LabelFamilyTreeComponentState {
 })
 export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
+  private spotifyService = inject(SpotifyService);
   private router = inject(Router);
   private destroy$ = new Subject<void>();
 
@@ -51,6 +53,14 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   isLoadingTree = signal(false);
   error = signal<string | null>(null);
   isActivelySearching = signal(false);
+  
+  // Spotify integration signals
+  showSpotifyCreator = signal(false);
+  isCreatingPlaylist = signal(false);
+  createdPlaylist = signal<SpotifyPlaylist | null>(null);
+  
+  // Cache for all releases from the family tree
+  allReleases = signal<any[]>([]);
 
 
 
@@ -173,7 +183,17 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.musicBrainzService.buildLabelFamilyTree(labelId, 3).subscribe({
       next: (tree) => {
         this.familyTree.set(tree);
-        this.isLoadingTree.set(false);
+        
+        // Load artist roster data for all labels in the tree, then extract releases
+        this.loadArtistRosterForAllLabels(tree).then(() => {
+          this.extractAllReleasesFromTree(tree);
+          this.isLoadingTree.set(false);
+        }).catch((error) => {
+          console.error('Error loading artist rosters:', error);
+          // Still set the tree even if artist loading fails
+          this.extractAllReleasesFromTree(tree);
+          this.isLoadingTree.set(false);
+        });
       },
       error: (error) => {
         console.error('Tree loading error:', error);
@@ -181,6 +201,109 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         this.isLoadingTree.set(false);
       }
     });
+  }
+
+  private async loadArtistRosterForAllLabels(tree: LabelFamilyTree): Promise<void> {
+    console.log('Loading artist rosters for all labels in the tree');
+    
+    // Collect all labels from the tree
+    const allLabels: string[] = [];
+    const collectLabels = (node: LabelTreeNode) => {
+      allLabels.push(node.label.id);
+      node.children.forEach(child => collectLabels(child));
+    };
+    collectLabels(tree.tree);
+    
+    console.log(`Loading artist rosters for ${allLabels.length} labels`);
+    
+    // Load artist roster for each label and populate the tree nodes
+    const loadPromises = allLabels.map(labelId => {
+      return firstValueFrom(this.musicBrainzService.getLabelArtists(labelId))
+        .then(artistRoster => {
+          // Find the corresponding tree node and set the artist roster
+          this.setArtistRosterForNode(tree.tree, labelId, artistRoster);
+        })
+        .catch(error => {
+          console.warn(`Failed to load artist roster for label ${labelId}:`, error);
+          // Don't throw, just continue with other labels
+        });
+    });
+    
+    await Promise.all(loadPromises);
+    console.log('Finished loading artist rosters for all labels');
+  }
+
+  private setArtistRosterForNode(node: LabelTreeNode, labelId: string, artistRoster: any[]): void {
+    if (node.label.id === labelId) {
+      node.artistRoster = artistRoster;
+      console.log(`Set artist roster for ${node.label.name}: ${artistRoster.length} artists`);
+      return;
+    }
+    
+    // Recursively search child nodes
+    for (const child of node.children) {
+      this.setArtistRosterForNode(child, labelId, artistRoster);
+    }
+  }
+
+  private extractAllReleasesFromTree(tree: LabelFamilyTree): void {
+    console.log('Extracting releases from family tree:', tree);
+    
+    const allArtistReleases: Array<{
+      artistName: string, 
+      releaseIds: string[], 
+      releaseDetails?: Array<{id: string, title: string, date?: string, primaryType?: string}>,
+      labelName: string
+    }> = [];
+    
+    // Recursive function to extract artist-release mappings from all nodes in the tree
+    const extractFromNode = (node: LabelTreeNode, depth = 0) => {
+      const indent = '  '.repeat(depth);
+      console.log(`${indent}Processing node: ${node.label.name}`);
+      console.log(`${indent}Has artist roster:`, !!node.artistRoster);
+      console.log(`${indent}Artist roster length:`, node.artistRoster?.length || 0);
+      
+      // Extract artist roster if available
+      if (node.artistRoster) {
+        console.log(`${indent}Found artist roster with ${node.artistRoster.length} artists`);
+        
+        for (const artistEntry of node.artistRoster) {
+          console.log(`${indent}  Artist: ${artistEntry.artist.name}`);
+          console.log(`${indent}  Has releases:`, !!artistEntry.releases);
+          console.log(`${indent}  Release count:`, artistEntry.releaseCount);
+          console.log(`${indent}  Releases array:`, artistEntry.releases);
+          
+          if (artistEntry.releases && artistEntry.releases.length > 0) {
+            console.log(`${indent}  Adding ${artistEntry.releases.length} releases for ${artistEntry.artist.name}`);
+            allArtistReleases.push({
+              artistName: artistEntry.artist.name,
+              releaseIds: artistEntry.releases.slice(0, 10), // Limit release IDs per artist
+              releaseDetails: artistEntry.releaseDetails?.slice(0, 10), // Include cached release details
+              labelName: node.label.name
+            });
+          } else {
+            console.log(`${indent}  No releases found for ${artistEntry.artist.name}`);
+          }
+        }
+      } else {
+        console.log(`${indent}No artist roster found`);
+      }
+      
+      // Recursively process child nodes
+      console.log(`${indent}Processing ${node.children.length} child nodes`);
+      for (const child of node.children) {
+        extractFromNode(child, depth + 1);
+      }
+    };
+    
+    // Start extraction from the root tree node
+    extractFromNode(tree.tree);
+    
+    console.log(`Found ${allArtistReleases.length} artists with releases in family tree`);
+    console.log('All artist releases:', allArtistReleases);
+    
+    // Store the artist-release mappings for later use
+    this.allReleases.set(allArtistReleases);
   }
 
 
@@ -380,5 +503,108 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     // This will be handled by the search subscription, but we need to 
     // mark this label for auto-selection
     this.pendingAutoSelectLabel = label;
+  }
+
+  // Spotify Integration Methods
+  openSpotifyCreator(): void {
+    this.showSpotifyCreator.set(true);
+  }
+
+  closeSpotifyCreator(): void {
+    this.showSpotifyCreator.set(false);
+    this.createdPlaylist.set(null);
+  }
+
+  async createSpotifyPlaylistFromSelectedLabel(): Promise<void> {
+    console.log('🎵 PLAYLIST CREATION STARTED - Using ONLY cached data, NO API calls');
+    
+    const selectedLabel = this.selectedLabel();
+    const cachedArtistData = this.allReleases();
+    
+    if (!selectedLabel) {
+      this.error.set('No label selected');
+      return;
+    }
+
+    if (!this.spotifyService.isAuthenticated()) {
+      this.spotifyService.initiateAuth();
+      return;
+    }
+
+    this.isCreatingPlaylist.set(true);
+    this.error.set(null);
+
+    try {
+      console.log('🎵 Creating playlist for label:', selectedLabel.name);
+      console.log(`🎵 Using data from ${cachedArtistData.length} artists from family tree - NO MUSICBRAINZ API CALLS`);
+      
+      if (cachedArtistData.length === 0) {
+        this.error.set('No artists with releases found in the family tree. Make sure the label family tree has loaded completely.');
+        return;
+      }
+
+      const playlistReleases: any[] = [];
+      
+      // Process each artist using cached release data
+      for (const artistData of cachedArtistData.slice(0, 10)) { // Limit to 10 artists
+        console.log(`🎵 Using cached releases for artist: ${artistData.artistName} - NO API CALLS`);
+        
+        if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
+          // Use the cached release details - filter for Albums and EPs
+          const artistReleases = artistData.releaseDetails
+    
+            .slice(0, 3) // Limit to 3 releases per artist
+            .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
+              artistName: artistData.artistName,
+              releaseName: release.title,
+              releaseId: release.id,
+              trackCount: 5 // Default track count
+            }));
+          
+          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} - NO API CALLS`);
+          playlistReleases.push(...artistReleases);
+        } else {
+          console.log(`🎵 No cached release details found for ${artistData.artistName}`);
+        }
+      }
+
+      console.log(`Total releases selected for playlist: ${playlistReleases.length}`);
+      
+      if (playlistReleases.length === 0) {
+        this.error.set('No suitable album or EP releases found for this label\'s artists. Try a different label.');
+        return;
+      }
+
+      // Create the playlist request
+      const request: PlaylistCreationRequest = {
+        labelName: selectedLabel.name,
+        releases: playlistReleases
+      };
+
+      console.log('🎵 Creating Spotify playlist with request - ONLY Spotify API calls from here:', request);
+
+      const playlist = await firstValueFrom(this.spotifyService.createPlaylistFromLabelReleases(request));
+      
+      if (playlist) {
+        this.createdPlaylist.set(playlist);
+        console.log('Playlist created successfully:', playlist.name);
+      } else {
+        this.error.set('Failed to create playlist on Spotify');
+      }
+
+    } catch (error) {
+      console.error('Failed to create Spotify playlist:', error);
+      this.error.set('Failed to create playlist. Please try again.');
+    } finally {
+      this.isCreatingPlaylist.set(false);
+    }
+  }
+
+  onPlaylistCreated(playlist: SpotifyPlaylist): void {
+    this.createdPlaylist.set(playlist);
+    // Optionally close the creator after a delay
+    setTimeout(() => {
+      this.closeSpotifyCreator();
+    }, 3000);
   }
 }

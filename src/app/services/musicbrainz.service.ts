@@ -618,6 +618,13 @@ export class MusicBrainzService {
       releaseCount: number;
       firstReleaseDate?: string;
       lastReleaseDate?: string;
+      releases: string[];
+      releaseDetails: Array<{
+        id: string;
+        title: string;
+        date?: string;
+        primaryType?: string;
+      }>;
     }>();
 
     releases.forEach(release => {
@@ -626,10 +633,18 @@ export class MusicBrainzService {
           if (credit.artist) {
             const artistId = credit.artist.id;
             const releaseDate = release.date;
+            const releaseDetail = {
+              id: release.id,
+              title: release.title,
+              date: release.date,
+              primaryType: release['release-group']?.['primary-type']
+            };
             const existing = artistMap.get(artistId);
             
             if (existing) {
               existing.releaseCount++;
+              existing.releases.push(release.id);
+              existing.releaseDetails.push(releaseDetail);
               // Update date range
               if (releaseDate) {
                 if (!existing.firstReleaseDate || releaseDate < existing.firstReleaseDate) {
@@ -644,7 +659,9 @@ export class MusicBrainzService {
                 artist: credit.artist,
                 releaseCount: 1,
                 firstReleaseDate: releaseDate,
-                lastReleaseDate: releaseDate
+                lastReleaseDate: releaseDate,
+                releases: [release.id],
+                releaseDetails: [releaseDetail]
               });
             }
           }
@@ -653,13 +670,15 @@ export class MusicBrainzService {
     });
 
     return Array.from(artistMap.values())
-      .map(({ artist, releaseCount, firstReleaseDate, lastReleaseDate }) => ({
+      .map(({ artist, releaseCount, firstReleaseDate, lastReleaseDate, releases, releaseDetails }) => ({
         artist,
         period: {
           begin: firstReleaseDate || artist['life-span']?.begin,
           end: lastReleaseDate !== firstReleaseDate ? lastReleaseDate : artist['life-span']?.end
         },
         releaseCount,
+        releases,
+        releaseDetails,
         relationshipType: this.determineRelationshipType(artist, lastReleaseDate)
       }))
       .sort((a, b) => b.releaseCount - a.releaseCount); // Sort by release count descending

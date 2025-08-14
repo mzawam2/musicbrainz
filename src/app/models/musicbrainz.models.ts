@@ -438,6 +438,12 @@ export interface ArtistRosterEntry {
   };
   releaseCount: number;
   releases?: string[];
+  releaseDetails?: Array<{
+    id: string;
+    title: string;
+    date?: string;
+    primaryType?: string;
+  }>;
   relationshipType?: 'current' | 'former' | 'distributed';
 }
 
