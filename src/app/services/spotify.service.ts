@@ -81,6 +81,11 @@ export interface PlaylistCreationRequest {
     releaseName: string;
     trackCount: number;
   }>;
+  yearFilter?: {
+    enabled: boolean;
+    startYear?: number | null;
+    endYear?: number | null;
+  };
 }
 
 @Injectable({
@@ -408,8 +413,45 @@ export class SpotifyService {
       }) as any;
     }
 
-    const playlistName = `${request.labelName} - Label Archive`;
-    const description = `All of the releases from ${request.labelName}`;
+    // Generate playlist name based on year filtering
+    let playlistName: string;
+    let yearRangeText = '';
+    
+    if (request.yearFilter?.enabled) {
+      const startYear = request.yearFilter.startYear;
+      const endYear = request.yearFilter.endYear;
+      
+      if (startYear && endYear) {
+        yearRangeText = `${startYear}-${endYear}`;
+      } else if (startYear) {
+        yearRangeText = `${startYear}+`;
+      } else if (endYear) {
+        yearRangeText = `-${endYear}`;
+      } else {
+        yearRangeText = 'Filtered';
+      }
+      
+      playlistName = `${request.labelName} - ${yearRangeText}`;
+    } else {
+      playlistName = `${request.labelName} - Label Archive`;
+    }
+
+    // Generate description with year range info
+    let description = `All of the releases from ${request.labelName}`;
+    if (request.yearFilter?.enabled) {
+      const startYear = request.yearFilter.startYear;
+      const endYear = request.yearFilter.endYear;
+      
+      if (startYear && endYear) {
+        description += ` from ${startYear} to ${endYear}`;
+      } else if (startYear) {
+        description += ` from ${startYear} onwards`;
+      } else if (endYear) {
+        description += ` up to ${endYear}`;
+      } else {
+        description += ` (filtered by year)`;
+      }
+    }
 
     console.log(`Creating playlist: ${playlistName} with ${request.releases.length} releases`);
     console.log(`Current user:`, this.currentUser());

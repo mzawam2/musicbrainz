@@ -604,21 +604,38 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           if (this.enableYearFilter()) {
             const startYear = this.startYear();
             const endYear = this.endYear();
+            const initialCount = sortedReleases.length;
             
-            sortedReleases = sortedReleases.filter((release: {date?: string}) => {
+            console.log(`🎵 YEAR FILTER: Filtering ${initialCount} releases for ${artistData.artistName} with range ${startYear || 'any'}-${endYear || 'any'}`);
+            
+            sortedReleases = sortedReleases.filter((release: {date?: string, title?: string}) => {
               const releaseYear = this.extractYear(release.date);
               
+              console.log(`🎵 CHECKING: "${release.title}" (${release.date}) -> Year: ${releaseYear}`);
+              
               // Skip releases without year information when filtering
-              if (releaseYear === null) return false;
+              if (releaseYear === null) {
+                console.log(`🎵 EXCLUDED: No year data for "${release.title}"`);
+                return false;
+              }
               
               // Apply start year filter
-              if (startYear !== null && releaseYear < startYear) return false;
+              if (startYear !== null && releaseYear < startYear) {
+                console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is before start year ${startYear}`);
+                return false;
+              }
               
               // Apply end year filter
-              if (endYear !== null && releaseYear > endYear) return false;
+              if (endYear !== null && releaseYear > endYear) {
+                console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is after end year ${endYear}`);
+                return false;
+              }
               
+              console.log(`🎵 INCLUDED: "${release.title}" (${releaseYear}) passes filter`);
               return true;
             });
+            
+            console.log(`🎵 YEAR FILTER RESULT: ${sortedReleases.length}/${initialCount} releases kept for ${artistData.artistName}`);
           }
 
           // Apply sorting if specified
@@ -665,7 +682,12 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       // Create the playlist request
       const request: PlaylistCreationRequest = {
         labelName: selectedLabel.name,
-        releases: playlistReleases
+        releases: playlistReleases,
+        yearFilter: {
+          enabled: this.enableYearFilter(),
+          startYear: this.startYear(),
+          endYear: this.endYear()
+        }
       };
 
       console.log('🎵 Creating Spotify playlist with request - ONLY Spotify API calls from here:', request);
