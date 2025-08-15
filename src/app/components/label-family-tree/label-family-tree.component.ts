@@ -60,6 +60,10 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   createdPlaylist = signal<SpotifyPlaylist | null>(null);
   tracksPerAlbum = signal(5); // Default number of tracks per album
   useAllTracks = signal(false); // Whether to use all tracks from each album
+  albumSortOrder = signal<'none' | 'year-asc' | 'year-desc'>('none'); // Album sorting preference
+  startYear = signal<number | null>(null); // Year range filter start
+  endYear = signal<number | null>(null); // Year range filter end
+  enableYearFilter = signal(false); // Whether year filtering is enabled
   
   // Cache for all releases from the family tree
   allReleases = signal<any[]>([]);
@@ -76,6 +80,37 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     }
     const count = this.tracksPerAlbum();
     return `${count} track${count === 1 ? '' : 's'} from each album will be included`;
+  });
+
+  // Computed property for sort mode description
+  sortModeDescription = computed(() => {
+    const sortOrder = this.albumSortOrder();
+    switch (sortOrder) {
+      case 'year-asc':
+        return 'Albums sorted by release year (oldest first)';
+      case 'year-desc':
+        return 'Albums sorted by release year (newest first)';
+      case 'none':
+      default:
+        return 'Albums in original order';
+    }
+  });
+
+  // Computed property for year filter description
+  yearFilterDescription = computed(() => {
+    if (!this.enableYearFilter()) {
+      return 'All years included';
+    }
+    const start = this.startYear();
+    const end = this.endYear();
+    if (start && end) {
+      return `Albums from ${start} to ${end}`;
+    } else if (start) {
+      return `Albums from ${start} onwards`;
+    } else if (end) {
+      return `Albums up to ${end}`;
+    }
+    return 'Year filter enabled but no range set';
   });
 
   constructor() {
@@ -562,16 +597,58 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         console.log(`🎵 Using cached releases for artist: ${artistData.artistName} - NO API CALLS`);
         
         if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
-          // Use the cached release details - filter for Albums and EPs
-          const artistReleases = artistData.releaseDetails
+          // Use the cached release details - filter for Albums and EPs and apply sorting
+          let sortedReleases = [...artistData.releaseDetails];
+          
+          // Apply year filtering if enabled
+          if (this.enableYearFilter()) {
+            const startYear = this.startYear();
+            const endYear = this.endYear();
+            
+            sortedReleases = sortedReleases.filter((release: {date?: string}) => {
+              const releaseYear = this.extractYear(release.date);
+              
+              // Skip releases without year information when filtering
+              if (releaseYear === null) return false;
+              
+              // Apply start year filter
+              if (startYear !== null && releaseYear < startYear) return false;
+              
+              // Apply end year filter
+              if (endYear !== null && releaseYear > endYear) return false;
+              
+              return true;
+            });
+          }
+
+          // Apply sorting if specified
+          const sortOrder = this.albumSortOrder();
+          if (sortOrder !== 'none') {
+            sortedReleases.sort((a: {date?: string}, b: {date?: string}) => {
+              const yearA = this.extractYear(a.date);
+              const yearB = this.extractYear(b.date);
+              
+              // Handle cases where year is missing
+              if (yearA === null && yearB === null) return 0;
+              if (yearA === null) return 1; // Put releases without dates at the end
+              if (yearB === null) return -1;
+              
+              return sortOrder === 'year-asc' ? yearA - yearB : yearB - yearA;
+            });
+          }
+          
+          const artistReleases = sortedReleases
               .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
               artistName: artistData.artistName,
               releaseName: release.title,
               releaseId: release.id,
+              releaseDate: release.date,
               trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum() // Use all tracks or user-specified count
             }));
           
-          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} - NO API CALLS`);
+          const filterInfo = this.enableYearFilter() ? 
+            ` filtered: ${this.startYear() || 'any'}-${this.endYear() || 'any'},` : '';
+          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} (${filterInfo} sorted: ${sortOrder}) - NO API CALLS`);
           playlistReleases.push(...artistReleases);
         } else {
           console.log(`🎵 No cached release details found for ${artistData.artistName}`);
@@ -650,5 +727,53 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
    */
   getEffectiveTrackCount(): string {
     return this.useAllTracks() ? 'all' : this.tracksPerAlbum().toString();
+  }
+
+  /**
+   * Update the album sort order
+   */
+  updateAlbumSortOrder(sortOrder: 'none' | 'year-asc' | 'year-desc'): void {
+    this.albumSortOrder.set(sortOrder);
+  }
+
+  /**
+   * Toggle year filter on/off
+   */
+  toggleYearFilter(): void {
+    this.enableYearFilter.set(!this.enableYearFilter());
+  }
+
+  /**
+   * Update start year with validation
+   */
+  updateStartYear(year: number | null): void {
+    if (year === null || (year >= 1900 && year <= new Date().getFullYear() + 10)) {
+      this.startYear.set(year);
+    }
+  }
+
+  /**
+   * Update end year with validation
+   */
+  updateEndYear(year: number | null): void {
+    if (year === null || (year >= 1900 && year <= new Date().getFullYear() + 10)) {
+      this.endYear.set(year);
+    }
+  }
+
+  /**
+   * Get current year for template use
+   */
+  getCurrentYear(): number {
+    return new Date().getFullYear();
+  }
+
+  /**
+   * Extract year from date string (handles YYYY, YYYY-MM, YYYY-MM-DD formats)
+   */
+  private extractYear(dateStr?: string): number | null {
+    if (!dateStr) return null;
+    const yearMatch = dateStr.match(/^(\d{4})/);
+    return yearMatch ? parseInt(yearMatch[1], 10) : null;
   }
 }

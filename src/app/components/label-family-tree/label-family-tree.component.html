@@ -124,6 +124,62 @@
               <p class="track-mode-description">{{ trackModeDescription() }}</p>
             </div>
             
+            <div class="album-sort-control">
+              <label for="album-sort">Album order:</label>
+              <select 
+                id="album-sort"
+                [value]="albumSortOrder()"
+                (change)="updateAlbumSortOrder($any($event.target).value)"
+                class="album-sort-select">
+                <option value="none">Original order</option>
+                <option value="year-asc">By year (oldest first)</option>
+                <option value="year-desc">By year (newest first)</option>
+              </select>
+              <p class="sort-mode-description">{{ sortModeDescription() }}</p>
+            </div>
+
+            <div class="year-filter-control">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="enableYearFilter()"
+                  (change)="toggleYearFilter()"
+                  class="year-filter-checkbox">
+                <span class="checkbox-text">Filter by release year</span>
+              </label>
+              
+              @if (enableYearFilter()) {
+                <div class="year-range-inputs">
+                  <div class="year-input-group">
+                    <label for="start-year">From:</label>
+                    <input 
+                      id="start-year"
+                      type="number"
+                      min="1900"
+                      [max]="getCurrentYear() + 10"
+                      placeholder="e.g. 1980"
+                      [value]="startYear() || ''"
+                      (input)="updateStartYear($any($event.target).value ? +$any($event.target).value : null)"
+                      class="year-input">
+                  </div>
+                  <div class="year-input-group">
+                    <label for="end-year">To:</label>
+                    <input 
+                      id="end-year"
+                      type="number"
+                      min="1900"
+                      [max]="getCurrentYear() + 10"
+                      placeholder="e.g. 2000"
+                      [value]="endYear() || ''"
+                      (input)="updateEndYear($any($event.target).value ? +$any($event.target).value : null)"
+                      class="year-input">
+                  </div>
+                </div>
+              }
+              
+              <p class="year-filter-description">{{ yearFilterDescription() }}</p>
+            </div>
+            
             <button 
               class="spotify-btn"
               (click)="createSpotifyPlaylistFromSelectedLabel()"
