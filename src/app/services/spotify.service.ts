@@ -408,8 +408,8 @@ export class SpotifyService {
       }) as any;
     }
 
-    const playlistName = `${request.labelName} - Label Playlist`;
-    const description = `All of the releases from ${request.labelName}, created on ${new Date().toLocaleDateString()} `;
+    const playlistName = `${request.labelName} - Label Archive`;
+    const description = `All of the releases from ${request.labelName}`;
 
     console.log(`Creating playlist: ${playlistName} with ${request.releases.length} releases`);
     console.log(`Current user:`, this.currentUser());
