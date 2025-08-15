@@ -2,10 +2,69 @@
   <nav class="main-nav">
     <div class="nav-container">
       <div class="nav-brand">
-        <h1>Vinly Lens</h1>
+        <h1>Vinyl Lens<svg class="vinyl-icon" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <!-- Outer edge shadow -->
+            <circle cx="202" cy="202" r="198" fill="#000" opacity="0.3" />
+
+            <!-- Main record -->
+            <circle cx="200" cy="200" r="190" fill="#1a1a1a" />
+
+            <!-- Vinyl grooves (concentric circles) -->
+            <g fill="none" stroke="#333" stroke-width="0.5" opacity="0.6">
+              <circle cx="200" cy="200" r="180" />
+              <circle cx="200" cy="200" r="170" />
+              <circle cx="200" cy="200" r="160" />
+              <circle cx="200" cy="200" r="150" />
+              <circle cx="200" cy="200" r="140" />
+              <circle cx="200" cy="200" r="130" />
+              <circle cx="200" cy="200" r="120" />
+              <circle cx="200" cy="200" r="110" />
+              <circle cx="200" cy="200" r="100" />
+              <circle cx="200" cy="200" r="90" />
+              <circle cx="200" cy="200" r="80" />
+              <circle cx="200" cy="200" r="70" />
+            </g>
+
+            <!-- More subtle inner grooves -->
+            <g fill="none" stroke="#444" stroke-width="0.3" opacity="0.4">
+              <circle cx="200" cy="200" r="175" />
+              <circle cx="200" cy="200" r="165" />
+              <circle cx="200" cy="200" r="155" />
+              <circle cx="200" cy="200" r="145" />
+              <circle cx="200" cy="200" r="135" />
+              <circle cx="200" cy="200" r="125" />
+              <circle cx="200" cy="200" r="115" />
+              <circle cx="200" cy="200" r="105" />
+              <circle cx="200" cy="200" r="95" />
+              <circle cx="200" cy="200" r="85" />
+              <circle cx="200" cy="200" r="75" />
+            </g>
+
+            <!-- Center label -->
+            <circle cx="200" cy="200" r="55" fill="#8B0000" />
+
+            <!-- Label gradient for depth -->
+            <defs>
+              <radialGradient id="labelGrad" cx="0.3" cy="0.3">
+                <stop offset="0%" stop-color="#B22222" />
+                <stop offset="70%" stop-color="#8B0000" />
+                <stop offset="100%" stop-color="#5D0000" />
+              </radialGradient>
+            </defs>
+
+            <circle cx="200" cy="200" r="55" fill="url(#labelGrad)" />
+
+
+
+            <!-- Center hole -->
+            <circle cx="200" cy="200" r="8" fill="#000" />
+
+            <!-- Highlight on record for shininess -->
+            <ellipse cx="160" cy="140" rx="40" ry="15" fill="#333" opacity="0.3" transform="rotate(-30 160 140)" />
+          </svg></h1>
         <p>Discover artists, labels, and their connections</p>
       </div>
-      
+
       <div class="nav-links">
         <a routerLink="/discography" routerLinkActive="active" class="nav-link">
           <span class="nav-text">Artist Discography</span>

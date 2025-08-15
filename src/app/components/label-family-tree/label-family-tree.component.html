@@ -50,7 +50,6 @@
       <div class="success-content">
         <h4>✓ Spotify Playlist Created!</h4>
         <p><strong>{{ createdPlaylist()?.name }}</strong></p>
-        <p>{{ createdPlaylist()?.tracks?.total || 0 }} songs added</p>
         <a 
           [href]="createdPlaylist()?.external_urls?.spotify" 
           target="_blank" 
