@@ -44,6 +44,24 @@
 
   </div>
 
+  <!-- Spotify Success Message -->
+  @if (createdPlaylist()) {
+    <div class="spotify-success">
+      <div class="success-content">
+        <h4>✓ Spotify Playlist Created!</h4>
+        <p><strong>{{ createdPlaylist()?.name }}</strong></p>
+        <p>{{ createdPlaylist()?.tracks?.total || 0 }} songs added</p>
+        <a 
+          [href]="createdPlaylist()?.external_urls?.spotify" 
+          target="_blank" 
+          class="open-spotify-link">
+          Open in Spotify
+        </a>
+      </div>
+      <button class="close-success" (click)="createdPlaylist.set(null)" type="button">×</button>
+    </div>
+  }
+
   <!-- Error Display -->
   @if (error()) {
   <div class="error-message">
@@ -65,9 +83,6 @@
       <div class="tree-header-actions">
         <div class="tree-stats">
           <h3>{{ selectedLabel()?.name }} Family Tree</h3>
-          @if (familyTree()) {
-            <p>{{ familyTree()!.totalLabels }} labels • {{ familyTree()!.totalArtists }} artists</p>
-          }
         </div>
         
         <div class="tree-actions">
@@ -124,16 +139,6 @@
               }
             </button>
           </div>
-          
-          <!-- Export Controls -->
-          <div class="export-controls">
-            <button class="export-btn" (click)="exportTree('json')" title="Export as JSON">
-              Export JSON
-            </button>
-            <button class="export-btn" (click)="exportTree('csv')" title="Export as CSV">
-              Export CSV
-            </button>
-          </div>
         </div>
       </div>
 
@@ -143,24 +148,6 @@
         <app-tree-node [node]="familyTree()!.tree" (nodeSelected)="selectNode($event)"></app-tree-node>
         }
       </div>
-      
-      <!-- Spotify Success Message -->
-      @if (createdPlaylist()) {
-        <div class="spotify-success">
-          <div class="success-content">
-            <h4>✓ Spotify Playlist Created!</h4>
-            <p><strong>{{ createdPlaylist()?.name }}</strong></p>
-            <p>{{ createdPlaylist()?.tracks?.total || 0 }} songs added</p>
-            <a 
-              [href]="createdPlaylist()?.external_urls?.spotify" 
-              target="_blank" 
-              class="open-spotify-link">
-              Open in Spotify
-            </a>
-          </div>
-          <button class="close-success" (click)="createdPlaylist.set(null)" type="button">×</button>
-        </div>
-      }
     </div>
     } @else if (selectedLabel()) {
     <div class="no-tree-message">

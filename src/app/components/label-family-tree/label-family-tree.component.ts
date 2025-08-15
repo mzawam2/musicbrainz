@@ -285,11 +285,11 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           console.log(`${indent}  Releases array:`, artistEntry.releases);
           
           if (artistEntry.releases && artistEntry.releases.length > 0) {
-            console.log(`${indent}  Adding ${artistEntry.releases.length} releases for ${artistEntry.artist.name}`);
+            console.log(`${indent}  Adding all ${artistEntry.releases.length} releases for ${artistEntry.artist.name}`);
             allArtistReleases.push({
               artistName: artistEntry.artist.name,
-              releaseIds: artistEntry.releases.slice(0, 10), // Limit release IDs per artist
-              releaseDetails: artistEntry.releaseDetails?.slice(0, 10), // Include cached release details
+              releaseIds: artistEntry.releases, // Process all releases per artist
+              releaseDetails: artistEntry.releaseDetails, // Include all cached release details
               labelName: node.label.name
             });
           } else {
@@ -558,7 +558,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       const playlistReleases: any[] = [];
       
       // Process each artist using cached release data
-      for (const artistData of cachedArtistData.slice(0, 10)) { // Limit to 10 artists
+      for (const artistData of cachedArtistData) { // Process all artists
         console.log(`🎵 Using cached releases for artist: ${artistData.artistName} - NO API CALLS`);
         
         if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {

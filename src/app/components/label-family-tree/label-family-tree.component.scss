@@ -580,7 +580,7 @@
 // Spotify success message
 .spotify-success {
   position: fixed;
-  bottom: 2rem;
+  top: 2rem;
   right: 2rem;
   background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
   color: white;
@@ -706,7 +706,7 @@
     }
 
     .spotify-success {
-      bottom: 1rem;
+      top: 1rem;
       right: 1rem;
       left: 1rem;
       max-width: none;
