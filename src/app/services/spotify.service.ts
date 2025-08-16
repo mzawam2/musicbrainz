@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, map, of, tap, firstValueFrom, switchMap, expand, reduce, EMPTY, from, throwError } from 'rxjs';
+import { Observable, catchError, map, of, tap, firstValueFrom, switchMap, expand, reduce, EMPTY, from, throwError, delay, timer } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface SpotifyAuthConfig {
@@ -88,6 +88,20 @@ export interface PlaylistCreationRequest {
   };
 }
 
+export interface RateLimitInfo {
+  retryAfter: number;
+  timestamp: number;
+  isRateLimited: boolean;
+}
+
+export interface QueuedRequest<T> {
+  id: string;
+  requestFn: () => Observable<T>;
+  priority: 'high' | 'medium' | 'low';
+  resolve: (value: T) => void;
+  reject: (error: any) => void;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -101,6 +115,17 @@ export class SpotifyService {
   public isAuthenticated = signal<boolean>(false);
   public currentUser = signal<SpotifyUser | null>(null);
   public accessToken = signal<string | null>(null);
+  public rateLimitInfo = signal<RateLimitInfo>({ retryAfter: 0, timestamp: 0, isRateLimited: false });
+  
+  // Request queue for managing API calls
+  private requestQueue: QueuedRequest<any>[] = [];
+  private isProcessingQueue = false;
+  private queueProcessingInterval = 100; // Base interval between requests (ms)
+  
+  // Rate limit monitoring
+  private requestCount = 0;
+  private requestCountResetTime = Date.now() + 30000; // 30-second window
+  private maxRequestsLogged = false;
   
   private config: SpotifyAuthConfig = {
     clientId: environment.spotify.clientId,
@@ -191,10 +216,13 @@ export class SpotifyService {
    * Search for tracks on Spotify
    */
   searchTracks(query: string, limit: number = 20): Observable<SpotifyTrack[]> {
+    // Spotify API has a maximum limit of 50 for search results
+    const apiLimit = Math.min(limit, 50);
+    
     const params = new HttpParams()
       .set('q', query)
       .set('type', 'track')
-      .set('limit', limit.toString());
+      .set('limit', apiLimit.toString());
 
     return this.makeAuthenticatedRequest(() =>
       this.http.get<SpotifySearchResult>(`${this.SPOTIFY_API_BASE}/search`, {
@@ -214,10 +242,13 @@ export class SpotifyService {
    * Search for albums on Spotify
    */
   searchAlbums(query: string, limit: number = 20): Observable<SpotifyAlbum[]> {
+    // Spotify API has a maximum limit of 50 for search results
+    const apiLimit = Math.min(limit, 50);
+    
     const params = new HttpParams()
       .set('q', query)
       .set('type', 'album')
-      .set('limit', limit.toString());
+      .set('limit', apiLimit.toString());
 
     return this.makeAuthenticatedRequest(() =>
       this.http.get<SpotifySearchResult>(`${this.SPOTIFY_API_BASE}/search`, {
@@ -237,8 +268,11 @@ export class SpotifyService {
    * Get all tracks from a Spotify album
    */
   getAlbumTracks(albumId: string, limit: number = 50, offset: number = 0): Observable<SpotifyTrack[]> {
+    // Spotify API has a maximum limit of 50 for album tracks
+    const apiLimit = Math.min(limit, 50);
+    
     const params = new HttpParams()
-      .set('limit', limit.toString())
+      .set('limit', apiLimit.toString())
       .set('offset', offset.toString());
 
     return this.makeAuthenticatedRequest(() =>
@@ -255,7 +289,7 @@ export class SpotifyService {
             this.http.get<SpotifyAlbumTracksResponse>(`${this.SPOTIFY_API_BASE}/albums/${albumId}/tracks`, {
               headers: this.getAuthHeaders(),
               params: new HttpParams()
-                .set('limit', limit.toString())
+                .set('limit', apiLimit.toString())
                 .set('offset', nextOffset.toString())
             })
           );
@@ -499,12 +533,14 @@ export class SpotifyService {
       try {
         console.log(`Getting tracks for ${release.artistName} - ${release.releaseName} (requesting ${release.trackCount} tracks)`);
         
-        // Get all tracks from the album
-        const allAlbumTracks = await firstValueFrom(this.getTracksFromAlbum(release.artistName, release.releaseName));
+        // Get all tracks from the album using queue for rate limiting
+        const allAlbumTracks = await this.queueRequest(() => 
+          this.getTracksFromAlbum(release.artistName, release.releaseName), 'medium'
+        ) as SpotifyTrack[];
         
         if (allAlbumTracks.length > 0) {
-          // Take the requested number of tracks (or all if requesting more than available)
-          const selectedTracks = allAlbumTracks.slice(0, release.trackCount);
+          // Take the requested number of tracks (or all tracks if trackCount is 999 or higher)
+          const selectedTracks = release.trackCount >= 999 ? allAlbumTracks : allAlbumTracks.slice(0, release.trackCount);
           let addedCount = 0;
           let duplicateCount = 0;
           
@@ -525,11 +561,16 @@ export class SpotifyService {
           
           // Fallback to original search method if album not found
           const searchQuery = `artist:"${release.artistName}" album:"${release.releaseName}"`;
-          const tracks = await firstValueFrom(this.searchTracks(searchQuery, release.trackCount));
+          const searchLimit = release.trackCount >= 999 ? 50 : Math.min(release.trackCount, 50);
+          const tracks = await this.queueRequest(() => 
+            this.searchTracks(searchQuery, searchLimit), 'low'
+          ) as SpotifyTrack[];
           let addedCount = 0;
           let duplicateCount = 0;
           
-          for (const track of tracks?.slice(0, release.trackCount) || []) {
+          // Use all tracks if trackCount is 999+, otherwise slice to the requested count
+          const selectedTracks = release.trackCount >= 999 ? tracks : tracks.slice(0, release.trackCount);
+          for (const track of selectedTracks) {
             if (!trackUriSet.has(track.uri)) {
               trackUriSet.add(track.uri);
               addedTracks.set(track.uri, `${release.artistName} - ${release.releaseName}`);
@@ -542,9 +583,6 @@ export class SpotifyService {
           
           console.log(`Added ${addedCount} tracks from search for ${release.releaseName} (${duplicateCount} duplicates skipped)`);
         }
-        
-        // Add delay to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
         console.error(`Failed to find tracks for ${release.artistName} - ${release.releaseName}:`, error);
       }
@@ -558,12 +596,9 @@ export class SpotifyService {
       const batchSize = 100;
       for (let i = 0; i < uniqueTrackUris.length; i += batchSize) {
         const batch = uniqueTrackUris.slice(i, i + batchSize);
-        await firstValueFrom(this.addTracksToPlaylist(playlistId, batch));
-        
-        // Add delay between batches
-        if (i + batchSize < uniqueTrackUris.length) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
+        await this.queueRequest(() => 
+          this.addTracksToPlaylist(playlistId, batch), 'high'
+        ) as boolean;
       }
     }
   }
@@ -587,6 +622,59 @@ export class SpotifyService {
   }
 
   /**
+   * Check if error is a rate limit error
+   */
+  private isRateLimitError(error: any): boolean {
+    return error instanceof HttpErrorResponse && error.status === 429;
+  }
+
+  /**
+   * Extract retry-after value from rate limit error
+   */
+  private getRetryAfterSeconds(error: HttpErrorResponse): number {
+    const retryAfter = error.headers.get('Retry-After');
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      return isNaN(seconds) ? 1 : seconds;
+    }
+    return 1; // Default to 1 second if header is missing
+  }
+
+  /**
+   * Handle rate limit errors with exponential backoff
+   */
+  private handleRateLimitError<T>(error: HttpErrorResponse, requestFn: () => Observable<T>, attempt: number = 1): Observable<T> {
+    const retryAfterSeconds = this.getRetryAfterSeconds(error);
+    const maxAttempts = 3;
+    
+    // Update rate limit info signal
+    this.rateLimitInfo.set({
+      retryAfter: retryAfterSeconds,
+      timestamp: Date.now(),
+      isRateLimited: true
+    });
+
+    console.warn(`Spotify rate limit hit. Retrying after ${retryAfterSeconds} seconds (attempt ${attempt}/${maxAttempts})`);
+
+    if (attempt >= maxAttempts) {
+      console.error('Max retry attempts reached for rate limit');
+      return throwError(() => new Error(`Rate limit exceeded after ${maxAttempts} attempts`));
+    }
+
+    // Calculate delay with exponential backoff
+    const baseDelay = retryAfterSeconds * 1000;
+    const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), 30000); // Cap at 30 seconds
+
+    return timer(exponentialDelay).pipe(
+      switchMap(() => {
+        // Clear rate limit flag after delay
+        this.rateLimitInfo.set({ retryAfter: 0, timestamp: 0, isRateLimited: false });
+        return this.makeAuthenticatedRequestWithRetry(requestFn, attempt + 1);
+      })
+    );
+  }
+
+  /**
    * Handle authorization errors by triggering reauth flow
    */
   private handleAuthError(error: HttpErrorResponse): Observable<never> {
@@ -597,17 +685,125 @@ export class SpotifyService {
   }
 
   /**
-   * Create an HTTP request with automatic reauth on 401/403 errors
+   * Create an HTTP request with automatic reauth on 401/403 errors and rate limit handling
    */
   private makeAuthenticatedRequest<T>(requestFn: () => Observable<T>): Observable<T> {
+    return this.makeAuthenticatedRequestWithRetry(requestFn, 1);
+  }
+
+  /**
+   * Track request count for monitoring
+   */
+  private trackRequest(): void {
+    const now = Date.now();
+    
+    // Reset counter if window has passed
+    if (now > this.requestCountResetTime) {
+      this.requestCount = 0;
+      this.requestCountResetTime = now + 30000;
+      this.maxRequestsLogged = false;
+    }
+    
+    this.requestCount++;
+    
+    // Log warnings at certain thresholds
+    if (this.requestCount === 50 && !this.maxRequestsLogged) {
+      console.warn(`Spotify API: Made ${this.requestCount} requests in current 30-second window`);
+    } else if (this.requestCount === 80 && !this.maxRequestsLogged) {
+      console.warn(`Spotify API: Made ${this.requestCount} requests in current 30-second window - approaching rate limit`);
+    } else if (this.requestCount >= 100 && !this.maxRequestsLogged) {
+      console.warn(`Spotify API: Made ${this.requestCount} requests in current 30-second window - likely to hit rate limit soon`);
+      this.maxRequestsLogged = true;
+    }
+  }
+
+  /**
+   * Internal method for authenticated requests with retry logic
+   */
+  private makeAuthenticatedRequestWithRetry<T>(requestFn: () => Observable<T>, attempt: number): Observable<T> {
+    this.trackRequest();
+    
     return requestFn().pipe(
+      tap(() => {
+        // Log successful request
+        console.debug(`Spotify API request successful (${this.requestCount} requests in current window)`);
+      }),
       catchError(error => {
         if (this.isAuthError(error)) {
           return this.handleAuthError(error);
         }
+        if (this.isRateLimitError(error)) {
+          console.warn(`Spotify API rate limit hit after ${this.requestCount} requests`);
+          return this.handleRateLimitError(error, requestFn, attempt);
+        }
         return throwError(() => error);
       })
     );
+  }
+
+  /**
+   * Add request to queue for batch processing
+   */
+  private queueRequest<T>(requestFn: () => Observable<T>, priority: 'high' | 'medium' | 'low' = 'medium'): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const queuedRequest: QueuedRequest<T> = {
+        id: this.generateRandomString(8),
+        requestFn,
+        priority,
+        resolve,
+        reject
+      };
+
+      // Insert based on priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const insertIndex = this.requestQueue.findIndex(req => 
+        priorityOrder[req.priority] > priorityOrder[priority]
+      );
+      
+      if (insertIndex === -1) {
+        this.requestQueue.push(queuedRequest);
+      } else {
+        this.requestQueue.splice(insertIndex, 0, queuedRequest);
+      }
+
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process the request queue with rate limiting
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const request = this.requestQueue.shift()!;
+      
+      try {
+        // Check if we're currently rate limited
+        const rateLimitInfo = this.rateLimitInfo();
+        if (rateLimitInfo.isRateLimited) {
+          const timeRemaining = rateLimitInfo.retryAfter * 1000 - (Date.now() - rateLimitInfo.timestamp);
+          if (timeRemaining > 0) {
+            await new Promise(resolve => setTimeout(resolve, timeRemaining));
+          }
+        }
+
+        const result = await firstValueFrom(this.makeAuthenticatedRequestWithRetry(request.requestFn, 1));
+        request.resolve(result);
+
+        // Add delay between requests to be respectful
+        await new Promise(resolve => setTimeout(resolve, this.queueProcessingInterval));
+      } catch (error) {
+        request.reject(error);
+      }
+    }
+
+    this.isProcessingQueue = false;
   }
 
   /**
@@ -659,5 +855,25 @@ export class SpotifyService {
       text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
+  }
+
+  /**
+   * Get current rate limit status for UI
+   */
+  getRateLimitStatus(): { 
+    requestCount: number; 
+    windowTimeRemaining: number; 
+    isRateLimited: boolean; 
+    queueLength: number;
+  } {
+    const now = Date.now();
+    const windowTimeRemaining = Math.max(0, this.requestCountResetTime - now);
+    
+    return {
+      requestCount: this.requestCount,
+      windowTimeRemaining,
+      isRateLimited: this.rateLimitInfo().isRateLimited,
+      queueLength: this.requestQueue.length
+    };
   }
 }
