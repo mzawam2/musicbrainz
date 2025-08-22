@@ -238,15 +238,22 @@ export class SpotifyService {
     );
   }
 
+
   /**
    * Search for albums on Spotify
    */
-  searchAlbums(query: string, limit: number = 20): Observable<SpotifyAlbum[]> {
+  searchAlbums(query: string, limit: number = 20, artist?: string): Observable<SpotifyAlbum[]> {
     // Spotify API has a maximum limit of 50 for search results
     const apiLimit = Math.min(limit, 50);
     
+    // Construct search query with artist if provided
+    let searchQuery = query;
+    if (artist) {
+      searchQuery = `artist:"${artist}" album:"${query}"`;
+    }
+    
     const params = new HttpParams()
-      .set('q', query)
+      .set('q', searchQuery)
       .set('type', 'album')
       .set('limit', apiLimit.toString());
 
@@ -309,25 +316,29 @@ export class SpotifyService {
    * Find a Spotify album by artist and album name, then get all its tracks
    */
   getTracksFromAlbum(artistName: string, albumName: string): Observable<SpotifyTrack[]> {
-    const searchQuery = `artist:"${artistName}" album:"${albumName}"`;
-    
-    return this.searchAlbums(searchQuery, 10).pipe(
+    return this.searchAlbums(albumName, 10, artistName).pipe(
       switchMap(albums => {
         if (albums.length === 0) {
           console.warn(`No album found for: ${artistName} - ${albumName}`);
           return of([]);
         }
         
-        // Find the best matching album (exact name match preferred)
-        const exactMatch = albums.find(album => 
-          album.name.toLowerCase() === albumName.toLowerCase() &&
-          album.artists.some(artist => artist.name.toLowerCase() === artistName.toLowerCase())
-        );
+        // Strict exact matching: require exact album name AND exact artist name match
+        const exactMatch = albums.find(album => {
+          const albumNameMatch = album.name === albumName;
+          const artistNameMatch = album.artists.some(artist => artist.name === artistName);
+          return albumNameMatch && artistNameMatch;
+        });
         
-        const selectedAlbum = exactMatch || albums[0];
-        console.log(`Found album: ${selectedAlbum.name} by ${selectedAlbum.artists[0]?.name} (${selectedAlbum.total_tracks} tracks)`);
+        if (!exactMatch) {
+          console.warn(`No exact match found for: ${artistName} - ${albumName}. Available albums:`, 
+            albums.map(a => `"${a.name}" by ${a.artists.map(ar => ar.name).join(', ')}`));
+          return of([]);
+        }
         
-        return this.getAlbumTracks(selectedAlbum.id);
+        console.log(`Found exact album match: ${exactMatch.name} by ${exactMatch.artists[0]?.name} (${exactMatch.total_tracks} tracks)`);
+        
+        return this.getAlbumTracks(exactMatch.id);
       }),
       catchError(error => {
         console.error(`Failed to get tracks for ${artistName} - ${albumName}:`, error);
@@ -340,21 +351,26 @@ export class SpotifyService {
    * Get album information including track count
    */
   getAlbumInfo(artistName: string, albumName: string): Observable<SpotifyAlbum | null> {
-    const searchQuery = `artist:"${artistName}" album:"${albumName}"`;
-    
-    return this.searchAlbums(searchQuery, 10).pipe(
+    return this.searchAlbums(albumName, 10, artistName).pipe(
       map(albums => {
         if (albums.length === 0) {
           return null;
         }
         
-        // Find the best matching album (exact name match preferred)
-        const exactMatch = albums.find(album => 
-          album.name.toLowerCase() === albumName.toLowerCase() &&
-          album.artists.some(artist => artist.name.toLowerCase() === artistName.toLowerCase())
-        );
+        // Strict exact matching: require exact album name AND exact artist name match
+        const exactMatch = albums.find(album => {
+          const albumNameMatch = album.name === albumName;
+          const artistNameMatch = album.artists.some(artist => artist.name === artistName);
+          return albumNameMatch && artistNameMatch;
+        });
         
-        return exactMatch || albums[0];
+        if (!exactMatch) {
+          console.warn(`No exact album info match found for: ${artistName} - ${albumName}. Available albums:`, 
+            albums.map(a => `"${a.name}" by ${a.artists.map(ar => ar.name).join(', ')}`));
+          return null;
+        }
+        
+        return exactMatch;
       }),
       catchError(error => {
         console.error(`Failed to get album info for ${artistName} - ${albumName}:`, error);
@@ -545,6 +561,14 @@ export class SpotifyService {
           let duplicateCount = 0;
           
           for (const track of selectedTracks) {
+            // Final verification: ensure track artist exactly matches release artist
+            const trackArtistMatch = track.artists.some(artist => artist.name === release.artistName);
+            
+            if (!trackArtistMatch) {
+              console.warn(`Skipping track "${track.name}" - artist mismatch. Expected: "${release.artistName}", Got: "${track.artists.map(a => a.name).join(', ')}"`);
+              continue;
+            }
+            
             if (!trackUriSet.has(track.uri)) {
               trackUriSet.add(track.uri);
               addedTracks.set(track.uri, `${release.artistName} - ${release.releaseName}`);
@@ -571,6 +595,14 @@ export class SpotifyService {
           // Use all tracks if trackCount is 999+, otherwise slice to the requested count
           const selectedTracks = release.trackCount >= 999 ? tracks : tracks.slice(0, release.trackCount);
           for (const track of selectedTracks) {
+            // Final verification: ensure track artist exactly matches release artist
+            const trackArtistMatch = track.artists.some(artist => artist.name === release.artistName);
+            
+            if (!trackArtistMatch) {
+              console.warn(`Skipping fallback track "${track.name}" - artist mismatch. Expected: "${release.artistName}", Got: "${track.artists.map(a => a.name).join(', ')}"`);
+              continue;
+            }
+            
             if (!trackUriSet.has(track.uri)) {
               trackUriSet.add(track.uri);
               addedTracks.set(track.uri, `${release.artistName} - ${release.releaseName}`);
@@ -641,7 +673,8 @@ export class SpotifyService {
   }
 
   /**
-   * Handle rate limit errors with exponential backoff
+   * Handl
+   * e rate limit errors with exponential backoff
    */
   private handleRateLimitError<T>(error: HttpErrorResponse, requestFn: () => Observable<T>, attempt: number = 1): Observable<T> {
     const retryAfterSeconds = this.getRetryAfterSeconds(error);
