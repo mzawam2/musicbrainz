@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { Router, NavigationEnd } from '@angular/router';
 import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
 import { of, Subject } from 'rxjs';
@@ -21,7 +21,7 @@ interface HomeComponentState {
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
+  imports: [ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -411,7 +411,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private checkNavigationState(): void {
     // Try multiple ways to get navigation state
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     const navigationState = navigation?.extras?.state;
     const historyState = window.history.state;
     

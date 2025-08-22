@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, effect, ElementRef, ViewChild, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
@@ -23,7 +23,7 @@ interface LabelFamilyTreeComponentState {
 
 @Component({
   selector: 'app-label-family-tree',
-  imports: [CommonModule, ReactiveFormsModule, TreeNodeComponent],
+  imports: [ReactiveFormsModule, TreeNodeComponent],
   templateUrl: './label-family-tree.component.html',
   styleUrls: ['./label-family-tree.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -507,7 +507,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   private checkNavigationState(): void {
     // Try multiple ways to get navigation state
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     const navigationState = navigation?.extras?.state;
     const historyState = window.history.state;
     

@@ -1,5 +1,5 @@
 import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { DiscographyData, EnhancedDiscographyData, EnhancedReleaseGroup } from '../../models/musicbrainz.models';
 import { ReleaseCardComponent } from './release-card/release-card.component';
@@ -7,7 +7,7 @@ import { CollaborationNetworkComponent } from '../collaboration-network/collabor
 
 @Component({
   selector: 'app-discography',
-  imports: [CommonModule, FormsModule, ReleaseCardComponent, CollaborationNetworkComponent],
+  imports: [FormsModule, ReleaseCardComponent, CollaborationNetworkComponent],
   templateUrl: './discography.component.html',
   styleUrl: './discography.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

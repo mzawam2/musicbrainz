@@ -1,11 +1,11 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { SpotifyService } from '../../services/spotify.service';
 
 @Component({
   selector: 'app-spotify-callback',
-  imports: [CommonModule],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="spotify-callback">

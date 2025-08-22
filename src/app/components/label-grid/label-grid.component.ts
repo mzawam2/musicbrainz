@@ -1,12 +1,12 @@
 import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { LabelWithReleaseCount } from '../../models/musicbrainz.models';
 import { LabelCardComponent } from '../label-card/label-card.component';
 
 @Component({
   selector: 'app-label-grid',
-  imports: [CommonModule, LabelCardComponent, FormsModule],
+  imports: [LabelCardComponent, FormsModule],
   templateUrl: './label-grid.component.html',
   styleUrl: './label-grid.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

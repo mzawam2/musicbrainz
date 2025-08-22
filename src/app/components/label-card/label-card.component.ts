@@ -1,11 +1,11 @@
 import { Component, input, output, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { LabelWithReleaseCount } from '../../models/musicbrainz.models';
 
 @Component({
   selector: 'app-label-card',
-  imports: [CommonModule, RouterLink],
+  imports: [RouterLink],
   templateUrl: './label-card.component.html',
   styleUrl: './label-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

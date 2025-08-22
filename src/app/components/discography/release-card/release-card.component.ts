@@ -1,12 +1,12 @@
 import { Component, input, output, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Subject, takeUntil, forkJoin } from 'rxjs';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
 
 @Component({
   selector: 'app-release-card',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './release-card.component.html',
   styleUrl: './release-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

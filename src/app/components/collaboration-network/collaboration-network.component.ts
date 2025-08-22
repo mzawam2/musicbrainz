@@ -1,10 +1,10 @@
 import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CollaborationInfo } from '../../models/musicbrainz.models';
 
 @Component({
   selector: 'app-collaboration-network',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './collaboration-network.component.html',
   styleUrl: './collaboration-network.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
