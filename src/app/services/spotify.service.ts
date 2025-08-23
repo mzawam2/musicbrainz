@@ -313,14 +313,92 @@ export class SpotifyService {
   }
 
   /**
+   * Normalize artist name for matching (remove 'The', trim, lowercase)
+   */
+  private normalizeArtistName(name: string): string {
+    return name.toLowerCase().replace(/^the\s+/i, '').trim();
+  }
+
+  /**
+   * Check if artist matches using music-specific multi-strategy approach
+   */
+  private isArtistMatch(spotifyArtists: Array<{name: string}>, targetArtist: string): boolean {
+    const targetNormalized = this.normalizeArtistName(targetArtist);
+    
+    return spotifyArtists.some(artist => {
+      const artistNormalized = this.normalizeArtistName(artist.name);
+      
+      // Strategy 1: Exact match
+      if (artistNormalized === targetNormalized) {
+        return true;
+      }
+      
+      // Strategy 2: Direct containment
+      if (artistNormalized.includes(targetNormalized) || targetNormalized.includes(artistNormalized)) {
+        return true;
+      }
+      
+      // Strategy 3: Handle common music prefixes/suffixes
+      const musicVariations = [
+        // Remove common collaborations
+        artistNormalized.replace(/\s+(feat\.?|featuring|ft\.?|with|&|\+).*/i, ''),
+        artistNormalized.replace(/\s+(and|x|vs\.?|versus).*/i, ''),
+        // Remove parentheticals and brackets
+        artistNormalized.replace(/\s*\([^)]*\)/g, ''),
+        artistNormalized.replace(/\s*\[[^\]]*\]/g, '')
+      ];
+      
+      if (musicVariations.some(variation => variation.trim() === targetNormalized)) {
+        return true;
+      }
+      
+      // Strategy 4: Core word matching (significant words only)
+      const targetWords = targetNormalized.split(/\s+/).filter(w => w.length > 2); // Ignore short words
+      const artistWords = artistNormalized.split(/\s+/);
+      
+      if (targetWords.length > 0) {
+        const matchedWords = targetWords.filter(word => 
+          artistWords.some(artistWord => artistWord.includes(word) || word.includes(artistWord))
+        );
+        
+        // At least 75% of significant words must match
+        return (matchedWords.length / targetWords.length) >= 0.75;
+      }
+      
+      return false;
+    });
+  }
+
+  /**
    * Find a Spotify album by artist and album name, then get all its tracks
    */
   getTracksFromAlbum(artistName: string, albumName: string): Observable<SpotifyTrack[]> {
     return this.searchAlbums(albumName, 10, artistName).pipe(
       switchMap(albums => {
         if (albums.length === 0) {
-          console.warn(`No album found for: ${artistName} - ${albumName}`);
-          return of([]);
+          console.log(`No album found with artist search, trying album-only search for: ${albumName}`);
+          // Fallback: search by album name only
+          return this.searchAlbums(albumName, 20).pipe(
+            switchMap(fallbackAlbums => {
+              if (fallbackAlbums.length === 0) {
+                console.warn(`No album found at all for: ${artistName} - ${albumName}`);
+                return of([]);
+              }
+              
+              // Find best matching album by artist similarity
+              const matchingAlbum = fallbackAlbums.find(album => 
+                this.isArtistMatch(album.artists, artistName)
+              );
+              
+              if (matchingAlbum) {
+                console.log(`Found matching album via fallback: ${matchingAlbum.name} by ${matchingAlbum.artists[0]?.name} (multi-strategy match)`);
+                return this.getAlbumTracks(matchingAlbum.id);
+              } else {
+                console.warn(`No artist match found in ${fallbackAlbums.length} albums for: ${artistName} - ${albumName}`);
+                return of([]);
+              }
+            })
+          );
         }
         
         const selectedAlbum = albums[0];
@@ -340,12 +418,34 @@ export class SpotifyService {
    */
   getAlbumInfo(artistName: string, albumName: string): Observable<SpotifyAlbum | null> {
     return this.searchAlbums(albumName, 10, artistName).pipe(
-      map(albums => {
+      switchMap(albums => {
         if (albums.length === 0) {
-          return null;
+          console.log(`No album info found with artist search, trying album-only search for: ${albumName}`);
+          // Fallback: search by album name only
+          return this.searchAlbums(albumName, 20).pipe(
+            map(fallbackAlbums => {
+              if (fallbackAlbums.length === 0) {
+                console.warn(`No album info found at all for: ${artistName} - ${albumName}`);
+                return null;
+              }
+              
+              // Find best matching album by artist similarity
+              const matchingAlbum = fallbackAlbums.find(album => 
+                this.isArtistMatch(album.artists, artistName)
+              );
+              
+              if (matchingAlbum) {
+                console.log(`Found matching album info via fallback: ${matchingAlbum.name} by ${matchingAlbum.artists[0]?.name} (multi-strategy match)`);
+                return matchingAlbum;
+              } else {
+                console.warn(`No artist match found in ${fallbackAlbums.length} albums for album info: ${artistName} - ${albumName}`);
+                return null;
+              }
+            })
+          );
         }
         
-        return albums[0];
+        return of(albums[0]);
       }),
       catchError(error => {
         console.error(`Failed to get album info for ${artistName} - ${albumName}:`, error);
