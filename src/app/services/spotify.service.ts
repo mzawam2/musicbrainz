@@ -323,22 +323,10 @@ export class SpotifyService {
           return of([]);
         }
         
-        // Strict exact matching: require exact album name AND exact artist name match
-        const exactMatch = albums.find(album => {
-          const albumNameMatch = album.name === albumName;
-          const artistNameMatch = album.artists.some(artist => artist.name === artistName);
-          return albumNameMatch && artistNameMatch;
-        });
+        const selectedAlbum = albums[0];
+        console.log(`Found album: ${selectedAlbum.name} by ${selectedAlbum.artists[0]?.name} (${selectedAlbum.total_tracks} tracks)`);
         
-        if (!exactMatch) {
-          console.warn(`No exact match found for: ${artistName} - ${albumName}. Available albums:`, 
-            albums.map(a => `"${a.name}" by ${a.artists.map(ar => ar.name).join(', ')}`));
-          return of([]);
-        }
-        
-        console.log(`Found exact album match: ${exactMatch.name} by ${exactMatch.artists[0]?.name} (${exactMatch.total_tracks} tracks)`);
-        
-        return this.getAlbumTracks(exactMatch.id);
+        return this.getAlbumTracks(selectedAlbum.id);
       }),
       catchError(error => {
         console.error(`Failed to get tracks for ${artistName} - ${albumName}:`, error);
@@ -357,20 +345,7 @@ export class SpotifyService {
           return null;
         }
         
-        // Strict exact matching: require exact album name AND exact artist name match
-        const exactMatch = albums.find(album => {
-          const albumNameMatch = album.name === albumName;
-          const artistNameMatch = album.artists.some(artist => artist.name === artistName);
-          return albumNameMatch && artistNameMatch;
-        });
-        
-        if (!exactMatch) {
-          console.warn(`No exact album info match found for: ${artistName} - ${albumName}. Available albums:`, 
-            albums.map(a => `"${a.name}" by ${a.artists.map(ar => ar.name).join(', ')}`));
-          return null;
-        }
-        
-        return exactMatch;
+        return albums[0];
       }),
       catchError(error => {
         console.error(`Failed to get album info for ${artistName} - ${albumName}:`, error);
@@ -561,14 +536,6 @@ export class SpotifyService {
           let duplicateCount = 0;
           
           for (const track of selectedTracks) {
-            // Final verification: ensure track artist exactly matches release artist
-            const trackArtistMatch = track.artists.some(artist => artist.name === release.artistName);
-            
-            if (!trackArtistMatch) {
-              console.warn(`Skipping track "${track.name}" - artist mismatch. Expected: "${release.artistName}", Got: "${track.artists.map(a => a.name).join(', ')}"`);
-              continue;
-            }
-            
             if (!trackUriSet.has(track.uri)) {
               trackUriSet.add(track.uri);
               addedTracks.set(track.uri, `${release.artistName} - ${release.releaseName}`);
@@ -581,39 +548,7 @@ export class SpotifyService {
           
           console.log(`Added ${addedCount} tracks from ${release.releaseName} (${allAlbumTracks.length} total tracks available, ${duplicateCount} duplicates skipped)`);
         } else {
-          console.warn(`No tracks found for ${release.artistName} - ${release.releaseName}, falling back to search`);
-          
-          // Fallback to original search method if album not found
-          const searchQuery = `artist:"${release.artistName}" album:"${release.releaseName}"`;
-          const searchLimit = release.trackCount >= 999 ? 50 : Math.min(release.trackCount, 50);
-          const tracks = await this.queueRequest(() => 
-            this.searchTracks(searchQuery, searchLimit), 'low'
-          ) as SpotifyTrack[];
-          let addedCount = 0;
-          let duplicateCount = 0;
-          
-          // Use all tracks if trackCount is 999+, otherwise slice to the requested count
-          const selectedTracks = release.trackCount >= 999 ? tracks : tracks.slice(0, release.trackCount);
-          for (const track of selectedTracks) {
-            // Final verification: ensure track artist exactly matches release artist
-            const trackArtistMatch = track.artists.some(artist => artist.name === release.artistName);
-            
-            if (!trackArtistMatch) {
-              console.warn(`Skipping fallback track "${track.name}" - artist mismatch. Expected: "${release.artistName}", Got: "${track.artists.map(a => a.name).join(', ')}"`);
-              continue;
-            }
-            
-            if (!trackUriSet.has(track.uri)) {
-              trackUriSet.add(track.uri);
-              addedTracks.set(track.uri, `${release.artistName} - ${release.releaseName}`);
-              addedCount++;
-            } else {
-              duplicateCount++;
-              console.log(`Skipping duplicate track: "${track.name}" by ${track.artists[0]?.name} (already added from ${addedTracks.get(track.uri)})`);
-            }
-          }
-          
-          console.log(`Added ${addedCount} tracks from search for ${release.releaseName} (${duplicateCount} duplicates skipped)`);
+          console.warn(`No tracks found for ${release.artistName} - ${release.releaseName}`);
         }
       } catch (error) {
         console.error(`Failed to find tracks for ${release.artistName} - ${release.releaseName}:`, error);
