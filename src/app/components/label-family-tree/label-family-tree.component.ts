@@ -65,9 +65,10 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   startYear = signal<number | null>(null); // Year range filter start
   endYear = signal<number | null>(null); // Year range filter end
   enableYearFilter = signal(false); // Whether year filtering is enabled
+  strictMode = signal(true); // Whether to use strict album matching (reduces false positives)
   
-  // Cache for all releases from the family tree
-  allReleases = signal<any[]>([]);
+  // Cache for all releases from the family tree (deduplicated by album title)
+  allReleases = signal<Map<string, any>>(new Map());
 
 
 
@@ -100,6 +101,13 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       return `Albums up to ${end}`;
     }
     return 'Year filter enabled but no range set';
+  });
+
+  // Computed property for strict mode description
+  strictModeDescription = computed(() => {
+    return this.strictMode() 
+      ? 'Only albums verified in MusicBrainz data will be added (recommended)'
+      : 'Allows fuzzy matching from Spotify search (may include false positives)';
   });
 
   constructor() {
@@ -297,12 +305,12 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private extractAllReleasesFromTree(tree: LabelFamilyTree): void {
     console.log('Extracting releases from family tree:', tree);
     
-    const allArtistReleases: Array<{
+    const allArtistReleasesMap = new Map<string, {
       artistName: string, 
       releaseIds: string[], 
       releaseDetails?: Array<{id: string, title: string, date?: string, primaryType?: string}>,
       labelName: string
-    }> = [];
+    }>();
     
     // Recursive function to extract artist-release mappings from all nodes in the tree
     const extractFromNode = (node: LabelTreeNode, depth = 0) => {
@@ -323,12 +331,35 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           
           if (artistEntry.releases && artistEntry.releases.length > 0) {
             console.log(`${indent}  Adding all ${artistEntry.releases.length} releases for ${artistEntry.artist.name}`);
-            allArtistReleases.push({
-              artistName: artistEntry.artist.name,
-              releaseIds: artistEntry.releases, // Process all releases per artist
-              releaseDetails: artistEntry.releaseDetails, // Include all cached release details
-              labelName: node.label.name
-            });
+            
+            // Add each release using album title as key to deduplicate
+            if (artistEntry.releaseDetails) {
+              for (const release of artistEntry.releaseDetails) {
+                const albumKey = release.title;
+                
+                if (!allArtistReleasesMap.has(albumKey)) {
+                  allArtistReleasesMap.set(albumKey, {
+                    artistName: artistEntry.artist.name,
+                    releaseIds: [release.id],
+                    releaseDetails: [release],
+                    labelName: node.label.name
+                  });
+                } else {
+                  console.log(`${indent}  Skipping duplicate album: ${release.title}`);
+                }
+              }
+            } else {
+              // Fallback for when releaseDetails is not available
+              const artistKey = `${artistEntry.artist.name}||${node.label.name}`;
+              if (!allArtistReleasesMap.has(artistKey)) {
+                allArtistReleasesMap.set(artistKey, {
+                  artistName: artistEntry.artist.name,
+                  releaseIds: artistEntry.releases,
+                  releaseDetails: artistEntry.releaseDetails,
+                  labelName: node.label.name
+                });
+              }
+            }
           } else {
             console.log(`${indent}  No releases found for ${artistEntry.artist.name}`);
           }
@@ -347,11 +378,11 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     // Start extraction from the root tree node
     extractFromNode(tree.tree);
     
-    console.log(`Found ${allArtistReleases.length} artists with releases in family tree`);
-    console.log('All artist releases:', allArtistReleases);
+    console.log(`Found ${allArtistReleasesMap.size} unique artists with releases in family tree`);
+    console.log('All artist releases map:', allArtistReleasesMap);
     
-    // Store the artist-release mappings for later use
-    this.allReleases.set(allArtistReleases);
+    // Store the deduplicated artist-release mappings for later use
+    this.allReleases.set(allArtistReleasesMap);
   }
 
 
@@ -510,7 +541,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   private checkNavigationState(): void {
     // Try multiple ways to get navigation state
-    const navigation = this.router.currentNavigation();
+    const navigation = this.router.getCurrentNavigation();
     const navigationState = navigation?.extras?.state;
     const historyState = window.history.state;
     
@@ -587,88 +618,31 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
     try {
       console.log('🎵 Creating playlist for label:', selectedLabel.name);
-      console.log(`🎵 Using data from ${cachedArtistData.length} artists from family tree - NO MUSICBRAINZ API CALLS`);
+      console.log(`🎵 Using data from ${cachedArtistData.size} artists from family tree - NO MUSICBRAINZ API CALLS`);
       
-      if (cachedArtistData.length === 0) {
+      if (cachedArtistData.size === 0) {
         this.error.set('No artists with releases found in the family tree. Make sure the label family tree has loaded completely.');
         return;
       }
 
-      const playlistReleases: any[] = [];
+      // Get validated releases using strict filtering
+      const playlistReleases = this.strictMode() 
+        ? this.getValidatedReleasesForSpotify(cachedArtistData)
+        : this.getLegacyReleasesForSpotify(cachedArtistData);
       
-      // Process each artist using cached release data
-      for (const artistData of cachedArtistData) { // Process all artists
-        console.log(`🎵 Using cached releases for artist: ${artistData.artistName} - NO API CALLS`);
-        
-        if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
-          // Use the cached release details - filter for Albums and EPs and apply sorting
-          let sortedReleases = [...artistData.releaseDetails];
-          
-          // Apply year filtering if enabled
-          if (this.enableYearFilter()) {
-            const startYear = this.startYear();
-            const endYear = this.endYear();
-            const initialCount = sortedReleases.length;
-            
-            console.log(`🎵 YEAR FILTER: Filtering ${initialCount} releases for ${artistData.artistName} with range ${startYear || 'any'}-${endYear || 'any'}`);
-            
-            sortedReleases = sortedReleases.filter((release: {date?: string, title?: string}) => {
-              const releaseYear = this.extractYear(release.date);
-              
-              console.log(`🎵 CHECKING: "${release.title}" (${release.date}) -> Year: ${releaseYear}`);
-              
-              // Skip releases without year information when filtering
-              if (releaseYear === null) {
-                console.log(`🎵 EXCLUDED: No year data for "${release.title}"`);
-                return false;
-              }
-              
-              // Apply start year filter
-              if (startYear !== null && releaseYear < startYear) {
-                console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is before start year ${startYear}`);
-                return false;
-              }
-              
-              // Apply end year filter
-              if (endYear !== null && releaseYear > endYear) {
-                console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is after end year ${endYear}`);
-                return false;
-              }
-              
-              console.log(`🎵 INCLUDED: "${release.title}" (${releaseYear}) passes filter`);
-              return true;
-            });
-            
-            console.log(`🎵 YEAR FILTER RESULT: ${sortedReleases.length}/${initialCount} releases kept for ${artistData.artistName}`);
-          }
+      console.log(`🎵 PLAYLIST MODE: ${this.strictMode() ? 'STRICT (MusicBrainz validated only)' : 'LEGACY (fuzzy matching allowed)'}`);
 
-          
-          const artistReleases = sortedReleases
-              .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
-              artistName: artistData.artistName,
-              releaseName: release.title,
-              releaseId: release.id,
-              releaseDate: release.date,
-              trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum() // Use all tracks or user-specified count
-            }));
-          
-          const filterInfo = this.enableYearFilter() ? 
-            ` filtered: ${this.startYear() || 'any'}-${this.endYear() || 'any'}` : '';
-          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} (${filterInfo}) - NO API CALLS`);
-          playlistReleases.push(...artistReleases);
-        } else {
-          console.log(`🎵 No cached release details found for ${artistData.artistName}`);
-        }
-      }
-
-      console.log(`Total releases selected for playlist: ${playlistReleases.length}`);
+      console.log(`🎵 FINAL SELECTION: ${playlistReleases.length} releases selected for playlist`);
       
       if (playlistReleases.length === 0) {
-        this.error.set('No suitable album or EP releases found for this label\'s artists. Try a different label.');
+        const errorMsg = this.strictMode() 
+          ? 'No validated releases found in MusicBrainz data for this label. Try disabling strict mode or check the family tree data.'
+          : 'No suitable album or EP releases found for this label\'s artists. Try a different label.';
+        this.error.set(errorMsg);
         return;
       }
 
-      // Create the playlist request
+      // Create the playlist request with validation callback
       const request: PlaylistCreationRequest = {
         labelName: selectedLabel.name,
         releases: playlistReleases,
@@ -676,7 +650,10 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           enabled: this.enableYearFilter(),
           startYear: this.startYear(),
           endYear: this.endYear()
-        }
+        },
+        strictMode: this.strictMode(),
+        validationCallback: (artistName: string, albumTitle: string) => 
+          this.validateReleaseInMusicBrainzData(artistName, albumTitle, cachedArtistData)
       };
 
       console.log('🎵 Creating Spotify playlist with request - ONLY Spotify API calls from here:', request);
@@ -734,6 +711,13 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Toggle strict mode for album matching
+   */
+  toggleStrictMode(): void {
+    this.strictMode.set(!this.strictMode());
+  }
+
+  /**
    * Get the effective track count for display
    */
   getEffectiveTrackCount(): string {
@@ -783,6 +767,180 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Normalize album title for comparison (remove punctuation, extra spaces, case)
+   */
+  private normalizeAlbumTitle(title: string): string {
+    return title.toLowerCase()
+      .replace(/[.,;:!?"'()\[\]{}]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+  }
+
+  /**
+   * Validate if a release exists in our MusicBrainz data
+   */
+  private validateReleaseInMusicBrainzData(
+    artistName: string, 
+    albumTitle: string, 
+    cachedData: Map<string, any>
+  ): { isValid: boolean; matchedRelease?: any; confidence: 'exact' | 'normalized' | 'none' } {
+    const normalizedSearchTitle = this.normalizeAlbumTitle(albumTitle);
+    const normalizedSearchArtist = artistName.toLowerCase().trim();
+    
+    // Search through our cached MusicBrainz data
+    for (const [key, artistData] of cachedData) {
+      const normalizedArtistName = artistData.artistName.toLowerCase().trim();
+      
+      // First check if artist matches
+      if (normalizedArtistName === normalizedSearchArtist) {
+        // Check if any release details match the album title
+        if (artistData.releaseDetails) {
+          for (const release of artistData.releaseDetails) {
+            // Exact title match
+            if (release.title === albumTitle) {
+              return { isValid: true, matchedRelease: release, confidence: 'exact' };
+            }
+            
+            // Normalized title match
+            const normalizedReleaseTitle = this.normalizeAlbumTitle(release.title);
+            if (normalizedReleaseTitle === normalizedSearchTitle) {
+              return { isValid: true, matchedRelease: release, confidence: 'normalized' };
+            }
+          }
+        }
+      }
+    }
+    
+    return { isValid: false, confidence: 'none' };
+  }
+
+  /**
+   * Get only validated releases from MusicBrainz data for Spotify playlist creation
+   */
+  private getValidatedReleasesForSpotify(cachedArtistData: Map<string, any>): any[] {
+    const validatedReleases: any[] = [];
+    let totalReleases = 0;
+    let validatedCount = 0;
+    
+    console.log('🔍 VALIDATION: Starting release validation against MusicBrainz data');
+    
+    for (const artistData of cachedArtistData.values()) {
+      if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
+        let sortedReleases = [...artistData.releaseDetails];
+        totalReleases += sortedReleases.length;
+        
+        // Apply year filtering if enabled
+        if (this.enableYearFilter()) {
+          const startYear = this.startYear();
+          const endYear = this.endYear();
+          
+          sortedReleases = sortedReleases.filter((release: {date?: string}) => {
+            const releaseYear = this.extractYear(release.date);
+            if (releaseYear === null) return false;
+            if (startYear !== null && releaseYear < startYear) return false;
+            if (endYear !== null && releaseYear > endYear) return false;
+            return true;
+          });
+        }
+        
+        // In strict mode, we only use releases that exist in our MusicBrainz data
+        // (which they all do since this IS our MusicBrainz data)
+        const artistReleases = sortedReleases.map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
+          artistName: artistData.artistName,
+          releaseName: release.title,
+          releaseId: release.id,
+          releaseDate: release.date,
+          trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum(),
+          musicBrainzValidated: true // Mark as pre-validated
+        }));
+        
+        validatedReleases.push(...artistReleases);
+        validatedCount += artistReleases.length;
+        
+        console.log(`🔍 VALIDATION: ${artistData.artistName} - ${artistReleases.length} releases validated`);
+      }
+    }
+    
+    console.log(`🔍 VALIDATION COMPLETE: ${validatedCount}/${totalReleases} releases validated for Spotify search`);
+    return validatedReleases;
+  }
+
+  /**
+   * Get releases using legacy fuzzy matching (for backward compatibility)
+   */
+  private getLegacyReleasesForSpotify(cachedArtistData: Map<string, any>): any[] {
+    const playlistReleases: any[] = [];
+    
+    console.log('🔍 LEGACY MODE: Using fuzzy matching (may include false positives)');
+    
+    // Process each artist using cached release data (original logic)
+    for (const artistData of cachedArtistData.values()) {
+      console.log(`🎵 Using cached releases for artist: ${artistData.artistName} - NO API CALLS`);
+      
+      if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
+        // Use the cached release details - filter and apply year filtering if enabled
+        let sortedReleases = [...artistData.releaseDetails];
+        
+        // Apply year filtering if enabled
+        if (this.enableYearFilter()) {
+          const startYear = this.startYear();
+          const endYear = this.endYear();
+          const initialCount = sortedReleases.length;
+          
+          console.log(`🎵 YEAR FILTER: Filtering ${initialCount} releases for ${artistData.artistName} with range ${startYear || 'any'}-${endYear || 'any'}`);
+          
+          sortedReleases = sortedReleases.filter((release: {date?: string, title?: string}) => {
+            const releaseYear = this.extractYear(release.date);
+            
+            console.log(`🎵 CHECKING: "${release.title}" (${release.date}) -> Year: ${releaseYear}`);
+            
+            // Skip releases without year information when filtering
+            if (releaseYear === null) {
+              console.log(`🎵 EXCLUDED: No year data for "${release.title}"`);
+              return false;
+            }
+            
+            // Apply start year filter
+            if (startYear !== null && releaseYear < startYear) {
+              console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is before start year ${startYear}`);
+              return false;
+            }
+            
+            // Apply end year filter
+            if (endYear !== null && releaseYear > endYear) {
+              console.log(`🎵 EXCLUDED: "${release.title}" (${releaseYear}) is after end year ${endYear}`);
+              return false;
+            }
+            
+            console.log(`🎵 INCLUDED: "${release.title}" (${releaseYear}) passes filter`);
+            return true;
+          });
+          
+          console.log(`🎵 YEAR FILTER RESULT: ${sortedReleases.length}/${initialCount} releases kept for ${artistData.artistName}`);
+        }
+        
+        const artistReleases = sortedReleases.map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
+          artistName: artistData.artistName,
+          releaseName: release.title,
+          releaseId: release.id,
+          releaseDate: release.date,
+          trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum(),
+          musicBrainzValidated: false // Mark as legacy/fuzzy
+        }));
+        
+        const filterInfo = this.enableYearFilter() ? 
+          ` filtered: ${this.startYear() || 'any'}-${this.endYear() || 'any'}` : '';
+        console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} (${filterInfo}) - NO API CALLS`);
+        playlistReleases.push(...artistReleases);
+      } else {
+        console.log(`🎵 No cached release details found for ${artistData.artistName}`);
+      }
+    }
+    
+    return playlistReleases;
+  }
+
+  /**
    * Export all artist releases data to CSV (same structure as used for Spotify playlists)
    */
   exportAllReleasesToCsv(): void {
@@ -794,7 +952,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (cachedArtistData.length === 0) {
+    if (cachedArtistData.size === 0) {
       console.warn('No releases data to export - family tree may not be fully loaded');
       return;
     }
@@ -803,7 +961,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     const allArtistReleases: any[] = [];
     
     // Process each artist using cached release data (same logic as playlist creation)
-    for (const artistData of cachedArtistData) {
+    for (const artistData of cachedArtistData.values()) {
       if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
         // Use the cached release details - filter and apply year filtering if enabled
         let sortedReleases = [...artistData.releaseDetails];
@@ -884,6 +1042,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     
     URL.revokeObjectURL(url);
     
-    console.log(`📄 Exported ${allArtistReleases.length} releases from ${cachedArtistData.length} artists to CSV`);
+    console.log(`📄 Exported ${allArtistReleases.length} releases from ${cachedArtistData.size} artists to CSV`);
   }
 }

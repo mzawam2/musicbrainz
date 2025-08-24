@@ -86,6 +86,8 @@ export interface PlaylistCreationRequest {
     startYear?: number | null;
     endYear?: number | null;
   };
+  strictMode?: boolean;
+  validationCallback?: (artistName: string, albumTitle: string) => { isValid: boolean; confidence: 'exact' | 'normalized' | 'none' };
 }
 
 export interface RateLimitInfo {
@@ -320,9 +322,19 @@ export class SpotifyService {
   }
 
   /**
+   * Normalize album title for comparison (remove punctuation, extra spaces, case)
+   */
+  private normalizeAlbumTitle(title: string): string {
+    return title.toLowerCase()
+      .replace(/[.,;:!?"'()\[\]{}]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+  }
+
+  /**
    * Check if artist matches using music-specific multi-strategy approach
    */
-  private isArtistMatch(spotifyArtists: Array<{name: string}>, targetArtist: string): boolean {
+  private isArtistMatch(spotifyArtists: Array<{name: string}>, targetArtist: string, strictMode: boolean = false): boolean {
     const targetNormalized = this.normalizeArtistName(targetArtist);
     
     return spotifyArtists.some(artist => {
@@ -331,6 +343,11 @@ export class SpotifyService {
       // Strategy 1: Exact match
       if (artistNormalized === targetNormalized) {
         return true;
+      }
+      
+      // In strict mode, only allow exact matches
+      if (strictMode) {
+        return false;
       }
       
       // Strategy 2: Direct containment
@@ -352,7 +369,7 @@ export class SpotifyService {
         return true;
       }
       
-      // Strategy 4: Core word matching (significant words only)
+      // Strategy 4: Core word matching (significant words only) - stricter in non-strict mode
       const targetWords = targetNormalized.split(/\s+/).filter(w => w.length > 2); // Ignore short words
       const artistWords = artistNormalized.split(/\s+/);
       
@@ -361,8 +378,8 @@ export class SpotifyService {
           artistWords.some(artistWord => artistWord.includes(word) || word.includes(artistWord))
         );
         
-        // At least 75% of significant words must match
-        return (matchedWords.length / targetWords.length) >= 0.75;
+        // Require 90% word match instead of 75% for stricter matching
+        return (matchedWords.length / targetWords.length) >= 0.90;
       }
       
       return false;
@@ -372,7 +389,7 @@ export class SpotifyService {
   /**
    * Find a Spotify album by artist and album name, then get all its tracks
    */
-  getTracksFromAlbum(artistName: string, albumName: string): Observable<SpotifyTrack[]> {
+  getTracksFromAlbum(artistName: string, albumName: string, strictMode: boolean = false, validationCallback?: (artistName: string, albumName: string) => { isValid: boolean; confidence: string }): Observable<SpotifyTrack[]> {
     return this.searchAlbums(albumName, 10, artistName).pipe(
       switchMap(albums => {
         if (albums.length === 0) {
@@ -386,9 +403,18 @@ export class SpotifyService {
               }
               
               // Find best matching album by artist similarity
-              const matchingAlbum = fallbackAlbums.find(album => 
-                this.isArtistMatch(album.artists, artistName)
-              );
+              const matchingAlbum = fallbackAlbums.find(album => {
+                const artistMatch = this.isArtistMatch(album.artists, artistName, strictMode);
+                
+                // If we have a validation callback and we're in strict mode, validate against MusicBrainz data
+                if (strictMode && validationCallback) {
+                  const validation = validationCallback(artistName, album.name);
+                  console.log(`🔍 VALIDATION: ${artistName} - ${album.name} -> ${validation.confidence} (${validation.isValid ? 'VALID' : 'INVALID'})`);
+                  return artistMatch && validation.isValid;
+                }
+                
+                return artistMatch;
+              });
               
               if (matchingAlbum) {
                 console.log(`Found matching album via fallback: ${matchingAlbum.name} by ${matchingAlbum.artists[0]?.name} (multi-strategy match)`);
@@ -416,7 +442,7 @@ export class SpotifyService {
   /**
    * Get album information including track count
    */
-  getAlbumInfo(artistName: string, albumName: string): Observable<SpotifyAlbum | null> {
+  getAlbumInfo(artistName: string, albumName: string, strictMode: boolean = false): Observable<SpotifyAlbum | null> {
     return this.searchAlbums(albumName, 10, artistName).pipe(
       switchMap(albums => {
         if (albums.length === 0) {
@@ -431,7 +457,7 @@ export class SpotifyService {
               
               // Find best matching album by artist similarity
               const matchingAlbum = fallbackAlbums.find(album => 
-                this.isArtistMatch(album.artists, artistName)
+                this.isArtistMatch(album.artists, artistName, strictMode)
               );
               
               if (matchingAlbum) {
@@ -592,7 +618,7 @@ export class SpotifyService {
         
         // Convert the promise to observable and wait for completion
         return from(
-          this.populatePlaylistFromReleases(playlist.id, request.releases)
+          this.populatePlaylistFromReleases(playlist.id, request.releases, request)
             .then(() => {
               console.log('Tracks added successfully to playlist');
               return playlist;
@@ -615,7 +641,8 @@ export class SpotifyService {
    */
   private async populatePlaylistFromReleases(
     playlistId: string, 
-    releases: Array<{ artistName: string; releaseName: string; trackCount: number }>
+    releases: Array<{ artistName: string; releaseName: string; trackCount: number; musicBrainzValidated?: boolean }>,
+    request?: PlaylistCreationRequest
   ): Promise<void> {
     const trackUriSet = new Set<string>(); // Use Set to automatically handle deduplication
     const addedTracks = new Map<string, string>(); // Track URI -> Release info for logging
@@ -625,8 +652,11 @@ export class SpotifyService {
         console.log(`Getting tracks for ${release.artistName} - ${release.releaseName} (requesting ${release.trackCount} tracks)`);
         
         // Get all tracks from the album using queue for rate limiting
+        const strictMode = request?.strictMode || false;
+        const validationCallback = request?.validationCallback;
+        
         const allAlbumTracks = await this.queueRequest(() => 
-          this.getTracksFromAlbum(release.artistName, release.releaseName), 'medium'
+          this.getTracksFromAlbum(release.artistName, release.releaseName, strictMode, validationCallback), 'medium'
         ) as SpotifyTrack[];
         
         if (allAlbumTracks.length > 0) {

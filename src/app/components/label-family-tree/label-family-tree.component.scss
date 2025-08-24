@@ -612,6 +612,39 @@
           font-style: italic;
         }
       }
+
+      .strict-mode-control {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        padding: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: white;
+          font-size: 0.85rem;
+          cursor: pointer;
+          margin-bottom: 0.75rem;
+          user-select: none;
+
+          .strict-mode-checkbox {
+            accent-color: #1DB954;
+          }
+
+          .checkbox-text {
+            font-weight: 500;
+          }
+        }
+
+        .strict-mode-description {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-style: italic;
+        }
+      }
     }
 
     .action-buttons {

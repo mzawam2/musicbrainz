@@ -9,6 +9,7 @@
         <div class="search-input-wrapper">
           <input #searchInput type="text" class="search-input" placeholder="Search for a record label..."
             [formControl]="searchControl" />
+        </div>
       </div>
 
       <!-- Search Results -->
@@ -129,6 +130,15 @@
               <p class="year-filter-description">{{ yearFilterDescription() }}</p>
             </div>
 
+            <div class="strict-mode-control">
+              <label class="checkbox-label">
+                <input type="checkbox" [checked]="strictMode()" (change)="toggleStrictMode()"
+                  class="strict-mode-checkbox">
+                <span class="checkbox-text">🔒 Strict album matching</span>
+              </label>
+              <p class="strict-mode-description">{{ strictModeDescription() }}</p>
+            </div>
+
             <div class="action-buttons">
               <button class="spotify-btn" (click)="createSpotifyPlaylistFromSelectedLabel()"
                 [disabled]="isCreatingPlaylist()" title="Create Spotify playlist from label releases">
@@ -145,7 +155,7 @@
                 style="background: red !important; color: white !important; min-width: 200px !important;"
                 title="Export all releases data to CSV">
                 <span class="export-icon">📄</span>
-                Export CSV ({{ allReleases().length }})
+                Export CSV ({{ allReleases().size }})
               </button>
             </div>
           </div>
