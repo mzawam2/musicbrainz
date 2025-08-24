@@ -2,7 +2,7 @@
   <!-- Header with search and controls -->
   <div class="tree-header">
     <div class="search-section">
-      <div class="search-header">
+      <div class="search-header" style="position: relative; min-height: 120px;">
         <h1 #pageHeading tabindex="-1">Label Family Trees</h1>
       </div>
       <div class="search-controls">
@@ -61,6 +61,54 @@
 
   <!-- Main Content Area -->
   <div class="tree-content">
+    <!-- Root Label Card - Show immediately when label is selected -->
+    @if (selectedLabel()) {
+    <div class="tree-container">
+      <div class="node-content">
+        <div class="artist-card" style="min-height: 120px;">
+          @if (discogsLabelImages() && discogsLabelImages().length > 0) {
+            <div class="image-center">
+              @for (image of discogsLabelImages(); track image.uri) {
+                @if (image.type === 'primary') {
+                  <img 
+                    [src]="image.uri150 || image.uri" 
+                    [alt]="'Logo of ' + selectedLabel()?.name"
+                    class="primary-label-image"
+                  />
+                }
+              }
+            </div>
+          }
+          <!-- Removed country field -->
+          <div class="discogs-label-urls ">
+            @if (discogsLabelData() && discogsLabelData().urls && discogsLabelData().urls.length > 0) {
+            <p><strong>Links:</strong></p>
+            <div class="tags-container">
+              @for (url of discogsLabelData().urls; track url) {
+              <a [href]="url" target="_blank" rel="noopener" class="discogs-label-link">{{ url }}</a>
+              }
+            </div>
+            }
+          </div>
+          <div class="artist-bio">
+            <div class="bio-content">
+              <p><strong>Biography:</strong></p>
+              <div class="bio-text">
+                {{ discogsLabelData()?.profile }}
+                <br>
+                <br>
+                {{ rootLabelBio() }}
+              </div>
+              <div class="bio-source">
+                <small>Source: Wikipedia</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    }
+
     @if (isLoadingTree()) {
     <div class="loading-tree">
       <div class="loading-spinner"></div>
@@ -68,6 +116,7 @@
     </div>
     } @else if (hasTree()) {
     <div class="tree-container">
+
       <!-- Tree Statistics and Actions -->
       <div class="tree-header-actions">
         <div class="tree-stats">
@@ -139,6 +188,7 @@
               <p class="strict-mode-description">{{ strictModeDescription() }}</p>
             </div>
 
+
             <div class="action-buttons">
               <button class="spotify-btn" (click)="createSpotifyPlaylistFromSelectedLabel()"
                 [disabled]="isCreatingPlaylist()" title="Create Spotify playlist from label releases">
@@ -150,7 +200,7 @@
                 Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
                 }
               </button>
-              
+
               <button class="export-csv-btn" (click)="exportAllReleasesToCsv()"
                 style="background: red !important; color: white !important; min-width: 200px !important;"
                 title="Export all releases data to CSV">

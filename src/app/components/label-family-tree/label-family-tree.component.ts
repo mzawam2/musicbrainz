@@ -6,6 +6,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { SpotifyService, PlaylistCreationRequest, SpotifyPlaylist } from '../../services/spotify.service';
+import { DiscogsService } from '../../services/discogs.service';
 import { TreeNodeComponent } from './tree-node/tree-node.component';
 import { 
   MusicBrainzLabel, 
@@ -31,6 +32,7 @@ interface LabelFamilyTreeComponentState {
 export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private spotifyService = inject(SpotifyService);
+  private discogsService = inject(DiscogsService);
   private router = inject(Router);
   private destroy$ = new Subject<void>();
 
@@ -67,8 +69,19 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   enableYearFilter = signal(false); // Whether year filtering is enabled
   strictMode = signal(true); // Whether to use strict album matching (reduces false positives)
   
+  
   // Cache for all releases from the family tree (deduplicated by album title)
   allReleases = signal<Map<string, any>>(new Map());
+  
+  // Discogs integration signals
+  discogsLabelData = signal<any>(null); // Store the matched Discogs label data
+  discogsLabelImages = signal<any[]>([]);
+  isLoadingDiscogsLabel = signal(false);
+  
+  // Root label bio signals
+  rootLabelBio = signal<string | null>(null);
+  isLoadingRootLabelBio = signal(false);
+  rootLabelBioError = signal<string | null>(null);
 
 
 
@@ -109,6 +122,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       ? 'Only albums verified in MusicBrainz data will be added (recommended)'
       : 'Allows fuzzy matching from Spotify search (may include false positives)';
   });
+
 
   constructor() {
     // Set up debounced search using FormControl
@@ -223,6 +237,8 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.fromNavigationState = false; // Reset navigation flag when label is selected
     this.searchControl.setValue(label.name, { emitEvent: false }); // Don't trigger search
     this.loadFamilyTree(label.id);
+    this.searchDiscogsLabel(label.name); // Search for this label on Discogs
+    this.loadRootLabelBio(label.name); // Load Wikipedia bio for root label
     
     // Keep focus on the main heading after auto-selection from navigation
     setTimeout(() => {
@@ -717,6 +733,13 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.strictMode.set(!this.strictMode());
   }
 
+
+
+
+
+
+
+
   /**
    * Get the effective track count for display
    */
@@ -1043,5 +1066,164 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
     
     console.log(`📄 Exported ${allArtistReleases.length} releases from ${cachedArtistData.size} artists to CSV`);
+  }
+
+  /**
+   * Search for label on Discogs and get label details including images
+   */
+  private searchDiscogsLabel(labelName: string): void {
+    console.log(`🎵 Searching Discogs for label: ${labelName}`);
+    this.isLoadingDiscogsLabel.set(true);
+    this.discogsLabelData.set(null);
+    this.discogsLabelImages.set([]);
+
+    // Search for the label on Discogs
+    this.discogsService.searchDatabase({
+      q: labelName,
+      type: 'label',
+      per_page: 10
+    }).subscribe({
+      next: (searchResult) => {
+        console.log(`🎵 Found ${searchResult.results.length} Discogs labels for: ${labelName}`);
+        
+        if (searchResult.results.length > 0) {
+          // Take the first result (most likely match)
+          const firstResult = searchResult.results[0];
+          console.log(`🎵 Using Discogs label: ${firstResult.title} (ID: ${firstResult.id})`);
+          
+          // Get detailed label information
+          this.discogsService.getLabel(firstResult.id).subscribe({
+            next: (labelDetails) => {
+              if (labelDetails) {
+                console.log(`🎵 Got Discogs label details:`, labelDetails);
+                this.discogsLabelData.set(labelDetails);
+                
+                // Extract images if available
+                if (labelDetails.images && labelDetails.images.length > 0) {
+                  this.discogsLabelImages.set(labelDetails.images);
+                  console.log(`🎵 Found ${labelDetails.images.length} images for label`);
+                } else {
+                  console.log(`🎵 No images found for label: ${labelName}`);
+                  this.discogsLabelImages.set([]);
+                }
+              }
+              this.isLoadingDiscogsLabel.set(false);
+            },
+            error: (error) => {
+              console.error(`🎵 Error getting Discogs label details:`, error);
+              this.isLoadingDiscogsLabel.set(false);
+            }
+          });
+        } else {
+          console.log(`🎵 No Discogs labels found for: ${labelName}`);
+          this.isLoadingDiscogsLabel.set(false);
+        }
+      },
+      error: (error) => {
+        console.error(`🎵 Error searching Discogs for label:`, error);
+        this.isLoadingDiscogsLabel.set(false);
+      }
+    });
+  }
+
+  /**
+   * Open image in full size in a new tab
+   */
+  openImageFullSize(imageUri: string): void {
+    window.open(imageUri, '_blank');
+  }
+
+  /**
+   * Get icon for label type
+   */
+  getLabelTypeIcon(type?: string): string {
+    const labelType = type?.toLowerCase();
+    
+    switch (labelType) {
+      case 'production':
+        return '🏭';
+      case 'original production':
+        return '🎵';
+      case 'holding':
+        return '🏢';
+      case 'reissue':
+        return '🔄';
+      case 'bootleg production':
+        return '⚠️';
+      case 'distributor':
+        return '📦';
+      default:
+        return '🏷️';
+    }
+  }
+
+  /**
+   * Load Wikipedia biography for root label
+   */
+  private loadRootLabelBio(labelName: string): void {
+    console.log(`📖 Loading biography for root label: ${labelName}`);
+    this.isLoadingRootLabelBio.set(true);
+    this.rootLabelBioError.set(null);
+    this.rootLabelBio.set(null);
+
+    // Try with different search terms with label-specific suffixes
+    const searchTerms = [
+      `${labelName} (record label)`,
+      `${labelName} Records`,
+      `${labelName} (label)`,
+      `${labelName} Music`,
+      labelName
+    ];
+
+    this.tryRootLabelWikipediaSearch(searchTerms, 0);
+  }
+
+  private tryRootLabelWikipediaSearch(searchTerms: string[], index: number): void {
+    if (index >= searchTerms.length) {
+      this.rootLabelBioError.set('Biography not available');
+      this.isLoadingRootLabelBio.set(false);
+      return;
+    }
+
+    // Use the Wikipedia API to get the full intro section
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(searchTerms[index])}&prop=extracts&exintro=1&explaintext=1&origin=*`;
+    
+    fetch(searchUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Biography not found');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.query && data.query.pages) {
+          const pages = data.query.pages;
+          const pageId = Object.keys(pages)[0];
+          const page = pages[pageId];
+          
+          if (page.extract && page.extract.trim() && !page.missing) {
+            // Found a valid biography
+            let extract = page.extract;
+            // Keep more content for labels but still limit for card space
+            if (extract.length > 600) {
+              extract = extract.substring(0, 600) + '...';
+            }
+            this.rootLabelBio.set(extract);
+            this.isLoadingRootLabelBio.set(false);
+            console.log(`📖 Loaded biography for: ${searchTerms[index]}`);
+          } else {
+            // Try next search term
+            this.tryRootLabelWikipediaSearch(searchTerms, index + 1);
+          }
+        } else {
+          // Try next search term
+          this.tryRootLabelWikipediaSearch(searchTerms, index + 1);
+        }
+      })
+      .catch(error => {
+        console.warn(`📖 Failed to load biography for: ${searchTerms[index]}`, error);
+        // Try next search term on error
+        this.tryRootLabelWikipediaSearch(searchTerms, index + 1);
+      });
   }
 }

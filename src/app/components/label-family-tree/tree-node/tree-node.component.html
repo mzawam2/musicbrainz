@@ -21,12 +21,12 @@
       </button>
     } 
     
-    <!-- Label Card -->
-    <div 
-      class="label-card"
-      (click)="selectNode()"
-      [class.root]="!node().relationship"
-    >
+    <!-- Label Card (only for child nodes, not root) -->
+    @if (node().relationship) {
+      <div 
+        class="label-card"
+        (click)="selectNode()"
+      >
       <!-- Label Header -->
       <div class="label-header">
         <div class="label-icon">{{ getLabelTypeIcon() }}</div>
@@ -106,7 +106,8 @@
           </div>
         }
       </div>
-    </div>
+      </div>
+    }
   </div>
   
   <!-- Children Nodes -->
