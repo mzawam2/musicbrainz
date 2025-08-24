@@ -781,4 +781,109 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     const yearMatch = dateStr.match(/^(\d{4})/);
     return yearMatch ? parseInt(yearMatch[1], 10) : null;
   }
+
+  /**
+   * Export all artist releases data to CSV (same structure as used for Spotify playlists)
+   */
+  exportAllReleasesToCsv(): void {
+    const selectedLabel = this.selectedLabel();
+    const cachedArtistData = this.allReleases();
+    
+    if (!selectedLabel) {
+      console.warn('No label selected');
+      return;
+    }
+
+    if (cachedArtistData.length === 0) {
+      console.warn('No releases data to export - family tree may not be fully loaded');
+      return;
+    }
+
+    // Build the same allArtistReleases structure as used in playlist creation
+    const allArtistReleases: any[] = [];
+    
+    // Process each artist using cached release data (same logic as playlist creation)
+    for (const artistData of cachedArtistData) {
+      if (artistData.releaseDetails && artistData.releaseDetails.length > 0) {
+        // Use the cached release details - filter and apply year filtering if enabled
+        let sortedReleases = [...artistData.releaseDetails];
+        
+        // Apply year filtering if enabled
+        if (this.enableYearFilter()) {
+          const startYear = this.startYear();
+          const endYear = this.endYear();
+          
+          sortedReleases = sortedReleases.filter((release: {date?: string, title?: string}) => {
+            const releaseYear = this.extractYear(release.date);
+            
+            // Skip releases without year information when filtering
+            if (releaseYear === null) return false;
+            
+            // Apply start year filter
+            if (startYear !== null && releaseYear < startYear) return false;
+            
+            // Apply end year filter
+            if (endYear !== null && releaseYear > endYear) return false;
+            
+            return true;
+          });
+        }
+        
+        const artistReleases = sortedReleases.map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
+          artistName: artistData.artistName,
+          releaseName: release.title,
+          releaseId: release.id,
+          releaseDate: release.date,
+          primaryType: release.primaryType,
+          labelName: artistData.labelName,
+          trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum()
+        }));
+        
+        allArtistReleases.push(...artistReleases);
+      }
+    }
+
+    if (allArtistReleases.length === 0) {
+      console.warn('No releases found after filtering');
+      return;
+    }
+
+    // Create CSV content
+    let csvContent = 'Artist Name,Release Name,Release ID,Release Date,Primary Type,Label Name,Track Count,Year Filter Applied\n';
+    
+    // Escape CSV fields that might contain commas or quotes
+    const escapeCsvField = (field: string | undefined | null): string => {
+      if (!field) return '';
+      const fieldStr = field.toString();
+      if (fieldStr.includes(',') || fieldStr.includes('"') || fieldStr.includes('\n')) {
+        return `"${fieldStr.replace(/"/g, '""')}"`;
+      }
+      return fieldStr;
+    };
+
+    allArtistReleases.forEach(release => {
+      csvContent += `${escapeCsvField(release.artistName)},`;
+      csvContent += `${escapeCsvField(release.releaseName)},`;
+      csvContent += `${escapeCsvField(release.releaseId)},`;
+      csvContent += `${escapeCsvField(release.releaseDate)},`;
+      csvContent += `${escapeCsvField(release.primaryType)},`;
+      csvContent += `${escapeCsvField(release.labelName)},`;
+      csvContent += `${release.trackCount === 999 ? 'All' : release.trackCount},`;
+      csvContent += `${this.enableYearFilter() ? `${this.startYear() || 'any'}-${this.endYear() || 'any'}` : 'No'}\n`;
+    });
+
+    // Create and download the CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    const filterSuffix = this.enableYearFilter() ? `_${this.startYear() || 'any'}-${this.endYear() || 'any'}` : '';
+    link.download = `${selectedLabel.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_artist_releases${filterSuffix}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    
+    console.log(`📄 Exported ${allArtistReleases.length} releases from ${cachedArtistData.length} artists to CSV`);
+  }
 }

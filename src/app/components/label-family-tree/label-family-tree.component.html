@@ -129,16 +129,25 @@
               <p class="year-filter-description">{{ yearFilterDescription() }}</p>
             </div>
 
-            <button class="spotify-btn" (click)="createSpotifyPlaylistFromSelectedLabel()"
-              [disabled]="isCreatingPlaylist()" title="Create Spotify playlist from label releases">
-              @if (isCreatingPlaylist()) {
-              <span class="spinner"></span>
-              Creating...
-              } @else {
-              <span class="spotify-icon">♪</span>
-              Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
-              }
-            </button>
+            <div class="action-buttons">
+              <button class="spotify-btn" (click)="createSpotifyPlaylistFromSelectedLabel()"
+                [disabled]="isCreatingPlaylist()" title="Create Spotify playlist from label releases">
+                @if (isCreatingPlaylist()) {
+                <span class="spinner"></span>
+                Creating...
+                } @else {
+                <span class="spotify-icon">♪</span>
+                Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
+                }
+              </button>
+              
+              <button class="export-csv-btn" (click)="exportAllReleasesToCsv()"
+                style="background: red !important; color: white !important; min-width: 200px !important;"
+                title="Export all releases data to CSV">
+                <span class="export-icon">📄</span>
+                Export CSV ({{ allReleases().length }})
+              </button>
+            </div>
           </div>
         </div>
       </div>

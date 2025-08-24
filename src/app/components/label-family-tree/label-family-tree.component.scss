@@ -614,8 +614,19 @@
       }
     }
 
-    .spotify-btn {
+    .action-buttons {
       grid-column: 1 / -1; // Span all columns
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      
+      @media (max-width: 768px) {
+        flex-direction: column;
+      }
+    }
+
+    .spotify-btn {
+      flex: 1;
       background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
       color: white;
       border: none;
@@ -630,7 +641,6 @@
       gap: 8px;
       transition: all 0.2s ease;
       box-shadow: 0 3px 8px rgba(29, 185, 84, 0.3);
-      margin-top: 0.5rem;
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #1aa34a 0%, #1bc45a 100%);
@@ -657,6 +667,47 @@
         border-top: 2px solid white;
         border-radius: 50%;
         animation: spin 1s linear infinite;
+      }
+    }
+
+    .export-csv-btn {
+      min-width: 160px;
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      color: white;
+      border: none;
+      padding: 0.875rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 3px 8px rgba(79, 70, 229, 0.3);
+      white-space: nowrap;
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 12px rgba(79, 70, 229, 0.4);
+      }
+
+      &:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: rgba(79, 70, 229, 0.3);
+        box-shadow: none;
+        transform: none;
+      }
+
+      .export-icon {
+        font-size: 1rem;
       }
     }
 
