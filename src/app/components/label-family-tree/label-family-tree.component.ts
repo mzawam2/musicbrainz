@@ -323,10 +323,15 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           
           if (artistEntry.releases && artistEntry.releases.length > 0) {
             console.log(`${indent}  Adding all ${artistEntry.releases.length} releases for ${artistEntry.artist.name}`);
+            const uniqueReleaseIds = Array.from(new Set(artistEntry.releases));
+            const uniqueReleaseDetails = artistEntry.releaseDetails
+              ? Array.from(new Map(artistEntry.releaseDetails.map((r: { id: string }) => [r.id, r])).values())
+              : undefined;
+
             allArtistReleases.push({
               artistName: artistEntry.artist.name,
-              releaseIds: artistEntry.releases, // Process all releases per artist
-              releaseDetails: artistEntry.releaseDetails, // Include all cached release details
+              releaseIds: uniqueReleaseIds,
+              releaseDetails: uniqueReleaseDetails,
               labelName: node.label.name
             });
           } else {
@@ -661,9 +666,13 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         }
       }
 
-      console.log(`Total releases selected for playlist: ${playlistReleases.length}`);
-      
-      if (playlistReleases.length === 0) {
+      const uniquePlaylistReleases = Array.from(
+        new Map(playlistReleases.map(r => [r.releaseId, r])).values()
+      );
+
+      console.log(`Total releases selected for playlist: ${uniquePlaylistReleases.length}`);
+
+      if (uniquePlaylistReleases.length === 0) {
         this.error.set('No suitable album or EP releases found for this label\'s artists. Try a different label.');
         return;
       }
@@ -671,7 +680,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       // Create the playlist request
       const request: PlaylistCreationRequest = {
         labelName: selectedLabel.name,
-        releases: playlistReleases,
+        releases: uniquePlaylistReleases,
         yearFilter: {
           enabled: this.enableYearFilter(),
           startYear: this.startYear(),
@@ -800,7 +809,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     }
 
     // Build the same allArtistReleases structure as used in playlist creation
-    const allArtistReleases: any[] = [];
+    const releaseMap = new Map<string, any>();
     
     // Process each artist using cached release data (same logic as playlist creation)
     for (const artistData of cachedArtistData) {
@@ -829,19 +838,23 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           });
         }
         
-        const artistReleases = sortedReleases.map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
-          artistName: artistData.artistName,
-          releaseName: release.title,
-          releaseId: release.id,
-          releaseDate: release.date,
-          primaryType: release.primaryType,
-          labelName: artistData.labelName,
-          trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum()
-        }));
-        
-        allArtistReleases.push(...artistReleases);
+        sortedReleases.forEach((release: {id: string, title: string, date?: string, primaryType?: string}) => {
+          if (!releaseMap.has(release.id)) {
+            releaseMap.set(release.id, {
+              artistName: artistData.artistName,
+              releaseName: release.title,
+              releaseId: release.id,
+              releaseDate: release.date,
+              primaryType: release.primaryType,
+              labelName: artistData.labelName,
+              trackCount: this.useAllTracks() ? 999 : this.tracksPerAlbum()
+            });
+          }
+        });
       }
     }
+
+    const allArtistReleases = Array.from(releaseMap.values());
 
     if (allArtistReleases.length === 0) {
       console.warn('No releases found after filtering');

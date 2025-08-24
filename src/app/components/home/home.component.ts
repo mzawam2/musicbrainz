@@ -469,7 +469,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private checkNavigationState(): void {
     // Try multiple ways to get navigation state
-    const navigation = this.router.currentNavigation();
+    const navigation = this.router.getCurrentNavigation();
     const navigationState = navigation?.extras?.state;
     const historyState = window.history.state;
     
