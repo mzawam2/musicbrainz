@@ -39,6 +39,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private readonly STATE_EXPIRY_HOURS = 24;
   private isRestoringFromCache = false;
   private pendingAutoSelectLabel: MusicBrainzLabel | null = null;
+  private fromNavigationState = false;
 
   @ViewChild('searchInput', { static: false }) searchInput!: ElementRef<HTMLInputElement>;
 
@@ -72,6 +73,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   hasResults = computed(() => this.searchResults().length > 0);
   hasTree = computed(() => this.familyTree() !== null);
+  shouldShowSearchResults = computed(() => this.hasResults() && this.isActivelySearching() && !this.fromNavigationState);
   
   // Computed property for better UI feedback
   trackModeDescription = computed(() => {
@@ -122,7 +124,10 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe(query => {
-        this.isActivelySearching.set(true);
+        // Only set actively searching if not from navigation state
+        if (!this.fromNavigationState) {
+          this.isActivelySearching.set(true);
+        }
         this.performSearch(query || '');
       });
 
@@ -213,6 +218,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.selectedLabel.set(label);
     this.searchResults.set([]);
     this.isActivelySearching.set(false);
+    this.fromNavigationState = false; // Reset navigation flag when label is selected
     this.searchControl.setValue(label.name, { emitEvent: false }); // Don't trigger search
     this.loadFamilyTree(label.id);
     
@@ -363,6 +369,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.selectedLabel.set(null);
     this.familyTree.set(null);
     this.isActivelySearching.set(false);
+    this.fromNavigationState = false;
     this.error.set(null);
     // Clear persisted state when user manually clears search
     this.clearPersistedState();
@@ -538,17 +545,18 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private initializeWithLabel(label: MusicBrainzLabel): void {
     console.log('🔄 Initializing with label from navigation:', label.name);
     
-    // Populate search box and trigger search to show the label in results
-    this.searchControl.setValue(label.name, { emitEvent: true });
+    // Set flag to indicate this came from navigation state BEFORE anything else
+    this.fromNavigationState = true;
     
     // Clear error states
     this.error.set(null);
     
-    // Note: The search will populate searchResults, then we'll auto-select
-    // We need to wait for the search to complete before selecting
-    // This will be handled by the search subscription, but we need to 
-    // mark this label for auto-selection
+    // Mark this label for auto-selection BEFORE triggering search
     this.pendingAutoSelectLabel = label;
+    
+    
+    // Populate search box and trigger search to show the label in results
+    this.searchControl.setValue(label.name, { emitEvent: true });
   }
 
   // Spotify Integration Methods

@@ -20,7 +20,7 @@
       </div>
 
       <!-- Search Results -->
-      @if (hasResults() && isActivelySearching()) {
+      @if (shouldShowSearchResults()) {
       <div class="search-results">
         @for (label of searchResults(); track label.id) {
         <div class="search-result-item" (click)="selectLabel(label); $event.stopPropagation()">
