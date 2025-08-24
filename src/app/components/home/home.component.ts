@@ -36,6 +36,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly STATE_EXPIRY_HOURS = 24; // State expires after 24 hours
   private isRestoringFromCache = false;
   private pendingAutoSelectArtist: MusicBrainzArtist | null = null;
+  private fromNavigationState = false;
   
   searchControl = new FormControl('');
   
@@ -87,7 +88,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Computed values for derived state
   
   hasSelectedArtist = computed(() => this.selectedArtist() !== null);
-  showSearchResults = computed(() => this.artists().length > 0 && this.currentSearchTerm().length >= 2);
+  showSearchResults = computed(() => this.artists().length > 0 && this.currentSearchTerm().length >= 2 && !this.fromNavigationState);
   canClearSearch = computed(() => this.hasSelectedArtist() || this.currentSearchTerm().length > 0);
   
 
@@ -127,16 +128,27 @@ export class HomeComponent implements OnInit, OnDestroy {
         distinctUntilChanged(),
         takeUntil(this.destroy$),
         switchMap(query => {
+          console.log('🔄 Search subscription triggered with query:', query, 'pendingAutoSelectArtist:', !!this.pendingAutoSelectArtist);
           if (!query || query.length < 2) {
+            console.log('🔄 Query too short, clearing results');
             this.artists.set([]);
             this.error.set(null);
             this.currentSearchTerm.set('');
             return of([]);
           }
           
+          console.log('🔄 Executing search for:', query);
           this.loading.set(true);
           this.error.set(null);
           this.currentSearchTerm.set(query);
+          // Only reset navigation state flag if we don't have a pending auto-select artist
+          // (which indicates this search came from user typing, not navigation)
+          if (!this.pendingAutoSelectArtist) {
+            console.log('🔄 Resetting fromNavigationState flag');
+            this.fromNavigationState = false;
+          } else {
+            console.log('🔄 Keeping fromNavigationState flag due to pending auto-select');
+          }
           
           return this.musicBrainzService.searchArtists(query).pipe(
             catchError(err => {
@@ -148,8 +160,30 @@ export class HomeComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe(artists => {
+        console.log('🔄 Search completed, found', artists.length, 'artists');
         this.artists.set(artists);
         this.loading.set(false);
+        
+        // Check if we need to auto-select an artist from navigation
+        if (this.pendingAutoSelectArtist) {
+          console.log('🔄 Have pending auto-select artist:', this.pendingAutoSelectArtist.name);
+          const matchingArtist = artists.find(artist => artist.id === this.pendingAutoSelectArtist!.id);
+          if (matchingArtist) {
+            console.log('🔄 Auto-selecting artist from navigation:', matchingArtist.name);
+            // Small delay to let the search results render first
+            setTimeout(() => {
+              this.selectArtist(matchingArtist);
+              this.pendingAutoSelectArtist = null;
+            }, 100);
+          } else {
+            console.log('🔄 Artist not found in search results, selecting directly');
+            // If the exact artist isn't in search results, select it directly
+            this.selectArtist(this.pendingAutoSelectArtist);
+            this.pendingAutoSelectArtist = null;
+          }
+        } else {
+          console.log('🔄 No pending auto-select artist');
+        }
       });
   }
 
@@ -162,10 +196,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   selectArtist(artist: MusicBrainzArtist) {
+    console.log('🔄 selectArtist called with:', artist.name, 'isRestoringFromCache:', this.isRestoringFromCache);
     this.selectedArtist.set(artist);
     this.searchControl.setValue(artist.name, { emitEvent: false }); // Prevent triggering search
     this.artists.set([]);
     this.currentSearchTerm.set(''); // Clear search term to hide results
+    this.fromNavigationState = false; // Reset navigation flag when artist is selected
+    console.log('🔄 About to load labels and discography for:', artist.id);
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
@@ -183,6 +220,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.artistBio.set(null);
     this.bioError.set(null);
     this.currentSearchTerm.set('');
+    this.fromNavigationState = false;
     // Clear persisted state when user manually clears search
     this.clearPersistedState();
   }
@@ -201,12 +239,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private loadArtistLabels(artistId: string) {
+    console.log('🔄 loadArtistLabels called for artistId:', artistId, 'isRestoringFromCache:', this.isRestoringFromCache);
     // Skip API call if we're restoring from cache
     if (this.isRestoringFromCache) {
       console.log('🔄 Skipping label loading - restoring from cache');
       return;
     }
 
+    console.log('🔄 Making API call for artist labels');
     this.labelsLoading.set(true);
     this.labelsError.set(null);
     this.labels.set([]);
@@ -224,12 +264,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private loadArtistDiscography(artistId: string) {
+    console.log('🔄 loadArtistDiscography called for artistId:', artistId, 'isRestoringFromCache:', this.isRestoringFromCache);
     // Skip API call if we're restoring from cache
     if (this.isRestoringFromCache) {
       console.log('🔄 Skipping discography loading - restoring from cache');
       return;
     }
 
+    console.log('🔄 Making API call for artist discography');
     this.discographyLoading.set(true);
     this.discographyError.set(null);
     this.discographyData.set(null);
@@ -440,7 +482,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private initializeWithArtist(artist: MusicBrainzArtist): void {
-    console.log('🔄 Initializing with artist from navigation:', artist.name);
+    console.log('🔄 Initializing with artist from navigation:', artist.name, 'isRestoringFromCache:', this.isRestoringFromCache);
+    
+    // Set flag to indicate this came from navigation state BEFORE anything else
+    this.fromNavigationState = true;
     
     // Set the pending artist first
     this.pendingAutoSelectArtist = artist;
@@ -448,44 +493,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Clear error states
     this.error.set(null);
     
-    // Populate search box and trigger search manually
-    this.searchControl.setValue(artist.name, { emitEvent: false });
-    this.currentSearchTerm.set(artist.name);
-    
-    // Trigger the search manually to ensure it runs
-    this.loading.set(true);
-    this.musicBrainzService.searchArtists(artist.name).subscribe({
-      next: (artists) => {
-        console.log('🔄 Search completed for navigation artist, found', artists.length, 'artists');
-        this.artists.set(artists);
-        this.loading.set(false);
-        
-        // Auto-select the exact artist
-        const matchingArtist = artists.find(a => a.id === artist.id);
-        if (matchingArtist) {
-          console.log('🔄 Auto-selecting exact matching artist:', matchingArtist.name);
-          setTimeout(() => {
-            this.selectArtist(matchingArtist);
-            this.pendingAutoSelectArtist = null;
-          }, 100);
-        } else {
-          console.log('🔄 Artist not found in search results, selecting directly');
-          // If the exact artist isn't in search results, select it directly
-          this.selectArtist(artist);
-          this.pendingAutoSelectArtist = null;
-        }
-      },
-      error: (error) => {
-        console.error('🔄 Search failed for navigation artist:', error);
-        this.error.set(error.message || 'Failed to search artists');
-        this.loading.set(false);
-        
-        // If search fails, select the artist directly
-        console.log('🔄 Search failed, selecting artist directly');
-        this.selectArtist(artist);
-        this.pendingAutoSelectArtist = null;
-      }
-    });
+    // Populate search box and trigger search using the form control
+    console.log('🔄 Triggering search for artist:', artist.name);
+    // Small delay to ensure the search subscription is fully set up
+    setTimeout(() => {
+      console.log('🔄 Actually setting search value for:', artist.name);
+      this.searchControl.setValue(artist.name, { emitEvent: true });
+    }, 0);
   }
 
   // Debug method to manually test state persistence - remove in production
