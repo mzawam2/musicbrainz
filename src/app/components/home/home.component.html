@@ -1,8 +1,6 @@
 <div class="search-container">
   <div class="search-header">
-    <h1>Artist Discography</h1>
-    <p class="description">Search for artists to explore their complete discography, label relationships, and musical
-      evolution</p>
+    <h1 #pageHeading tabindex="-1">Artist Discography</h1>
   </div>
 
   <div class="search-box">
@@ -11,16 +9,6 @@
       class="search-input" autocomplete="off" [attr.aria-expanded]="artists().length > 0"
       [attr.aria-describedby]="error() ? 'search-error' : null" role="combobox" aria-autocomplete="list"
       [attr.aria-activedescendant]="null" />
-
-    @if (loading()) {
-    <div class="search-spinner">⟳</div>
-    }
-    @if (searchControl.value && searchControl.value.length > 0 && !loading()) {
-    <button type="button" class="clear-button" (click)="clearSearch()" aria-label="Clear search">
-      ✕
-    </button>
-    }
-
   </div>
 
   @if (loading()) {

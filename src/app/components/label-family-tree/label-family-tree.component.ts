@@ -42,6 +42,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private fromNavigationState = false;
 
   @ViewChild('searchInput', { static: false }) searchInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('pageHeading', { static: false }) pageHeading!: ElementRef<HTMLHeadingElement>;
 
   // Form control for search with debouncing
   searchControl = new FormControl('');
@@ -60,8 +61,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   isCreatingPlaylist = signal(false);
   createdPlaylist = signal<SpotifyPlaylist | null>(null);
   tracksPerAlbum = signal(5); // Default number of tracks per album
-  useAllTracks = signal(false); // Whether to use all tracks from each album
-  albumSortOrder = signal<'none' | 'year-asc' | 'year-desc'>('none'); // Album sorting preference
+  useAllTracks = signal(true); // Whether to use all tracks from each album
   startYear = signal<number | null>(null); // Year range filter start
   endYear = signal<number | null>(null); // Year range filter end
   enableYearFilter = signal(false); // Whether year filtering is enabled
@@ -84,19 +84,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     return `${count} track${count === 1 ? '' : 's'} from each album will be included`;
   });
 
-  // Computed property for sort mode description
-  sortModeDescription = computed(() => {
-    const sortOrder = this.albumSortOrder();
-    switch (sortOrder) {
-      case 'year-asc':
-        return 'Albums sorted by release year (oldest first)';
-      case 'year-desc':
-        return 'Albums sorted by release year (newest first)';
-      case 'none':
-      default:
-        return 'Albums in original order';
-    }
-  });
 
   // Computed property for year filter description
   yearFilterDescription = computed(() => {
@@ -147,6 +134,13 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     console.log('🔄 LabelFamilyTreeComponent ngOnInit - starting initialization');
+    
+    // Focus the main heading for accessibility when navigating to this page
+    setTimeout(() => {
+      if (this.pageHeading?.nativeElement) {
+        this.pageHeading.nativeElement.focus();
+      }
+    }, 100);
     
     // Try to check navigation state immediately
     this.checkNavigationState();
@@ -222,10 +216,12 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.searchControl.setValue(label.name, { emitEvent: false }); // Don't trigger search
     this.loadFamilyTree(label.id);
     
-    // Restore focus to search input after DOM updates
+    // Keep focus on the main heading after auto-selection from navigation
     setTimeout(() => {
-      this.searchInput?.nativeElement?.focus();
-    }, 0);
+      if (this.pageHeading?.nativeElement) {
+        this.pageHeading.nativeElement.focus();
+      }
+    }, 150);
   }
 
   private loadFamilyTree(labelId: string): void {
@@ -646,21 +642,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
             console.log(`🎵 YEAR FILTER RESULT: ${sortedReleases.length}/${initialCount} releases kept for ${artistData.artistName}`);
           }
 
-          // Apply sorting if specified
-          const sortOrder = this.albumSortOrder();
-          if (sortOrder !== 'none') {
-            sortedReleases.sort((a: {date?: string}, b: {date?: string}) => {
-              const yearA = this.extractYear(a.date);
-              const yearB = this.extractYear(b.date);
-              
-              // Handle cases where year is missing
-              if (yearA === null && yearB === null) return 0;
-              if (yearA === null) return 1; // Put releases without dates at the end
-              if (yearB === null) return -1;
-              
-              return sortOrder === 'year-asc' ? yearA - yearB : yearB - yearA;
-            });
-          }
           
           const artistReleases = sortedReleases
               .map((release: {id: string, title: string, date?: string, primaryType?: string}) => ({
@@ -672,8 +653,8 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
             }));
           
           const filterInfo = this.enableYearFilter() ? 
-            ` filtered: ${this.startYear() || 'any'}-${this.endYear() || 'any'},` : '';
-          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} (${filterInfo} sorted: ${sortOrder}) - NO API CALLS`);
+            ` filtered: ${this.startYear() || 'any'}-${this.endYear() || 'any'}` : '';
+          console.log(`🎵 Using ${artistReleases.length} cached releases for ${artistData.artistName} (${filterInfo}) - NO API CALLS`);
           playlistReleases.push(...artistReleases);
         } else {
           console.log(`🎵 No cached release details found for ${artistData.artistName}`);
@@ -759,12 +740,6 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     return this.useAllTracks() ? 'all' : this.tracksPerAlbum().toString();
   }
 
-  /**
-   * Update the album sort order
-   */
-  updateAlbumSortOrder(sortOrder: 'none' | 'year-asc' | 'year-desc'): void {
-    this.albumSortOrder.set(sortOrder);
-  }
 
   /**
    * Toggle year filter on/off

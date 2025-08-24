@@ -2,21 +2,13 @@
   <!-- Header with search and controls -->
   <div class="tree-header">
     <div class="search-section">
-      <h1>Label Family Trees</h1>
-      <p class="description">Explore hierarchical relationships between record labels and their artist rosters</p>
-
+      <div class="search-header">
+        <h1 #pageHeading tabindex="-1">Label Family Trees</h1>
+      </div>
       <div class="search-controls">
         <div class="search-input-wrapper">
           <input #searchInput type="text" class="search-input" placeholder="Search for a record label..."
             [formControl]="searchControl" />
-          @if (isSearching()) {
-          <div class="search-spinner">⟳</div>
-          }
-          @if (searchControl.value && !isSearching()) {
-          <button class="clear-search-btn" (click)="clearSearch()" type="button" title="Clear search">×</button>
-          }
-        </div>
-
       </div>
 
       <!-- Search Results -->
@@ -46,19 +38,16 @@
 
   <!-- Spotify Success Message -->
   @if (createdPlaylist()) {
-    <div class="spotify-success">
-      <div class="success-content">
-        <h4>✓ Spotify Playlist Created!</h4>
-        <p><strong>{{ createdPlaylist()?.name }}</strong></p>
-        <a 
-          [href]="createdPlaylist()?.external_urls?.spotify" 
-          target="_blank" 
-          class="open-spotify-link">
-          Open in Spotify
-        </a>
-      </div>
-      <button class="close-success" (click)="createdPlaylist.set(null)" type="button">×</button>
+  <div class="spotify-success">
+    <div class="success-content">
+      <h4>✓ Spotify Playlist Created!</h4>
+      <p><strong>{{ createdPlaylist()?.name }}</strong></p>
+      <a [href]="createdPlaylist()?.external_urls?.spotify" target="_blank" class="open-spotify-link">
+        Open in Spotify
+      </a>
     </div>
+    <button class="close-success" (click)="createdPlaylist.set(null)" type="button">×</button>
+  </div>
   }
 
   <!-- Error Display -->
@@ -81,116 +70,73 @@
       <!-- Tree Statistics and Actions -->
       <div class="tree-header-actions">
         <div class="tree-stats">
-          <h3>{{ selectedLabel()?.name }} Family Tree</h3>
+          <h3>Create Spotify Playlist</h3>
         </div>
-        
+
         <div class="tree-actions">
           <!-- Spotify Playlist Creation -->
           <div class="spotify-controls">
             <div class="track-count-control">
               <label for="tracks-per-album">Tracks per album:</label>
               <div class="track-input-group">
-                <input 
-                  id="tracks-per-album"
-                  type="number" 
-                  min="1" 
-                  max="50" 
-                  [value]="tracksPerAlbum()"
-                  [disabled]="useAllTracks()"
-                  (input)="updateTracksPerAlbum(+$any($event.target).value)"
-                  class="track-count-input"
-                  [class.disabled]="useAllTracks()"
+                <input id="tracks-per-album" type="number" min="1" max="50" [value]="tracksPerAlbum()"
+                  [disabled]="useAllTracks()" (input)="updateTracksPerAlbum(+$any($event.target).value)"
+                  class="track-count-input" [class.disabled]="useAllTracks()"
                   title="Number of tracks to include from each album (1-50)">
-                <button 
-                  type="button"
-                  class="reset-tracks-btn"
-                  [disabled]="useAllTracks()"
-                  (click)="resetTracksPerAlbum()"
-                  title="Reset to default (5 tracks)">
+                <button type="button" class="reset-tracks-btn" [disabled]="useAllTracks()"
+                  (click)="resetTracksPerAlbum()" title="Reset to default (5 tracks)">
                   ↻
                 </button>
               </div>
             </div>
-            
+
             <div class="all-tracks-control">
               <label class="checkbox-label">
-                <input 
-                  type="checkbox"
-                  [checked]="useAllTracks()"
-                  (change)="toggleAllTracks()"
+                <input type="checkbox" [checked]="useAllTracks()" (change)="toggleAllTracks()"
                   class="all-tracks-checkbox">
                 <span class="checkbox-text">Use all tracks from each album</span>
               </label>
               <p class="track-mode-description">{{ trackModeDescription() }}</p>
             </div>
-            
-            <div class="album-sort-control">
-              <label for="album-sort">Album order:</label>
-              <select 
-                id="album-sort"
-                [value]="albumSortOrder()"
-                (change)="updateAlbumSortOrder($any($event.target).value)"
-                class="album-sort-select">
-                <option value="none">Original order</option>
-                <option value="year-asc">By year (oldest first)</option>
-                <option value="year-desc">By year (newest first)</option>
-              </select>
-              <p class="sort-mode-description">{{ sortModeDescription() }}</p>
-            </div>
+
 
             <div class="year-filter-control">
               <label class="checkbox-label">
-                <input 
-                  type="checkbox"
-                  [checked]="enableYearFilter()"
-                  (change)="toggleYearFilter()"
+                <input type="checkbox" [checked]="enableYearFilter()" (change)="toggleYearFilter()"
                   class="year-filter-checkbox">
                 <span class="checkbox-text">Filter by release year</span>
               </label>
-              
+
               @if (enableYearFilter()) {
-                <div class="year-range-inputs">
-                  <div class="year-input-group">
-                    <label for="start-year">From:</label>
-                    <input 
-                      id="start-year"
-                      type="number"
-                      min="1900"
-                      [max]="getCurrentYear() + 10"
-                      placeholder="e.g. 1980"
-                      [value]="startYear() || ''"
-                      (input)="updateStartYear($any($event.target).value ? +$any($event.target).value : null)"
-                      class="year-input">
-                  </div>
-                  <div class="year-input-group">
-                    <label for="end-year">To:</label>
-                    <input 
-                      id="end-year"
-                      type="number"
-                      min="1900"
-                      [max]="getCurrentYear() + 10"
-                      placeholder="e.g. 2000"
-                      [value]="endYear() || ''"
-                      (input)="updateEndYear($any($event.target).value ? +$any($event.target).value : null)"
-                      class="year-input">
-                  </div>
+              <div class="year-range-inputs">
+                <div class="year-input-group">
+                  <label for="start-year">From:</label>
+                  <input id="start-year" type="number" min="1900" [max]="getCurrentYear() + 10" placeholder="e.g. 1980"
+                    [value]="startYear() || ''"
+                    (input)="updateStartYear($any($event.target).value ? +$any($event.target).value : null)"
+                    class="year-input">
                 </div>
+                <div class="year-input-group">
+                  <label for="end-year">To:</label>
+                  <input id="end-year" type="number" min="1900" [max]="getCurrentYear() + 10" placeholder="e.g. 2000"
+                    [value]="endYear() || ''"
+                    (input)="updateEndYear($any($event.target).value ? +$any($event.target).value : null)"
+                    class="year-input">
+                </div>
+              </div>
               }
-              
+
               <p class="year-filter-description">{{ yearFilterDescription() }}</p>
             </div>
-            
-            <button 
-              class="spotify-btn"
-              (click)="createSpotifyPlaylistFromSelectedLabel()"
-              [disabled]="isCreatingPlaylist()"
-              title="Create Spotify playlist from label releases">
+
+            <button class="spotify-btn" (click)="createSpotifyPlaylistFromSelectedLabel()"
+              [disabled]="isCreatingPlaylist()" title="Create Spotify playlist from label releases">
               @if (isCreatingPlaylist()) {
-                <span class="spinner"></span>
-                Creating...
+              <span class="spinner"></span>
+              Creating...
               } @else {
-                <span class="spotify-icon">♪</span>
-                Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
+              <span class="spotify-icon">♪</span>
+              Create Playlist ({{ getEffectiveTrackCount() }} tracks/album)
               }
             </button>
           </div>
@@ -208,7 +154,7 @@
     <div class="no-tree-message">
       <p>No family tree data available for {{ selectedLabel()?.name }}</p>
     </div>
-    } 
+    }
   </div>
 
 </div>

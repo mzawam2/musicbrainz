@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
 import { Router, NavigationEnd } from '@angular/router';
@@ -30,6 +30,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private router = inject(Router);
   private destroy$ = new Subject<void>();
+  
+  @ViewChild('pageHeading', { static: false }) pageHeading!: ElementRef<HTMLHeadingElement>;
   
   // Constants for state persistence
   private readonly STATE_STORAGE_KEY = 'homeComponent_state';
@@ -101,6 +103,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     console.log('🔄 HomeComponent ngOnInit - starting component initialization');
+    
+    // Focus the main heading for accessibility when navigating to this page
+    setTimeout(() => {
+      if (this.pageHeading?.nativeElement) {
+        this.pageHeading.nativeElement.focus();
+      }
+    }, 100);
     
     // Check for navigation state first (artist from roster)
     this.checkNavigationState();
@@ -206,6 +215,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
+    
+    // Keep focus on the main heading after auto-selection from navigation
+    setTimeout(() => {
+      if (this.pageHeading?.nativeElement) {
+        this.pageHeading.nativeElement.focus();
+      }
+    }, 150);
   }
 
   clearSearch() {
