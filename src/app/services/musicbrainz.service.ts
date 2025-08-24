@@ -482,8 +482,8 @@ export class MusicBrainzService {
     }
 
     console.log('🔄 Fetching fresh artist roster for label:', labelId);
-    return this.getAllLabelReleases(labelId, maxReleases).pipe(
-      map(releases => this.extractUniqueArtistsFromReleases(releases, labelId)),
+    return this.getAllLabelReleaseGroups(labelId, maxReleases).pipe(
+      map(releaseGroups => this.extractUniqueArtistsFromReleaseGroups(releaseGroups, labelId)),
       tap(roster => {
         // Cache the result
         this.labelArtistCache.set(cacheKey, { data: roster, timestamp: Date.now() });
@@ -493,19 +493,19 @@ export class MusicBrainzService {
     );
   }
 
-  private getAllLabelReleases(labelId: string, maxReleases: number = 3000): Observable<MusicBrainzRelease[]> {
+  private getAllLabelReleaseGroups(labelId: string, maxReleases: number = 3000): Observable<MusicBrainzReleaseGroup[]> {
     const limit = 100; // Max per request
-    
-    return this.fetchLabelReleasesRecursively(labelId, 0, limit, maxReleases, []);
+
+    return this.fetchLabelReleaseGroupsRecursively(labelId, 0, limit, maxReleases, []);
   }
 
-  private fetchLabelReleasesRecursively(
-    labelId: string, 
-    offset: number, 
-    limit: number, 
-    maxReleases: number, 
-    allReleases: MusicBrainzRelease[]
-  ): Observable<MusicBrainzRelease[]> {
+  private fetchLabelReleaseGroupsRecursively(
+    labelId: string,
+    offset: number,
+    limit: number,
+    maxReleases: number,
+    allReleaseGroups: MusicBrainzReleaseGroup[]
+  ): Observable<MusicBrainzReleaseGroup[]> {
     const params = new HttpParams()
       .set('label', labelId)
       .set('inc', 'artist-credits+tags+genres')
@@ -513,30 +513,30 @@ export class MusicBrainzService {
       .set('offset', offset.toString())
       .set('fmt', 'json');
 
-    console.log(`Fetching releases for label ${labelId}, offset: ${offset}, limit: ${limit}`);
+    console.log(`Fetching release groups for label ${labelId}, offset: ${offset}, limit: ${limit}`);
 
-    return this.http.get<MusicBrainzReleaseSearchResponse>(`${this.baseUrl}/release`, { 
-      params, 
-      headers: this.defaultHeaders 
+    return this.http.get<MusicBrainzReleaseGroupSearchResponse>(`${this.baseUrl}/release-group`, {
+      params,
+      headers: this.defaultHeaders
     }).pipe(
       delay(1000), // Rate limiting
       tap(response => {
-        console.log(`Received ${response.releases.length} releases, total count: ${response['release-count']}`);
+        console.log(`Received ${response['release-groups'].length} release groups, total count: ${response.count}`);
       }),
       switchMap(response => {
-        const newReleases = [...allReleases, ...response.releases];
-        const totalCount = response['release-count'] || 0;
-        const hasMoreData = offset + limit < totalCount && newReleases.length < maxReleases;
-        
-        console.log(`Current total releases: ${newReleases.length}, hasMoreData: ${hasMoreData}`);
-        
+        const newReleaseGroups = [...allReleaseGroups, ...response['release-groups']];
+        const totalCount = response.count || 0;
+        const hasMoreData = offset + limit < totalCount && newReleaseGroups.length < maxReleases;
+
+        console.log(`Current total release groups: ${newReleaseGroups.length}, hasMoreData: ${hasMoreData}`);
+
         if (hasMoreData) {
           // Recursively fetch next page
-          return this.fetchLabelReleasesRecursively(labelId, offset + limit, limit, maxReleases, newReleases);
+          return this.fetchLabelReleaseGroupsRecursively(labelId, offset + limit, limit, maxReleases, newReleaseGroups);
         } else {
-          // Return all collected releases
-          console.log(`Finished fetching. Total releases: ${newReleases.length}`);
-          return of(newReleases);
+          // Return all collected release groups
+          console.log(`Finished fetching. Total release groups: ${newReleaseGroups.length}`);
+          return of(newReleaseGroups);
         }
       })
     );
@@ -612,9 +612,9 @@ export class MusicBrainzService {
     return [];
   }
 
-  private extractUniqueArtistsFromReleases(releases: MusicBrainzRelease[], labelId: string): ArtistRosterEntry[] {
-    const artistMap = new Map<string, { 
-      artist: MusicBrainzArtist; 
+  private extractUniqueArtistsFromReleaseGroups(releaseGroups: MusicBrainzReleaseGroup[], labelId: string): ArtistRosterEntry[] {
+    const artistMap = new Map<string, {
+      artist: MusicBrainzArtist;
       releaseCount: number;
       firstReleaseDate?: string;
       lastReleaseDate?: string;
@@ -627,25 +627,24 @@ export class MusicBrainzService {
       }>;
     }>();
 
-    releases.forEach(release => {
-      if (release['artist-credit']) {
-        release['artist-credit'].forEach(credit => {
+    releaseGroups.forEach(group => {
+      if (group['artist-credit']) {
+        group['artist-credit'].forEach(credit => {
           if (credit.artist) {
             const artistId = credit.artist.id;
-            const releaseDate = release.date;
+            const releaseDate = group['first-release-date'];
             const releaseDetail = {
-              id: release.id,
-              title: release.title,
-              date: release.date,
-              primaryType: release['release-group']?.['primary-type']
+              id: group.id,
+              title: group.title,
+              date: group['first-release-date'],
+              primaryType: group['primary-type']
             };
             const existing = artistMap.get(artistId);
-            
+
             if (existing) {
               existing.releaseCount++;
-              existing.releases.push(release.id);
+              existing.releases.push(group.id);
               existing.releaseDetails.push(releaseDetail);
-              // Update date range
               if (releaseDate) {
                 if (!existing.firstReleaseDate || releaseDate < existing.firstReleaseDate) {
                   existing.firstReleaseDate = releaseDate;
@@ -660,7 +659,7 @@ export class MusicBrainzService {
                 releaseCount: 1,
                 firstReleaseDate: releaseDate,
                 lastReleaseDate: releaseDate,
-                releases: [release.id],
+                releases: [group.id],
                 releaseDetails: [releaseDetail]
               });
             }
