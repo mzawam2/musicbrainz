@@ -20,6 +20,10 @@ interface LabelFamilyTreeComponentState {
   searchTerm: string;
   familyTree: LabelFamilyTree | null;
   timestamp: number;
+  // Discogs data
+  discogsLabelData: any;
+  discogsLabelImages: any[];
+  rootLabelBio: string | null;
 }
 
 @Component({
@@ -414,6 +418,10 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
     this.isActivelySearching.set(false);
     this.fromNavigationState = false;
     this.error.set(null);
+    // Clear Discogs data
+    this.discogsLabelData.set(null);
+    this.discogsLabelImages.set([]);
+    this.rootLabelBio.set(null);
     // Clear persisted state when user manually clears search
     this.clearPersistedState();
   }
@@ -478,14 +486,21 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         selectedLabel: this.selectedLabel(),
         searchTerm: this.searchControl.value || '',
         familyTree: this.familyTree(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        // Discogs data
+        discogsLabelData: this.discogsLabelData(),
+        discogsLabelImages: this.discogsLabelImages(),
+        rootLabelBio: this.rootLabelBio()
       };
 
       sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
       console.log('🔄 Saved label family tree component state:', {
         hasSelectedLabel: !!state.selectedLabel,
         searchTerm: state.searchTerm,
-        hasFamilyTree: !!state.familyTree
+        hasFamilyTree: !!state.familyTree,
+        hasDiscogsData: !!state.discogsLabelData,
+        hasDiscogsImages: !!state.discogsLabelImages?.length,
+        hasRootLabelBio: !!state.rootLabelBio
       });
     } catch (error) {
       console.error('Failed to save label family tree component state:', error);
@@ -538,6 +553,19 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
 
       if (state.familyTree) {
         this.familyTree.set(state.familyTree);
+      }
+
+      // Restore Discogs data
+      if (state.discogsLabelData) {
+        this.discogsLabelData.set(state.discogsLabelData);
+      }
+      
+      if (state.discogsLabelImages) {
+        this.discogsLabelImages.set(state.discogsLabelImages);
+      }
+      
+      if (state.rootLabelBio) {
+        this.rootLabelBio.set(state.rootLabelBio);
       }
 
 
