@@ -11,7 +11,8 @@
       "Bash(npm run build:*)",
       "Bash(find:*)",
       "Bash(rm:*)",
-      "WebFetch(domain:api.discogs.com)"
+      "WebFetch(domain:api.discogs.com)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
