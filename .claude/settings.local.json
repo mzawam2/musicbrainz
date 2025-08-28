@@ -10,7 +10,8 @@
       "WebFetch(domain:musicbrainz.org)",
       "Bash(npm run build:*)",
       "Bash(find:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "WebFetch(domain:api.discogs.com)"
     ],
     "deny": []
   }

@@ -60,11 +60,32 @@
   <div class="selected-artist">
     <div class="tree-container">
       <div class="artist-card">
-        <h3>{{ selectedArtist()!.name }}</h3>
+        @if (hasAnyArtistImage()) {
+          <div class="image-center">
+            @if (primaryArtistImage()) {
+              <img 
+                [src]="primaryArtistImage().uri150 || primaryArtistImage().uri" 
+                [alt]="'Photo of ' + selectedArtist()?.name"
+                class="primary-artist-image"
+                (click)="openImageFullSize(primaryArtistImage().uri)"
+                style="cursor: pointer;"
+                [title]="'Click to view full size image of ' + selectedArtist()?.name"
+              />
+            }
+          </div>
+        } @else if (isLoadingDiscogsArtist()) {
+          <div class="image-loading">
+            <div class="spinner"></div>
+            <small>Loading artist image...</small>
+          </div>
+        } @else {
+          <div class="image-placeholder">
+            <div class="placeholder-icon">🎤</div>
+            <small>No artist image available</small>
+          </div>
+        }
         <div class="artist-meta">
-          @if (selectedArtist()!.disambiguation) {
-          <p><strong>Description:</strong> {{ selectedArtist()!.disambiguation }}</p>
-          }
+     
           @if (selectedArtist()!.country) {
           <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
           }

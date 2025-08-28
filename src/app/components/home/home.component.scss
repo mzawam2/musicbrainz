@@ -298,6 +298,70 @@
       word-wrap: break-word;
     }
 
+    .image-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1rem;
+
+      .primary-artist-image {
+        max-width: 200px;
+        max-height: 200px;
+        width: auto;
+        height: auto;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+
+        &:hover {
+          transform: scale(1.05);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+      }
+    }
+
+    .image-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.9rem;
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    .image-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+
+      .placeholder-icon {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+      }
+
+      small {
+        font-style: italic;
+        opacity: 0.8;
+      }
+    }
+
     .artist-meta {
       margin-bottom: 1.5rem;
       text-align: center;
@@ -401,9 +465,6 @@
           font-size: 1rem;
           line-height: 1.6;
           margin-bottom: 0.5rem;
-          max-height: 200px;
-          overflow-y: auto;
-          padding-right: 0.5rem;
         }
 
         .bio-source {
@@ -427,26 +488,31 @@
 // Responsive design for search container
 .search-container {
   @media (max-width: 768px) {
-    padding: 1rem;
-
-    .search-header {
-      h1 {
-        font-size: 2rem;
+      padding: 2.5rem 1rem 1rem 1rem;
+      .search-header {
+        margin-bottom: 4.5rem;
+        h1 {
+          font-size: 2rem;
+        }
+        .description {
+          font-size: 1rem;
+        }
       }
-
-      .description {
-        font-size: 1rem;
+      .search-box {
+        margin-bottom: 4.5rem;
+        max-width: 100%;
       }
+      .button-container, .artist-discography-btn, .label-family-tree-btn {
+        margin-bottom: 3.5rem;
+        width: 100%;
+        display: block;
+      }
+    .search-results {
+      width: 100%;
     }
-
-    .search-box {
-      max-width: 100%;
-    }
-
     .selected-artist {
       .artist-card {
         padding: 1.5rem;
-
         h3 {
           font-size: 1.5rem;
         }

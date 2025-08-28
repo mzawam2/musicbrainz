@@ -5,6 +5,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
 import { of, Subject } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
+import { DiscogsService } from '../../services/discogs.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
@@ -17,6 +18,9 @@ interface HomeComponentState {
   discographyData: EnhancedDiscographyData | null;
   artistBio: string | null;
   timestamp: number;
+  // Discogs data
+  discogsArtistData: any;
+  discogsArtistImages: any[];
 }
 
 @Component({
@@ -28,6 +32,7 @@ interface HomeComponentState {
 })
 export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
+  private discogsService = inject(DiscogsService);
   private router = inject(Router);
   private destroy$ = new Subject<void>();
   
@@ -63,6 +68,26 @@ export class HomeComponent implements OnInit, OnDestroy {
   artistBio = signal<string | null>(null);
   isLoadingBio = signal(false);
   bioError = signal<string | null>(null);
+  
+  // Discogs integration signals
+  discogsArtistData = signal<any>(null);
+  discogsArtistImages = signal<any[]>([]);
+  isLoadingDiscogsArtist = signal(false);
+  
+  // Computed signals for Discogs data
+  primaryArtistImage = computed(() => {
+    const images = this.discogsArtistImages();
+    return images.find(img => img.type === 'primary') || images[0] || null;
+  });
+  
+  hasPrimaryArtistImage = computed(() => {
+    const images = this.discogsArtistImages();
+    return images.length > 0 && images.some(img => img.type === 'primary');
+  });
+  
+  hasAnyArtistImage = computed(() => {
+    return this.discogsArtistImages().length > 0;
+  });
   enhancedDiscography = computed(() => {
     if (this.discographyData() !== null && this.labels().length > 0) {
       const discographyData: EnhancedDiscographyData = this.discographyData()!;
@@ -215,6 +240,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
+    this.searchDiscogsArtist(artist.name);
     
     // Keep focus on the main heading after auto-selection from navigation
     setTimeout(() => {
@@ -235,6 +261,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.discographyError.set(null);
     this.artistBio.set(null);
     this.bioError.set(null);
+    // Clear Discogs data
+    this.discogsArtistData.set(null);
+    this.discogsArtistImages.set([]);
     this.currentSearchTerm.set('');
     this.fromNavigationState = false;
     // Clear persisted state when user manually clears search
@@ -383,7 +412,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         labels: this.labels(),
         discographyData: this.discographyData(),
         artistBio: this.artistBio(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        // Discogs data
+        discogsArtistData: this.discogsArtistData(),
+        discogsArtistImages: this.discogsArtistImages()
       };
       
       sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
@@ -391,7 +423,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         hasSelectedArtist: !!state.selectedArtist,
         searchTerm: state.searchTerm,
         labelsCount: state.labels.length,
-        hasDiscography: !!state.discographyData
+        hasDiscography: !!state.discographyData,
+        hasDiscogsData: !!state.discogsArtistData,
+        hasDiscogsImages: !!state.discogsArtistImages?.length
       });
     } catch (error) {
       console.error('Failed to save home component state:', error);
@@ -445,6 +479,15 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       if (state.artistBio) {
         this.artistBio.set(state.artistBio);
+      }
+
+      // Restore Discogs data
+      if (state.discogsArtistData) {
+        this.discogsArtistData.set(state.discogsArtistData);
+      }
+      
+      if (state.discogsArtistImages) {
+        this.discogsArtistImages.set(state.discogsArtistImages);
       }
 
       // Clear the flag after restoration is complete
@@ -516,6 +559,87 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.log('🔄 Actually setting search value for:', artist.name);
       this.searchControl.setValue(artist.name, { emitEvent: true });
     }, 0);
+  }
+
+  /**
+   * Search for artist on Discogs and get artist details including images
+   */
+  private searchDiscogsArtist(artistName: string): void {
+    console.log(`🎵 Searching Discogs for artist: ${artistName}`);
+    this.isLoadingDiscogsArtist.set(true);
+    this.discogsArtistData.set(null);
+    this.discogsArtistImages.set([]);
+
+    // Search for the artist on Discogs
+    this.discogsService.searchDatabase({
+      q: artistName,
+      type: 'artist',
+      per_page: 10
+    }).subscribe({
+      next: (searchResult) => {
+        console.log(`🎵 Found ${searchResult.results.length} Discogs artists for: "${artistName}"`);
+        console.log(`🎵 All results:`, searchResult.results.map(r => `"${r.title}" (ID: ${r.id})`));
+        
+        if (searchResult.results.length > 0) {
+          // Look for exact title match first, then fall back to first result
+          let selectedResult = searchResult.results.find(result => {
+            const titleMatch = result.title.toLowerCase().trim() === artistName.toLowerCase().trim();
+            console.log(`🎵 Comparing "${result.title.toLowerCase().trim()}" === "${artistName.toLowerCase().trim()}" = ${titleMatch}`);
+            return titleMatch;
+          });
+          
+          if (!selectedResult) {
+            // If no exact match, use first result
+            selectedResult = searchResult.results[0];
+            console.log(`🎵 No exact match found, using first result: "${selectedResult.title}"`);
+          } else {
+            console.log(`🎵 Found exact match: "${selectedResult.title}"`);
+          }
+          
+          console.log(`🎵 Using Discogs artist: ${selectedResult.title} (ID: ${selectedResult.id}) - ${
+            selectedResult.title.toLowerCase().trim() === artistName.toLowerCase().trim() ? 'EXACT MATCH' : 'FALLBACK MATCH'
+          }`);
+          
+          // Get detailed artist information
+          this.discogsService.getArtist(selectedResult.id).subscribe({
+            next: (artistDetails) => {
+              if (artistDetails) {
+                console.log(`🎵 Got Discogs artist details:`, artistDetails);
+                this.discogsArtistData.set(artistDetails);
+                
+                // Extract images if available
+                if (artistDetails.images && artistDetails.images.length > 0) {
+                  this.discogsArtistImages.set(artistDetails.images);
+                  console.log(`🎵 Found ${artistDetails.images.length} images for artist`);
+                } else {
+                  console.log(`🎵 No images found for artist: ${artistName}`);
+                  this.discogsArtistImages.set([]);
+                }
+              }
+              this.isLoadingDiscogsArtist.set(false);
+            },
+            error: (error) => {
+              console.error(`🎵 Error getting Discogs artist details:`, error);
+              this.isLoadingDiscogsArtist.set(false);
+            }
+          });
+        } else {
+          console.log(`🎵 No Discogs artists found for: ${artistName}`);
+          this.isLoadingDiscogsArtist.set(false);
+        }
+      },
+      error: (error) => {
+        console.error(`🎵 Error searching Discogs for artist:`, error);
+        this.isLoadingDiscogsArtist.set(false);
+      }
+    });
+  }
+
+  /**
+   * Open image in full size in a new tab
+   */
+  openImageFullSize(imageUri: string): void {
+    window.open(imageUri, '_blank');
   }
 
   // Debug method to manually test state persistence - remove in production
