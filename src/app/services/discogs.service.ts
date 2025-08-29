@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, map, of, tap, throwError, timer, switchMap, firstValueFrom, delay } from 'rxjs';
+import { Observable, catchError, map, of, tap, throwError, firstValueFrom, delay } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   DiscogsAuthConfig,
@@ -12,7 +12,8 @@ import {
   DiscogsSearchResult,
   DiscogsSearchParams,
   DiscogsRateLimitInfo,
-  DiscogsQueuedRequest
+  DiscogsQueuedRequest,
+  DiscogsArtistReleasesResponse
 } from '../models/discogs.models';
 
 @Injectable({
@@ -37,7 +38,7 @@ export class DiscogsService {
   // Request queue for rate limiting (60 requests per minute)
   private requestQueue: DiscogsQueuedRequest<any>[] = [];
   private isProcessingQueue = false;
-  private queueProcessingInterval = 1200; // ~50 requests per minute to stay safe
+  private queueProcessingInterval = 2000; // 30 requests per minute to be more conservative
   
   
   private config: DiscogsAuthConfig = {
@@ -149,6 +150,32 @@ export class DiscogsService {
   }
 
   /**
+   * Get artist releases
+   */
+  getArtistReleases(id: number, sort: 'year' | 'title' | 'format' = 'year', sortOrder: 'asc' | 'desc' = 'asc', page: number = 1, perPage: number = 50): Observable<DiscogsArtistReleasesResponse | null> {
+    const params = new HttpParams({
+      fromObject: {
+        sort: sort,
+        sort_order: sortOrder,
+        page: page.toString(),
+        per_page: perPage.toString()
+      }
+    });
+
+    return this.makeAuthenticatedRequest(() =>
+      this.http.get<DiscogsArtistReleasesResponse>(`${this.DISCOGS_API_BASE}/artists/${id}/releases`, {
+        headers: this.getAuthHeaders(),
+        params: params
+      })
+    ).pipe(
+      catchError(error => {
+        console.error(`🎵 Error fetching artist releases for ${id}:`, error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
    * Get label details
    */
   getLabel(id: number): Observable<DiscogsLabelDetails | null> {
@@ -192,31 +219,6 @@ export class DiscogsService {
     return error instanceof HttpErrorResponse && error.status === 429;
   }
 
-  /**
-   * Handle rate limit errors
-   */
-  private handleRateLimitError<T>(error: HttpErrorResponse, requestFn: () => Observable<T>): Observable<T> {
-    const retryAfter = this.getRetryAfterSeconds(error);
-    
-    // Update rate limit info signal
-    this.rateLimitInfo.set({
-      retryAfter: retryAfter,
-      timestamp: Date.now(),
-      isRateLimited: true,
-      remaining: 0,
-      limit: 60
-    });
-
-    console.warn(`🎵 Discogs rate limit hit. Retrying after ${retryAfter} seconds`);
-
-    return timer(retryAfter * 1000).pipe(
-      switchMap(() => {
-        // Clear rate limit flag after delay
-        this.rateLimitInfo.set({ retryAfter: 0, timestamp: 0, isRateLimited: false, remaining: 60, limit: 60 });
-        return requestFn();
-      })
-    );
-  }
 
   /**
    * Extract retry-after value from rate limit error
@@ -231,19 +233,31 @@ export class DiscogsService {
   }
 
   /**
-   * Create an authenticated HTTP request
+   * Create an authenticated HTTP request with rate limiting
    */
   private makeAuthenticatedRequest<T>(requestFn: () => Observable<T>): Observable<T> {
-    return requestFn().pipe(
-      tap(() => {
-        // Update rate limit info from response headers if available
-        // This would be done in an HTTP interceptor in a production app
-      }),
-      catchError(error => {
-        if (this.isRateLimitError(error)) {
-          return this.handleRateLimitError(error, requestFn);
+    // Use the queue system for rate limiting
+    return new Observable<T>(subscriber => {
+      this.queueRequest(requestFn, 'medium').then(
+        result => {
+          subscriber.next(result);
+          subscriber.complete();
+        },
+        error => {
+          subscriber.error(error);
         }
-        return throwError(() => error);
+      );
+    });
+  }
+
+  /**
+   * Make a direct URL request (for releases_url from artist details)
+   */
+  makeDirectUrlRequest<T>(url: string, params?: HttpParams): Observable<T> {
+    return this.makeAuthenticatedRequest(() =>
+      this.http.get<T>(url, {
+        headers: this.getAuthHeaders(),
+        params: params
       })
     );
   }
@@ -306,7 +320,10 @@ export class DiscogsService {
         this.requestQueue.splice(insertIndex, 0, queuedRequest);
       }
 
-      this.processQueue();
+      console.log(`🎵 Discogs request queued (${priority}). Queue length: ${this.requestQueue.length}`);
+
+      // Process queue with a small delay to avoid immediate processing
+      setTimeout(() => this.processQueue(), 100);
     });
   }
 
@@ -330,16 +347,42 @@ export class DiscogsService {
           const timeRemaining = rateLimitInfo.retryAfter * 1000 - (Date.now() - rateLimitInfo.timestamp);
           if (timeRemaining > 0) {
             await new Promise(resolve => setTimeout(resolve, timeRemaining));
+            // Clear rate limit flag after waiting
+            this.rateLimitInfo.set({ retryAfter: 0, timestamp: 0, isRateLimited: false, remaining: 60, limit: 60 });
           }
         }
 
         const result = await request.requestFn();
         request.resolve(result);
 
-        // Add delay between requests to respect rate limits
+        console.log(`🎵 Discogs request completed. Queue length: ${this.requestQueue.length}`);
+
+        // Add delay between requests to respect rate limits (30 requests per minute = 2000ms)
         await new Promise(resolve => setTimeout(resolve, this.queueProcessingInterval));
-      } catch (error) {
-        request.reject(error);
+      } catch (error: any) {
+        // Handle rate limit errors at the queue level
+        if (this.isRateLimitError(error)) {
+          const retryAfter = this.getRetryAfterSeconds(error);
+          
+          // Update rate limit info
+          this.rateLimitInfo.set({
+            retryAfter: retryAfter,
+            timestamp: Date.now(),
+            isRateLimited: true,
+            remaining: 0,
+            limit: 60
+          });
+
+          console.warn(`🎵 Discogs rate limit hit in queue. Waiting ${retryAfter} seconds before retry`);
+          
+          // Put the request back at the front of the queue for retry
+          this.requestQueue.unshift(request);
+          
+          // Wait for the retry period
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        } else {
+          request.reject(error);
+        }
       }
     }
 

@@ -166,8 +166,10 @@
         
         <div class="release-container" [class]="'view-' + viewMode()">
           @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id) {
+            <!-- Debug: {{ releaseGroup.title }} - thumb: {{ releaseGroup.thumb ? 'YES' : 'NO' }} -->
             <app-release-card 
               [releaseGroup]="releaseGroup"
+              [discogsAlbumArt]="releaseGroup.thumb || null"
               (expand)="onReleaseExpand($event)"
               (collapse)="onReleaseCollapse($event)">
             </app-release-card>

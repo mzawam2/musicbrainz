@@ -22,18 +22,37 @@ describe('LabelCardComponent', () => {
     
     // Provide required input
     const mockLabelData: LabelWithReleaseCount = {
-      id: '123',
-      name: 'Test Label',
-      type: 'Original Production',
-      'type-id': '7aaa37fe-2def-4476-b0c9-48d50b6a5e1a',
-      country: 'US',
-      'life-span': {
-        begin: '1990',
-        ended: false
+      label: {
+        id: '123',
+        name: 'Test Label',
+        'sort-name': 'Test Label',
+        type: 'Original Production',
+        'type-id': '7aaa37fe-2def-4476-b0c9-48d50b6a5e1a',
+        country: 'US',
+        'label-code': 12345,
+        'life-span': {
+          begin: '1990',
+          end: null,
+          ended: false
+        },
+        disambiguation: '',
+        area: {
+          id: '456',
+          name: 'United States',
+          'sort-name': 'United States',
+          'type-id': null,
+          'iso-3166-1-codes': ['US'],
+          disambiguation: '',
+          type: null
+        },
+        aliases: [],
+        rating: { value: 5, 'votes-count': 1 },
+        tags: [],
+        isnis: [],
+        ipis: []
       },
-      disambiguation: '',
       releaseCount: 10,
-      aliases: []
+      releases: []
     };
     
     fixture.componentRef.setInput('labelData', mockLabelData);

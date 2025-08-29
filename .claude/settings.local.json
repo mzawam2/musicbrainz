@@ -13,7 +13,8 @@
       "Bash(rm:*)",
       "WebFetch(domain:api.discogs.com)",
       "Bash(ls:*)",
-      "Bash(ng test:*)"
+      "Bash(ng test:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

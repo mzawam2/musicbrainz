@@ -257,3 +257,24 @@ export interface DiscogsQueuedRequest<T> {
   resolve: (value: T) => void;
   reject: (error: any) => void;
 }
+
+export interface DiscogsArtistRelease {
+  id: number;
+  title: string;
+  year?: number;
+  thumb?: string;
+  role: string;
+  type: 'release' | 'master';
+  resource_url: string;
+  artist?: string;
+  main_release?: number;
+  format?: string[];
+  label?: string[];
+  catno?: string;
+  track_info?: string;
+}
+
+export interface DiscogsArtistReleasesResponse {
+  pagination: DiscogsPagination;
+  releases: DiscogsArtistRelease[];
+}

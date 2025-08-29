@@ -1,15 +1,29 @@
 <div class="release-card" [attr.data-type]="primaryType().toLowerCase()" [class.expanded]="isExpanded()">
   <!-- Cover Art Section -->
-  @if (coverArt() && coverArt()!.artwork && coverArt()!.images && (coverArt()!.images?.length || 0) > 0) {
+  @if ((coverArt() && coverArt()!.artwork && coverArt()!.images && (coverArt()!.images?.length || 0) > 0) || discogsAlbumArt()) {
     <div class="cover-art-section">
-      <img 
-        [src]="coverArt()!.images?.[0]?.thumbnails?.['250'] || ''" 
-        [alt]="'Cover art for ' + releaseGroup().title"
-        class="cover-art"
-(error)="$any($event.target).style.display='none'"
-      />
+      @if (discogsAlbumArt()) {
+        <img 
+          [src]="discogsAlbumArt()!" 
+          [alt]="'Cover art for ' + releaseGroup().title"
+          class="cover-art discogs-art"
+          (click)="openAlbumArtModal()"
+          (error)="$any($event.target).style.display='none'"
+          [title]="'Click to view full size album art for ' + releaseGroup().title"
+        />
+      } @else if (coverArt() && coverArt()!.artwork && coverArt()!.images && (coverArt()!.images?.length || 0) > 0) {
+        <img 
+          [src]="coverArt()!.images?.[0]?.thumbnails?.['250'] || ''" 
+          [alt]="'Cover art for ' + releaseGroup().title"
+          class="cover-art musicbrainz-art"
+          (click)="openAlbumArtModal()"
+          (error)="$any($event.target).style.display='none'"
+          [title]="'Click to view full size album art for ' + releaseGroup().title"
+        />
+      }
     </div>
   }
+
 
   <div class="release-main-content">
     <div class="release-header">

@@ -1,8 +1,12 @@
 import { Component, input, output, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 
 import { Subject, takeUntil, forkJoin } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
+import { DiscogsImage } from '../../../models/discogs.models';
+import { ArtistPhotoModalComponent } from '../../artist-photo-modal/artist-photo-modal.component';
+import { ArtistPhotoModalData } from '../../artist-photo-modal/artist-photo-modal-data.interface';
 
 @Component({
   selector: 'app-release-card',
@@ -14,11 +18,13 @@ import { MusicBrainzService } from '../../../services/musicbrainz.service';
 export class ReleaseCardComponent implements OnInit, OnDestroy {
   // Input and output functions
   releaseGroup = input.required<EnhancedReleaseGroup>();
+  discogsAlbumArt = input<string | null>(null);
   expand = output<string>();
   collapse = output<string>();
 
   // Injected services
   private musicBrainzService = inject(MusicBrainzService);
+  private dialog = inject(MatDialog);
 
   // State signals
   detailedReleases = signal<DetailedRelease[]>([]);
@@ -66,6 +72,9 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     if (releaseGroup.expanded) {
       this.isExpanded.set(true);
     }
+    
+    // Debug album art input
+    console.log(`🎵 🎨 Release card for "${releaseGroup.title}" - Album art: ${this.discogsAlbumArt() || 'NONE'}`);
   }
 
 
@@ -189,6 +198,39 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
           // Don't show error for missing cover art as it's common
         }
       });
+  }
+
+
+  openAlbumArtModal() {
+    const releaseGroup = this.releaseGroup();
+    const discogsArt = this.discogsAlbumArt();
+    const coverArt = this.coverArt();
+
+    let imageUri = '';
+    let altText = `Album art for ${releaseGroup.title}`;
+
+    if (discogsArt) {
+      imageUri = discogsArt; // Use the thumb URL directly
+    } else if (coverArt && coverArt.images && coverArt.images.length > 0) {
+      imageUri = coverArt.images[0].image || '';
+    }
+
+    if (!imageUri) return;
+
+    const modalData: ArtistPhotoModalData = {
+      imageUri: imageUri,
+      artistName: releaseGroup.title,
+      altText: altText
+    };
+
+    this.dialog.open(ArtistPhotoModalComponent, {
+      data: modalData,
+      panelClass: 'artist-photo-modal',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      hasBackdrop: true,
+      disableClose: false
+    });
   }
 
   formatDuration(milliseconds: number): string {
