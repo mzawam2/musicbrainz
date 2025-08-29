@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 
 import { Router, NavigationEnd } from '@angular/router';
 import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
@@ -9,6 +10,8 @@ import { DiscogsService } from '../../services/discogs.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
+import { ArtistPhotoModalComponent } from '../artist-photo-modal/artist-photo-modal.component';
+import { ArtistPhotoModalData } from '../artist-photo-modal/artist-photo-modal-data.interface';
 
 // Interface for persisting component state
 interface HomeComponentState {
@@ -34,6 +37,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private discogsService = inject(DiscogsService);
   private router = inject(Router);
+  private dialog = inject(MatDialog);
   private destroy$ = new Subject<void>();
   
   @ViewChild('pageHeading', { static: false }) pageHeading!: ElementRef<HTMLHeadingElement>;
@@ -636,10 +640,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Open image in full size in a new tab
+   * Open image in full size in a modal
    */
   openImageFullSize(imageUri: string): void {
-    window.open(imageUri, '_blank');
+    const modalData: ArtistPhotoModalData = {
+      imageUri: imageUri,
+      artistName: this.selectedArtist()?.name,
+      altText: `Photo of ${this.selectedArtist()?.name || 'artist'}`
+    };
+
+    this.dialog.open(ArtistPhotoModalComponent, {
+      data: modalData,
+      panelClass: 'artist-photo-modal',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      hasBackdrop: true,
+      disableClose: false
+    });
   }
 
   // Debug method to manually test state persistence - remove in production

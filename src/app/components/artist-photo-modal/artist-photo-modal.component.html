@@ -1,0 +1,41 @@
+<div class="artist-photo-modal-container">
+  <!-- Close Button -->
+  <button
+    mat-icon-button
+    class="close-button"
+    (click)="close()"
+    aria-label="Close image modal"
+    title="Close"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading image...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (hasError()) {
+    <div class="error-state">
+      <mat-icon>error</mat-icon>
+      <p>Failed to load image</p>
+      <button mat-button (click)="close()">Close</button>
+    </div>
+  }
+
+  <!-- Image Display -->
+  @if (!hasError()) {
+    <img
+      [src]="data.imageUri"
+      [alt]="data.altText || 'Artist photo'"
+      class="modal-image"
+      (load)="onImageLoad()"
+      (error)="onImageError()"
+      [style.visibility]="isLoading() ? 'hidden' : 'visible'"
+    />
+  }
+</div>
