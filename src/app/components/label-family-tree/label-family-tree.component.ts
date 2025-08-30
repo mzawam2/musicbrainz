@@ -2,7 +2,7 @@ import { Component, inject, signal, computed, effect, ElementRef, ViewChild, OnD
 
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
+import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { SpotifyService, PlaylistCreationRequest, SpotifyPlaylist } from '../../services/spotify.service';
@@ -38,6 +38,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
   private spotifyService = inject(SpotifyService);
   private discogsService = inject(DiscogsService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private destroy$ = new Subject<void>();
 
   // State persistence constants
@@ -168,14 +169,59 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       }
     }, 100);
     
-    // Try to check navigation state immediately
-    this.checkNavigationState();
-    
-    // If no navigation state was found, restore from cache
-    if (!this.pendingAutoSelectLabel) {
-      console.log('🔄 No navigation state, attempting to restore from cache');
-      this.restoreState();
-    }
+    // Check for query parameters first (from release card links)
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['labelId'] && params['labelName']) {
+        console.log(`🔗 Found label in query params: ${params['labelName']} (ID: ${params['labelId']})`);
+        
+        // Create a label object from query params
+        const labelFromParams: MusicBrainzLabel = {
+          id: params['labelId'],
+          name: params['labelName'],
+          type: '',
+          'type-id': '',
+          'sort-name': params['labelName'],
+          disambiguation: '',
+          country: '',
+          'label-code': 0,
+          'life-span': { begin: '', end: null, ended: false },
+          area: {
+            id: '',
+            name: '',
+            'sort-name': '',
+            'type-id': null,
+            'iso-3166-1-codes': [],
+            disambiguation: '',
+            type: null
+          },
+          rating: { 'votes-count': 0, value: 0 },
+          aliases: [],
+          tags: [],
+          isnis: [],
+          ipis: []
+        };
+        
+        // Set the label and trigger family tree loading
+        this.onLabelSelect(labelFromParams);
+        
+        // Clear query params to clean up URL
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {}
+        });
+        
+        return; // Skip other initialization if we have query params
+      }
+      
+      // Try to check navigation state if no query params
+      this.checkNavigationState();
+      
+      // If no navigation state was found, restore from cache
+      if (!this.pendingAutoSelectLabel) {
+        console.log('🔄 No navigation state, attempting to restore from cache');
+        this.restoreState();
+      }
+    });
   }
 
   ngOnDestroy(): void {

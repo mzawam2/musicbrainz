@@ -2,6 +2,7 @@ import { Component, input, output, OnInit, OnDestroy, signal, computed, inject, 
 
 import { Subject, takeUntil, forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
+import { RouterLink } from '@angular/router';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
 import { DiscogsService } from '../../../services/discogs.service';
@@ -11,7 +12,7 @@ import { ArtistPhotoModalData } from '../../artist-photo-modal/artist-photo-moda
 
 @Component({
   selector: 'app-release-card',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './release-card.component.html',
   styleUrl: './release-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
