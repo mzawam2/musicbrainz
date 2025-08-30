@@ -84,6 +84,7 @@
             @if (discogsLabelData() && discogsLabelData().urls && discogsLabelData().urls.length > 0) {
             <p><strong>Links:</strong></p>
             <div class="tags-container">
+              <a [href]="discogsLabelData()?.uri" target="_blank" rel="noopener" class="discogs-label-link">Discogs Page</a>
               @for (url of discogsLabelData().urls; track url) {
               <a [href]="url" target="_blank" rel="noopener" class="discogs-label-link">{{ url }}</a>
               }
