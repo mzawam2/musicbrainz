@@ -174,6 +174,9 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
       if (params['labelId'] && params['labelName']) {
         console.log(`🔗 Found label in query params: ${params['labelName']} (ID: ${params['labelId']})`);
         
+        // Clear any existing state first to ensure clean slate
+        this.clearSearch();
+        
         // Create a label object from query params
         const labelFromParams: MusicBrainzLabel = {
           id: params['labelId'],
@@ -202,7 +205,7 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
         };
         
         // Set the label and trigger family tree loading
-        this.onLabelSelect(labelFromParams);
+        this.selectLabel(labelFromParams);
         
         // Clear query params to clean up URL
         this.router.navigate([], {
@@ -210,18 +213,23 @@ export class LabelFamilyTreeComponent implements OnInit, OnDestroy {
           queryParams: {}
         });
         
-        return; // Skip other initialization if we have query params
-      }
-      
-      // Try to check navigation state if no query params
-      this.checkNavigationState();
-      
-      // If no navigation state was found, restore from cache
-      if (!this.pendingAutoSelectLabel) {
-        console.log('🔄 No navigation state, attempting to restore from cache');
-        this.restoreState();
+        // Skip other initialization completely when we have query params
+      } else {
+        // Only run normal initialization if no query params
+        this.initializeNormally();
       }
     });
+  }
+  
+  private initializeNormally() {
+    // Try to check navigation state if no query params
+    this.checkNavigationState();
+    
+    // If no navigation state was found, restore from cache
+    if (!this.pendingAutoSelectLabel) {
+      console.log('🔄 No navigation state, attempting to restore from cache');
+      this.restoreState();
+    }
   }
 
   ngOnDestroy(): void {
