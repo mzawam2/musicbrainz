@@ -332,6 +332,7 @@ export interface DetailedRelease extends MusicBrainzRelease {
 
 export interface EnhancedReleaseGroup extends MusicBrainzReleaseGroup {
   thumb?: string;
+  discogsResourceUrl?: string;
   detailedReleases?: DetailedRelease[];
   coverArt?: CoverArtInfo;
   totalTracks?: number;

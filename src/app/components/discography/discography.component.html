@@ -170,6 +170,7 @@
             <app-release-card 
               [releaseGroup]="releaseGroup"
               [discogsAlbumArt]="releaseGroup.thumb || null"
+              [discogsResourceUrl]="releaseGroup.discogsResourceUrl || null"
               (expand)="onReleaseExpand($event)"
               (collapse)="onReleaseCollapse($event)">
             </app-release-card>

@@ -333,8 +333,12 @@ export class DiscographyComponent implements OnInit, OnDestroy {
         console.log(`🎵 ✅ MATCH FOUND: "${releaseGroup.title}" (MB ID: ${releaseGroup.id}) -> "${matchingRelease.title}" (Discogs ID: ${matchingRelease.id})`);
         console.log(`🎵 📸 Discogs thumb URL: ${matchingRelease.thumb || 'NO THUMB'}`);
         
-        // Create new release group object with thumb
-        const updatedReleaseGroup = { ...releaseGroup, thumb: matchingRelease.thumb };
+        // Create new release group object with thumb and resource URL
+        const updatedReleaseGroup = { 
+          ...releaseGroup, 
+          thumb: matchingRelease.thumb,
+          discogsResourceUrl: matchingRelease.resource_url
+        };
         const currentEnhancedData = this.enhancedDiscographyData();
         if (currentEnhancedData) {
           this.enhancedDiscographyData.set({
@@ -342,7 +346,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
             releaseGroups: currentEnhancedData.releaseGroups.map(rg => rg.id === releaseGroup.id ? updatedReleaseGroup : rg)
           });
         }
-        console.log(`🎵 ✅ Created updated release group with thumb: ${updatedReleaseGroup.thumb || 'NULL'}`);
+        console.log(`🎵 ✅ Created updated release group with thumb: ${updatedReleaseGroup.thumb || 'NULL'} and resource URL: ${updatedReleaseGroup.discogsResourceUrl}`);
         return updatedReleaseGroup;
       } else {
         console.log(`🎵 ❌ NO MATCH: "${releaseGroup.title}" (MB ID: ${releaseGroup.id}) - no exact title match found`);

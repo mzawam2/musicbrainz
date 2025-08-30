@@ -4,6 +4,7 @@ import { Subject, takeUntil, forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
+import { DiscogsService } from '../../../services/discogs.service';
 import { DiscogsImage } from '../../../models/discogs.models';
 import { ArtistPhotoModalComponent } from '../../artist-photo-modal/artist-photo-modal.component';
 import { ArtistPhotoModalData } from '../../artist-photo-modal/artist-photo-modal-data.interface';
@@ -19,11 +20,13 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   // Input and output functions
   releaseGroup = input.required<EnhancedReleaseGroup>();
   discogsAlbumArt = input<string | null>(null);
+  discogsResourceUrl = input<string | null>(null);
   expand = output<string>();
   collapse = output<string>();
 
   // Injected services
   private musicBrainzService = inject(MusicBrainzService);
+  private discogsService = inject(DiscogsService);
   private dialog = inject(MatDialog);
 
   // State signals
@@ -203,23 +206,62 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
 
   openAlbumArtModal() {
     const releaseGroup = this.releaseGroup();
+    const discogsResourceUrl = this.discogsResourceUrl();
     const discogsArt = this.discogsAlbumArt();
     const coverArt = this.coverArt();
 
-    let imageUri = '';
     let altText = `Album art for ${releaseGroup.title}`;
 
-    if (discogsArt) {
-      imageUri = discogsArt; // Use the thumb URL directly
-    } else if (coverArt && coverArt.images && coverArt.images.length > 0) {
-      imageUri = coverArt.images[0].image || '';
+    // If we have a Discogs resource URL, fetch the full-size image
+    if (discogsResourceUrl) {
+      this.discogsService.makeDirectUrlRequest<any>(discogsResourceUrl)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (item) => {
+            let imageUri = '';
+            
+            // Try to get the best image from the release/master
+            if (item && item.images && item.images.length > 0) {
+              // Find primary image or use first available
+              const primaryImage = item.images.find((img: any) => img.type === 'primary') || item.images[0];
+              imageUri = primaryImage.uri;
+            } else if (discogsArt) {
+              // Fallback to thumbnail if no full-size images
+              imageUri = discogsArt;
+            }
+
+            if (imageUri) {
+              this.openModalWithImage(imageUri, releaseGroup.title, altText);
+            }
+          },
+          error: (error) => {
+            console.error('Error fetching Discogs resource details:', error);
+            // Fallback to thumbnail on error
+            if (discogsArt) {
+              this.openModalWithImage(discogsArt, releaseGroup.title, altText);
+            }
+          }
+        });
+    } else {
+      // No Discogs resource URL, use available image sources
+      let imageUri = '';
+      
+      if (discogsArt) {
+        imageUri = discogsArt;
+      } else if (coverArt && coverArt.images && coverArt.images.length > 0) {
+        imageUri = coverArt.images[0].image || '';
+      }
+
+      if (imageUri) {
+        this.openModalWithImage(imageUri, releaseGroup.title, altText);
+      }
     }
+  }
 
-    if (!imageUri) return;
-
+  private openModalWithImage(imageUri: string, title: string, altText: string) {
     const modalData: ArtistPhotoModalData = {
       imageUri: imageUri,
-      artistName: releaseGroup.title,
+      artistName: title,
       altText: altText
     };
 
