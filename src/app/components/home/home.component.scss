@@ -482,6 +482,109 @@
         }
       }
     }
+
+    // Last.fm info section styling
+    .lastfm-info {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: left;
+
+      .lastfm-loading {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid rgba(255, 255, 255, 0.8);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+
+      .lastfm-content {
+        .lastfm-stats {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin: 0.5rem 0;
+
+          .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+
+            .stat-label {
+              color: rgba(255, 255, 255, 0.7);
+              font-size: 0.85rem;
+              font-weight: 500;
+            }
+
+            .stat-value {
+              color: rgba(255, 255, 255, 0.95);
+              font-size: 1.1rem;
+              font-weight: 600;
+            }
+          }
+        }
+
+        .lastfm-tags {
+          margin-top: 1rem;
+
+          .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+
+            .tag {
+              background: rgba(255, 255, 255, 0.1);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              padding: 0.3rem 0.6rem;
+              border-radius: 15px;
+              font-size: 0.85rem;
+              color: rgba(255, 255, 255, 0.9);
+              transition: all 0.3s ease;
+
+              &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                border-color: rgba(255, 255, 255, 0.3);
+              }
+            }
+          }
+        }
+
+        .lastfm-bio {
+          margin-top: 1rem;
+
+          .bio-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+          }
+
+          .bio-source {
+            small {
+              color: rgba(255, 255, 255, 0.6);
+              font-style: italic;
+            }
+          }
+        }
+      }
+
+      .lastfm-error {
+        small {
+          color: rgba(255, 255, 255, 0.6);
+          font-style: italic;
+        }
+      }
+    }
   }
 }
 

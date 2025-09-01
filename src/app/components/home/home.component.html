@@ -149,6 +149,57 @@
               </div>
             }
           </div>
+          
+          <!-- Last.fm Artist Info Section -->
+          <div class="lastfm-info">
+            @if (isLoadingLastfmArtist()) {
+              <div class="lastfm-loading">
+                <div class="spinner"></div>
+                <span>Loading Last.fm data...</span>
+              </div>
+            } @else if (lastfmArtistInfo()) {
+              <div class="lastfm-content">
+                <p><strong>Last.fm Info:</strong></p>
+                <div class="lastfm-stats">
+                  @if (lastfmArtistInfo()!.stats?.listeners) {
+                    <div class="stat-item">
+                      <span class="stat-label">Listeners:</span>
+                      <span class="stat-value">{{ lastfmArtistInfo()!.stats!.listeners | number }}</span>
+                    </div>
+                  }
+                  @if (lastfmArtistInfo()!.stats?.playcount) {
+                    <div class="stat-item">
+                      <span class="stat-label">Plays:</span>
+                      <span class="stat-value">{{ lastfmArtistInfo()!.stats!.playcount | number }}</span>
+                    </div>
+                  }
+                </div>
+                @if (lastfmArtistInfo()!.tags?.tag && lastfmArtistInfo()!.tags!.tag.length > 0) {
+                  <div class="lastfm-tags">
+                    <p><strong>Last.fm Tags:</strong></p>
+                    <div class="tags-container">
+                      @for (tag of lastfmArtistInfo()!.tags!.tag.slice(0, 6); track tag.name) {
+                        <span class="tag">{{ tag.name }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (lastfmArtistInfo()!.bio?.summary) {
+                  <div class="lastfm-bio">
+                    <p><strong>Last.fm Bio:</strong></p>
+                    <div class="bio-text" [innerHTML]="lastfmArtistInfo()!.bio!.summary"></div>
+                    <div class="bio-source">
+                      <small>Source: Last.fm</small>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (lastfmError()) {
+              <div class="lastfm-error">
+                <small>{{ lastfmError() }}</small>
+              </div>
+            }
+          </div>
         </div>
       </div>
       <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">

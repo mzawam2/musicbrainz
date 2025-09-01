@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 
 import { Router, NavigationEnd } from '@angular/router';
@@ -7,7 +8,9 @@ import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, f
 import { of, Subject } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { DiscogsService } from '../../services/discogs.service';
+import { LastfmService } from '../../services/lastfm.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
+import { LastFmArtistInfo } from '../../models/lastfm.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
 import { ArtistPhotoModalComponent } from '../artist-photo-modal/artist-photo-modal.component';
@@ -24,11 +27,13 @@ interface HomeComponentState {
   // Discogs data
   discogsArtistData: any;
   discogsArtistImages: any[];
+  // Last.fm data
+  lastfmArtistInfo: LastFmArtistInfo | null;
 }
 
 @Component({
   selector: 'app-home',
-  imports: [ReactiveFormsModule, LabelGridComponent, DiscographyComponent],
+  imports: [ReactiveFormsModule, DecimalPipe, LabelGridComponent, DiscographyComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,6 +41,7 @@ interface HomeComponentState {
 export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private discogsService = inject(DiscogsService);
+  private lastfmService = inject(LastfmService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private destroy$ = new Subject<void>();
@@ -77,6 +83,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   discogsArtistData = signal<any>(null);
   discogsArtistImages = signal<any[]>([]);
   isLoadingDiscogsArtist = signal(false);
+
+  // Last.fm integration signals
+  lastfmArtistInfo = signal<LastFmArtistInfo | null>(null);
+  isLoadingLastfmArtist = signal(false);
+  lastfmError = signal<string | null>(null);
   
   // Computed signals for Discogs data
   primaryArtistImage = computed(() => {
@@ -245,6 +256,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
     this.searchDiscogsArtist(artist.name);
+    this.loadLastfmArtistInfo(artist.id);
     
     // Keep focus on the main heading after auto-selection from navigation
     setTimeout(() => {
@@ -268,6 +280,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Clear Discogs data
     this.discogsArtistData.set(null);
     this.discogsArtistImages.set([]);
+    // Clear Last.fm data
+    this.lastfmArtistInfo.set(null);
+    this.lastfmError.set(null);
     this.currentSearchTerm.set('');
     this.fromNavigationState = false;
     // Clear persisted state when user manually clears search
@@ -419,7 +434,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         timestamp: Date.now(),
         // Discogs data
         discogsArtistData: this.discogsArtistData(),
-        discogsArtistImages: this.discogsArtistImages()
+        discogsArtistImages: this.discogsArtistImages(),
+        // Last.fm data
+        lastfmArtistInfo: this.lastfmArtistInfo()
       };
       
       sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
@@ -492,6 +509,11 @@ export class HomeComponent implements OnInit, OnDestroy {
       
       if (state.discogsArtistImages) {
         this.discogsArtistImages.set(state.discogsArtistImages);
+      }
+
+      // Restore Last.fm data
+      if (state.lastfmArtistInfo) {
+        this.lastfmArtistInfo.set(state.lastfmArtistInfo);
       }
 
       // Clear the flag after restoration is complete
@@ -637,6 +659,30 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.isLoadingDiscogsArtist.set(false);
       }
     });
+  }
+
+  /**
+   * Load Last.fm artist information using MusicBrainz ID
+   */
+  private loadLastfmArtistInfo(musicBrainzId: string): void {
+    console.log('🎵 Loading Last.fm artist info for MBID:', musicBrainzId);
+    this.isLoadingLastfmArtist.set(true);
+    this.lastfmError.set(null);
+
+    this.lastfmService.getArtistInfo(musicBrainzId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (artistInfo) => {
+          console.log('🎵 Last.fm artist info loaded successfully:', artistInfo);
+          this.lastfmArtistInfo.set(artistInfo);
+          this.isLoadingLastfmArtist.set(false);
+        },
+        error: (error) => {
+          console.error('🎵 Error loading Last.fm artist info:', error);
+          this.lastfmError.set(error.message || 'Failed to load Last.fm artist information');
+          this.isLoadingLastfmArtist.set(false);
+        }
+      });
   }
 
   /**

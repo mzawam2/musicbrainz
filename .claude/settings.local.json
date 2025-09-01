@@ -14,7 +14,12 @@
       "WebFetch(domain:api.discogs.com)",
       "Bash(ls:*)",
       "Bash(ng test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:www.last.fm)",
+      "Bash(npm install)",
+      "Bash(npx ng:*)",
+      "Bash(node:*)",
+      "Bash(echo \"Checking Last.fm service files for basic syntax issues...\" grep -n \"export\\|import\\|function\\|class\\|interface\" src/app/services/lastfm*.ts src/app/models/lastfm.models.ts src/app/components/lastfm-callback/lastfm-callback.component.ts)"
     ],
     "deny": []
   }

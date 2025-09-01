@@ -28,6 +28,32 @@
         </div>
       </div>
 
+      <!-- Last.fm Authentication Section -->
+      <div class="lastfm-auth-section">
+        @if (!isLastfmAuthenticated() && !hasDeclinedAuth()) {
+          <div class="auth-prompt">
+            <span class="auth-text">🎵 Connect to Last.fm for personalized music discovery</span>
+            <div class="auth-buttons">
+              <button (click)="signInWithLastfm()" class="lastfm-signin-btn">
+                Connect with Last.fm
+              </button>
+              <button (click)="declineLastfmAuth()" class="decline-btn">
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="auth-status">
+            <span class="connected-text">
+              🎵 Connected as <strong>{{ lastfmCurrentUser()?.name }}</strong>
+            </span>
+            <button (click)="signOutLastfm()" class="signout-btn">
+              Sign Out
+            </button>
+          </div>
+        }
+      </div>
+
       <!-- Controls -->
       <div class="discography-controls">
         <!-- Search -->

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { DiscographyData, EnhancedDiscographyData, EnhancedReleaseGroup, MusicBrainzArtist } from '../../models/musicbrainz.models';
 import { DiscogsService } from '../../services/discogs.service';
+import { LastfmAuthService } from '../../services/lastfm-auth.service';
 import { DiscogsArtistRelease } from '../../models/discogs.models';
 import { ReleaseCardComponent } from './release-card/release-card.component';
 import { CollaborationNetworkComponent } from '../collaboration-network/collaboration-network.component';
@@ -19,6 +20,7 @@ import { CollaborationNetworkComponent } from '../collaboration-network/collabor
 export class DiscographyComponent implements OnInit, OnDestroy {
   // Injected services
   private discogsService = inject(DiscogsService);
+  private lastfmAuth = inject(LastfmAuthService);
   private destroy$ = new Subject<void>();
 
   // Input signals
@@ -29,6 +31,11 @@ export class DiscographyComponent implements OnInit, OnDestroy {
 
   // Writable signal that extends discographyData with Discogs thumbs
   private enhancedDiscographyData = signal<EnhancedDiscographyData | null>(null);
+
+  // Last.fm authentication state
+  readonly isLastfmAuthenticated = this.lastfmAuth.isAuthenticated;
+  readonly lastfmCurrentUser = this.lastfmAuth.currentUser;
+  readonly hasDeclinedAuth = signal(false);
 
 
   constructor() {
@@ -221,7 +228,34 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     console.log('Release collapsed:', releaseGroupId);
   }
 
+  /**
+   * Initiates Last.fm authentication flow
+   */
+  signInWithLastfm(): void {
+    this.lastfmAuth.initiateAuth();
+  }
+
+  /**
+   * Signs out of Last.fm
+   */
+  signOutLastfm(): void {
+    this.lastfmAuth.signOut();
+  }
+
+  /**
+   * User declines Last.fm authentication
+   */
+  declineLastfmAuth(): void {
+    localStorage.setItem('lastfm_auth_declined', 'true');
+    this.hasDeclinedAuth.set(true);
+    console.log('🎵 User declined Last.fm authentication');
+  }
+
   ngOnInit() {
+    // Check if user has previously declined authentication
+    const hasDeclined = localStorage.getItem('lastfm_auth_declined') === 'true';
+    this.hasDeclinedAuth.set(hasDeclined);
+    
     // Effect in constructor handles Discogs data loading
   }
 

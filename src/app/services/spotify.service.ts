@@ -623,13 +623,13 @@ export class SpotifyService {
               console.log('Tracks added successfully to playlist');
               return playlist;
             })
-            .catch(error => {
+            .catch((error: any) => {
               console.error('Failed to populate playlist with tracks:', error);
               return playlist; // Still return the playlist even if track adding fails
             })
         );
       }),
-      catchError(error => {
+      catchError((error: any) => {
         console.error('Error in createPlaylistFromLabelReleases:', error);
         return of(null);
       })
@@ -826,7 +826,7 @@ export class SpotifyService {
         // Log successful request
         console.debug(`Spotify API request successful (${this.requestCount} requests in current window)`);
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse) => {
         if (this.isAuthError(error)) {
           return this.handleAuthError(error);
         }

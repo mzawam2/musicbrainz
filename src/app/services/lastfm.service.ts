@@ -1,0 +1,225 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { RateLimiterService } from './rate-limiter.service';
+import { LastfmAuthService } from './lastfm-auth.service';
+import { 
+  LastFmTopAlbumsResponse, 
+  LastFmTopTagsResponse, 
+  LastFmTag,
+  AlbumDiscoveryResult,
+  LastFmError,
+  LastFmAuthConfig,
+  LastFmArtistInfo,
+  LastFmArtistInfoResponse
+} from '../models/lastfm.models';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LastfmService {
+  private readonly http = inject(HttpClient);
+  private readonly rateLimiter = inject(RateLimiterService);
+  private readonly authService = inject(LastfmAuthService);
+  
+  private readonly config: LastFmAuthConfig = {
+    apiKey: environment.lastfm.apiKey,
+    sharedSecret: environment.lastfm.sharedSecret,
+    apiUrl: environment.lastfm.apiUrl,
+    authUrl: environment.lastfm.authUrl,
+    callbackUrl: environment.lastfm.callbackUrl
+  };
+  
+  readonly API_BASE_URL = this.config.apiUrl;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+  
+  private cache = new Map<string, { data: any; timestamp: number }>();
+
+  /**
+   * Fetches top albums for a specific genre/tag
+   * @param genre The genre/tag name
+   * @param limit Number of results (default: 50)
+   * @param page Page number (default: 1)
+   * @returns Observable of album discovery results
+   */
+  getTopAlbumsByGenre(genre: string, limit: number = 50, page: number = 1): Observable<AlbumDiscoveryResult> {
+    const cacheKey = `albums-${genre}-${limit}-${page}`;
+    
+    // Check cache first
+    const cached = this.getFromCache<AlbumDiscoveryResult>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'tag.gettopalbums')
+      .set('tag', genre)
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json')
+      .set('limit', limit.toString())
+      .set('page', page.toString());
+
+    // Queue request through rate limiter
+    return this.rateLimiter.queueRequest(() => 
+      this.http.get<LastFmTopAlbumsResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => this.transformAlbumResponse(response, genre)),
+        tap(result => this.setCache(cacheKey, result)),
+        catchError(error => this.handleError(error))
+      )
+    );
+  }
+
+  /**
+   * Fetches popular genre tags
+   * @param limit Number of tags to fetch (default: 50)
+   * @returns Observable of popular tags
+   */
+  getPopularTags(limit: number = 50): Observable<LastFmTag[]> {
+    const cacheKey = `popular-tags-${limit}`;
+    
+    // Check cache first
+    const cached = this.getFromCache<LastFmTag[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'tag.gettoptags')
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json')
+      .set('limit', limit.toString());
+
+    // Queue request through rate limiter
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmTopTagsResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response.toptags?.tag || []),
+        tap(tags => this.setCache(cacheKey, tags)),
+        catchError(error => this.handleError(error))
+      )
+    );
+  }
+
+  /**
+   * Transforms Last.fm API response to our internal format
+   */
+  private transformAlbumResponse(response: LastFmTopAlbumsResponse, genre: string): AlbumDiscoveryResult {
+    const albums = response.topalbums?.album || [];
+    const attr = response.topalbums?.['@attr'] || {
+      tag: genre,
+      page: '1',
+      perPage: '50',
+      totalPages: '0',
+      total: '0'
+    };
+
+    return {
+      albums: albums,
+      meta: {
+        genre: attr.tag,
+        page: parseInt(attr.page, 10),
+        perPage: parseInt(attr.perPage, 10),
+        totalPages: parseInt(attr.totalPages, 10),
+        total: parseInt(attr.total, 10)
+      }
+    };
+  }
+
+  /**
+   * Handles HTTP and API errors
+   */
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'An unknown error occurred';
+
+    if (error.error instanceof ErrorEvent) {
+      // Client-side or network error
+      errorMessage = `Network error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      if (error.status === 0) {
+        errorMessage = 'Network error: Unable to connect to Last.fm API';
+      } else if (error.error && typeof error.error === 'object' && 'error' in error.error) {
+        // Last.fm API error
+        const lastfmError = error.error as LastFmError;
+        errorMessage = `Last.fm API error ${lastfmError.error}: ${lastfmError.message}`;
+      } else {
+        errorMessage = `HTTP error ${error.status}: ${error.message}`;
+      }
+    }
+
+    return throwError(() => new Error(errorMessage));
+  }
+
+  /**
+   * Gets data from cache if not expired
+   */
+  private getFromCache<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
+      return cached.data as T;
+    }
+    // Remove expired cache entry
+    if (cached) {
+      this.cache.delete(key);
+    }
+    return null;
+  }
+
+  /**
+   * Sets data in cache with timestamp
+   */
+  private setCache<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * Clears the entire cache
+   */
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Gets current cache size
+   */
+  getCacheSize(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * Fetches artist information using MusicBrainz ID
+   * @param mbid MusicBrainz ID of the artist
+   * @param lang Language for biography (optional)
+   * @returns Observable of artist information
+   */
+  getArtistInfo(mbid: string, lang: string = 'en'): Observable<LastFmArtistInfo> {
+    const cacheKey = `artist-info-${mbid}-${lang}`;
+    
+    // Check cache first
+    const cached = this.getFromCache<LastFmArtistInfo>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.getInfo')
+      .set('mbid', mbid)
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json')
+      .set('lang', lang)
+      .set('autocorrect', '1');
+
+    // Queue request through rate limiter
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmArtistInfoResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response.artist || {} as LastFmArtistInfo),
+        tap(artistInfo => this.setCache(cacheKey, artistInfo)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+}

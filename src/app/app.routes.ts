@@ -17,5 +17,9 @@ export const routes: Routes = [
   {
     path: 'spotify-callback',
     loadComponent: () => import('./components/spotify-callback/spotify-callback.component').then(m => m.SpotifyCallbackComponent)
+  },
+  {
+    path: 'lastfm-callback',
+    loadComponent: () => import('./components/lastfm-callback/lastfm-callback.component').then(m => m.LastfmCallbackComponent)
   }
 ];
