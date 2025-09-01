@@ -193,6 +193,45 @@
                     </div>
                   </div>
                 }
+
+                @if (similarArtists().length > 0 || (lastfmArtistInfo()!.similar?.artist && lastfmArtistInfo()!.similar!.artist.length > 0)) {
+                  <div class="lastfm-similar">
+                    <p><strong>Similar Artists:</strong></p>
+                    <div class="similar-chips">
+                      @if (similarArtists().length > 0) {
+                        @for (a of similarArtists().slice(0, 20); track a.name) {
+                          <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
+                            {{ a.name }}
+                          </a>
+                        }
+                      } @else if (lastfmArtistInfo()!.similar?.artist && lastfmArtistInfo()!.similar!.artist.length > 0) {
+                        @for (a of lastfmArtistInfo()!.similar!.artist.slice(0, 20); track a.name) {
+                          <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
+                            {{ a.name }}
+                          </a>
+                        }
+                      }
+                    </div>
+                    <div class="similar-builder">
+                      <label>Count
+                        <input type="number" min="1" max="50" [value]="similarLimit()" (input)="setSimilarLimit($event)">
+                      </label>
+                      <label>Tracks/artist
+                        <input type="number" min="1" max="10" [value]="similarTracksPerArtist()" (input)="setSimilarTracks($event)">
+                      </label>
+                      @if (!isSpotifyAuthenticated()) {
+                        <button class="nav-btn" (click)="signInSpotify()">Sign in to Spotify</button>
+                      } @else {
+                        <button class="nav-btn primary" [disabled]="isCreatingSimilarPlaylist()" (click)="createSimilarArtistsPlaylist()">
+                          {{ isCreatingSimilarPlaylist() ? 'Creating…' : 'Create Spotify Playlist' }}
+                        </button>
+                      }
+                    </div>
+                    @if (similarStatus()) {
+                      <div class="similar-status">{{ similarStatus() }}</div>
+                    }
+                  </div>
+                }
               </div>
             } @else if (lastfmError()) {
               <div class="lastfm-error">

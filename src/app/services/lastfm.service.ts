@@ -13,7 +13,10 @@ import {
   LastFmError,
   LastFmAuthConfig,
   LastFmArtistInfo,
-  LastFmArtistInfoResponse
+  LastFmArtistInfoResponse,
+  LastFmTopTracksResponse,
+  LastFmTrack,
+  LastFmSimilarArtist
 } from '../models/lastfm.models';
 
 @Injectable({
@@ -218,6 +221,93 @@ export class LastfmService {
       this.http.get<LastFmArtistInfoResponse>(this.API_BASE_URL, { params }).pipe(
         map(response => response.artist || {} as LastFmArtistInfo),
         tap(artistInfo => this.setCache(cacheKey, artistInfo)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Fetches artist information by name (includes similar artists)
+   */
+  getArtistInfoByName(artistName: string, lang: string = 'en'): Observable<LastFmArtistInfo> {
+    const cacheKey = `artist-info-name-${artistName}-${lang}`;
+
+    const cached = this.getFromCache<LastFmArtistInfo>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.getInfo')
+      .set('artist', artistName)
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json')
+      .set('lang', lang)
+      .set('autocorrect', '1');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmArtistInfoResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response.artist || {} as LastFmArtistInfo),
+        tap(artistInfo => this.setCache(cacheKey, artistInfo)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Fetch similar artists for a given artist
+   */
+  getSimilarArtists(artistName: string, limit: number = 20): Observable<LastFmSimilarArtist[]> {
+    const cacheKey = `similar-${artistName}-${limit}`;
+    const cached = this.getFromCache<LastFmSimilarArtist[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.getSimilar')
+      .set('artist', artistName)
+      .set('limit', limit.toString())
+      .set('autocorrect', '1')
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<any>(this.API_BASE_URL, { params }).pipe(
+        map(response => (response?.similarartists?.artist || []).map((a: any) => ({
+          name: a.name as string,
+          mbid: a.mbid || undefined,
+          url: a.url || '',
+          image: a.image || []
+        }) as LastFmSimilarArtist)),
+        tap(artists => this.setCache(cacheKey, artists)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Fetch top tracks for an artist
+   */
+  getTopTracks(artistName: string, limit: number = 5): Observable<LastFmTrack[]> {
+    const cacheKey = `toptracks-${artistName}-${limit}`;
+    const cached = this.getFromCache<LastFmTrack[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.getTopTracks')
+      .set('artist', artistName)
+      .set('limit', limit.toString())
+      .set('autocorrect', '1')
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmTopTracksResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response?.toptracks?.track || []),
+        tap(tracks => this.setCache(cacheKey, tracks)),
         catchError(this.handleError.bind(this))
       )
     );

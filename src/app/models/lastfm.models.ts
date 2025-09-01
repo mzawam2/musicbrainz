@@ -110,6 +110,7 @@ export interface LastFmArtistStats {
 
 export interface LastFmSimilarArtist {
   name: string;
+  mbid?: string;
   url: string;
   image?: LastFmImage[];
 }
@@ -139,4 +140,29 @@ export interface LastFmArtistInfo {
 
 export interface LastFmArtistInfoResponse {
   artist: LastFmArtistInfo;
+}
+
+// Top tracks for artist
+export interface LastFmTrack {
+  name: string;
+  duration?: string | number;
+  playcount?: string;
+  listeners?: string;
+  url?: string;
+  streamable?: { '#text': string; fulltrack: string };
+  artist?: LastFmArtist;
+  image?: LastFmImage[];
+}
+
+export interface LastFmTopTracksResponse {
+  toptracks: {
+    track: LastFmTrack[];
+    '@attr': {
+      artist: string;
+      page: string;
+      perPage: string;
+      totalPages: string;
+      total: string;
+    };
+  };
 }

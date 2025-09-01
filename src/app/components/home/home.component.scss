@@ -576,6 +576,91 @@
             }
           }
         }
+
+        .lastfm-similar {
+          margin-top: 1.5rem; // more space on top
+
+          .similar-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+          }
+
+          .chip {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.3rem 0.6rem;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            display: inline-block;
+            cursor: default;
+            &.link {
+              cursor: pointer;
+            }
+            &:hover {
+              background: rgba(255, 255, 255, 0.15);
+              border-color: rgba(255, 255, 255, 0.3);
+            }
+            &.disabled {
+              opacity: 0.6;
+              cursor: not-allowed;
+              pointer-events: none;
+            }
+          }
+
+          .similar-builder {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+            align-items: center;
+            margin-top: 0.75rem;
+
+            label {
+              display: inline-flex;
+              gap: 0.4rem;
+              align-items: center;
+              color: rgba(255, 255, 255, 0.9);
+
+              input[type="number"] {
+                width: 4.5rem;
+                padding: 0.25rem 0.4rem;
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.15);
+                color: #fff;
+              }
+            }
+          }
+
+          .nav-btn {
+            margin-top: 0.75rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 0.5rem 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+
+            &.primary {
+              background: #1DB954; // Spotify green
+              border-color: #169f47;
+              color: #000; // better contrast on Spotify green
+
+              &:hover {
+                background: #1ed760;
+                border-color: #19b155;
+              }
+            }
+          }
+        }
       }
 
       .lastfm-error {

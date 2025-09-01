@@ -5,12 +5,13 @@ import { MatDialog } from '@angular/material/dialog';
 
 import { Router, NavigationEnd } from '@angular/router';
 import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
-import { of, Subject } from 'rxjs';
+import { of, Subject, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { DiscogsService } from '../../services/discogs.service';
 import { LastfmService } from '../../services/lastfm.service';
+import { SpotifyService, SpotifyTrack, SpotifyPlaylist } from '../../services/spotify.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
-import { LastFmArtistInfo } from '../../models/lastfm.models';
+import { LastFmArtistInfo, LastFmSimilarArtist } from '../../models/lastfm.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
 import { ArtistPhotoModalComponent } from '../artist-photo-modal/artist-photo-modal.component';
@@ -42,6 +43,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private musicBrainzService = inject(MusicBrainzService);
   private discogsService = inject(DiscogsService);
   private lastfmService = inject(LastfmService);
+  private spotifyService = inject(SpotifyService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private destroy$ = new Subject<void>();
@@ -88,7 +90,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   lastfmArtistInfo = signal<LastFmArtistInfo | null>(null);
   isLoadingLastfmArtist = signal(false);
   lastfmError = signal<string | null>(null);
+  similarArtists = signal<LastFmSimilarArtist[]>([]);
+
+  // Similar artists playlist builder (inline)
+  similarLimit = signal<number>(20);
+  similarTracksPerArtist = signal<number>(2);
+  isCreatingSimilarPlaylist = signal<boolean>(false);
+  similarStatus = signal<string | null>(null);
   
+  /**
+   * Select a similar artist in-place (no route change) using MBID
+   */
+  navigateToSimilarArtist(sim: LastFmSimilarArtist): void {
+    if (!sim?.mbid) return;
+    const artist: MusicBrainzArtist = { id: sim.mbid, name: sim.name, 'sort-name': sim.name } as MusicBrainzArtist;
+    this.selectArtist(artist);
+  }
+
   // Computed signals for Discogs data
   primaryArtistImage = computed(() => {
     const images = this.discogsArtistImages();
@@ -236,6 +254,116 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Navigate to Similar Artists builder with current artist as seed
+   */
+  navigateToSimilarArtists(): void {
+    const artist = this.selectedArtist();
+    if (!artist) return;
+    const seed = artist.name;
+    const similarCount = Math.min(10, this.lastfmArtistInfo()?.similar?.artist?.length || 10);
+    this.router.navigate(['/similar-artists'], {
+      queryParams: { seed, count: similarCount, tracks: 2 }
+    });
+  }
+
+  /**
+   * Create a Spotify playlist using Last.fm similar artists' top tracks (inline, no navigation)
+   */
+  async createSimilarArtistsPlaylist(): Promise<void> {
+    const artist = this.selectedArtist();
+    const lastfm = this.lastfmArtistInfo();
+    const baseList = this.similarArtists().length > 0
+      ? this.similarArtists()
+      : (lastfm?.similar?.artist || []);
+    if (!artist || baseList.length === 0) {
+      this.similarStatus.set('Similar artists not available yet.');
+      return;
+    }
+    if (!this.spotifyService.isAuthenticated()) {
+      this.similarStatus.set('Please sign in to Spotify to create playlists.');
+      this.spotifyService.initiateAuth();
+      return;
+    }
+
+    const seed = artist.name;
+    const selected = baseList.slice(0, this.similarLimit());
+    const tracksPer = Math.max(1, Math.min(10, this.similarTracksPerArtist()));
+
+    this.isCreatingSimilarPlaylist.set(true);
+    this.similarStatus.set('Fetching top tracks from Last.fm…');
+
+    try {
+      // Collect Last.fm top tracks
+      const wanted: Array<{ artist: string; title: string }> = [];
+      for (const a of selected) {
+        const top = await firstValueFrom(this.lastfmService.getTopTracks(a.name, tracksPer));
+        for (const t of top || []) {
+          if (t?.name) wanted.push({ artist: a.name, title: t.name });
+        }
+      }
+
+      if (wanted.length === 0) {
+        this.similarStatus.set('No top tracks found for similar artists.');
+        return;
+      }
+
+      // Resolve Spotify URIs
+      this.similarStatus.set(`Searching ${wanted.length} tracks on Spotify…`);
+      const uris: string[] = [];
+      for (const w of wanted) {
+        const query = `track:"${w.title}" artist:"${w.artist}"`;
+        const results: SpotifyTrack[] = await firstValueFrom(this.spotifyService.searchTracks(query, 1));
+        if (results && results[0]?.uri) uris.push(results[0].uri);
+      }
+
+      if (uris.length === 0) {
+        this.similarStatus.set('Could not match any tracks on Spotify.');
+        return;
+      }
+
+      // Create playlist
+      const name = `Similar to ${seed} — Top Tracks`;
+      const desc = `Top ${tracksPer} tracks from artists similar to ${seed} (Last.fm)`;
+      const playlist: SpotifyPlaylist | null = await firstValueFrom(this.spotifyService.createPlaylist(name, desc, true));
+      if (!playlist) {
+        this.similarStatus.set('Failed to create playlist.');
+        return;
+      }
+
+      // Add tracks in batches of 100
+      this.similarStatus.set(`Adding ${uris.length} tracks to playlist…`);
+      const batchSize = 100;
+      for (let i = 0; i < uris.length; i += batchSize) {
+        const batch = uris.slice(i, i + batchSize);
+        await firstValueFrom(this.spotifyService.addTracksToPlaylist(playlist.id, batch));
+      }
+
+      this.similarStatus.set(`Playlist created: ${playlist.name}`);
+    } catch (e) {
+      console.error('Similar playlist creation failed:', e);
+      this.similarStatus.set('Unexpected error while creating playlist.');
+    } finally {
+      this.isCreatingSimilarPlaylist.set(false);
+    }
+  }
+
+  // Template helpers
+  setSimilarLimit(ev: Event): void {
+    const v = parseInt((ev.target as HTMLInputElement).value, 10);
+    if (!isNaN(v)) this.similarLimit.set(v);
+  }
+  setSimilarTracks(ev: Event): void {
+    const v = parseInt((ev.target as HTMLInputElement).value, 10);
+    if (!isNaN(v)) this.similarTracksPerArtist.set(v);
+  }
+  isSpotifyAuthenticated(): boolean {
+    return this.spotifyService.isAuthenticated();
+  }
+  signInSpotify(): void {
+    this.spotifyService.initiateAuth();
+  }
+
   ngOnDestroy() {
     console.log('🔄 HomeComponent ngOnDestroy - saving state before destruction');
     // Save state when component is destroyed
@@ -257,6 +385,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadArtistBio(artist.name);
     this.searchDiscogsArtist(artist.name);
     this.loadLastfmArtistInfo(artist.id);
+    this.similarArtists.set([]);
+    this.loadLastfmSimilarArtists(artist.name);
     
     // Keep focus on the main heading after auto-selection from navigation
     setTimeout(() => {
@@ -373,6 +503,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     ];
 
     this.tryWikipediaSearch(searchTerms, 0);
+  }
+
+  private loadLastfmSimilarArtists(artistName: string): void {
+    this.lastfmService.getSimilarArtists(artistName, 20).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (artists: LastFmSimilarArtist[]) => {
+        this.similarArtists.set(artists || []);
+      },
+      error: () => {
+        // Non-fatal; keep empty and rely on fallback from artist info
+        this.similarArtists.set([]);
+      }
+    });
   }
 
   private tryWikipediaSearch(searchTerms: string[], index: number) {

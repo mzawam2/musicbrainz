@@ -7,6 +7,10 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
   {
+    path: 'similar-artists',
+    loadComponent: () => import('./components/similar-artists/similar-artists.component').then(m => m.SimilarArtistsComponent)
+  },
+  {
     path: 'discography',
     loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent)
   },
