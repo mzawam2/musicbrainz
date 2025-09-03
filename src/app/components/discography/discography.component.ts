@@ -49,6 +49,13 @@ export class DiscographyComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Always keep enhancedDiscographyData in sync with incoming input
+    effect(() => {
+      const data = this.discographyData();
+      this.enhancedDiscographyData.set(data);
+      console.log('dYZ� dY"< Forced sync of enhanced discography data to input change');
+    });
+
     // Use effect to watch for changes in artist and discography data
     effect(() => {
       const artist = this.selectedArtist();
