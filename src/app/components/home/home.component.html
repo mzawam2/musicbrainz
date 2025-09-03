@@ -64,7 +64,7 @@
           <div class="image-center">
             @if (primaryArtistImage()) {
               <img 
-                [src]="primaryArtistImage().uri150 || primaryArtistImage().uri" 
+                [src]="primaryArtistImage().uri" 
                 [alt]="'Photo of ' + selectedArtist()?.name"
                 class="primary-artist-image"
                 (click)="openImageFullSize(primaryArtistImage().uri)"
@@ -178,8 +178,11 @@
                   <div class="lastfm-tags">
                     <p><strong>Last.fm Tags:</strong></p>
                     <div class="tags-container">
-                      @for (tag of lastfmArtistInfo()!.tags!.tag.slice(0, 6); track tag.name) {
+                      @for (tag of lastfmArtistInfo()!.tags!.tag.slice(0, 10); track tag.name) {
                         <span class="tag">{{ tag.name }}</span>
+                      }
+                      @if (lastfmArtistInfo()!.tags!.tag.length > 10) {
+                        <span class="tag-count">+{{ lastfmArtistInfo()!.tags!.tag.length - 10 }} more</span>
                       }
                     </div>
                   </div>
@@ -213,16 +216,20 @@
                       }
                     </div>
                     <div class="similar-builder">
-                      <label>Count
-                        <input type="number" min="1" max="50" [value]="similarLimit()" (input)="setSimilarLimit($event)">
-                      </label>
-                      <label>Tracks/artist
-                        <input type="number" min="1" max="10" [value]="similarTracksPerArtist()" (input)="setSimilarTracks($event)">
-                      </label>
+                     <label>Count
+                       <input type="number" min="1" max="50" [value]="similarLimit()" (input)="setSimilarLimit($event)">
+                     </label>
+                     <label>Tracks/artist
+                       <input type="number" min="1" max="10" [value]="similarTracksPerArtist()" (input)="setSimilarTracks($event)">
+                     </label>
+                      <span class="spacer" aria-hidden="true"></span>
                       @if (!isSpotifyAuthenticated()) {
                         <button class="nav-btn" (click)="signInSpotify()">Sign in to Spotify</button>
                       } @else {
-                        <button class="nav-btn primary" [disabled]="isCreatingSimilarPlaylist()" (click)="createSimilarArtistsPlaylist()">
+                        <button class="nav-btn primary" [disabled]="isCreatingSimilarPlaylist()" (click)="createSimilarArtistsPlaylist()" aria-label="Create Spotify playlist from similar artists">
+                          <svg class="spotify-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path fill="currentColor" d="M12 1.5C6.21 1.5 1.5 6.21 1.5 12S6.21 22.5 12 22.5 22.5 17.79 22.5 12 17.79 1.5 12 1.5zm4.8 15.23a.75.75 0 01-1.03.24c-2.82-1.73-6.37-2.12-10.54-1.16a.75.75 0 11-.33-1.46c4.56-1.05 8.5-.61 11.63 1.3.36.22.47.69.27 1.08zm1.37-3.08a.9.9 0 01-1.24.29c-3.24-1.96-8.19-2.53-12.02-1.38a.9.9 0 11-.52-1.73c4.29-1.3 9.8-.67 13.48 1.58.43.26.57.83.3 1.24zm.14-3.2a1.05 1.05 0 01-1.45.35c-3.71-2.21-9.35-2.42-12.72-1.33a1.05 1.05 0 01-.65-2.02c3.97-1.28 10.16-1.03 14.39 1.47.5.3.66.96.43 1.53z"/>
+                          </svg>
                           {{ isCreatingSimilarPlaylist() ? 'Creating…' : 'Create Spotify Playlist' }}
                         </button>
                       }

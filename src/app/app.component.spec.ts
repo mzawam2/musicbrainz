@@ -1,13 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
+    // Prevent auto Last.fm auth redirect during tests
+    localStorage.setItem('lastfm_auth_declined', '1');
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
-        provideRouter([])
+        provideRouter([]),
+        provideHttpClient()
       ]
     }).compileComponents();
   });
@@ -28,6 +32,6 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, angularPlayground');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Vinyl Lens');
   });
 });

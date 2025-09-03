@@ -102,9 +102,29 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Select a similar artist in-place (no route change) using MBID
    */
   navigateToSimilarArtist(sim: LastFmSimilarArtist): void {
-    if (!sim?.mbid) return;
-    const artist: MusicBrainzArtist = { id: sim.mbid, name: sim.name, 'sort-name': sim.name } as MusicBrainzArtist;
-    this.selectArtist(artist);
+    if (sim?.mbid) {
+      const artist: MusicBrainzArtist = { id: sim.mbid, name: sim.name, 'sort-name': sim.name } as MusicBrainzArtist;
+      this.selectArtist(artist);
+      return;
+    }
+    // Fallback: text search by name if MBID unavailable
+    this.similarStatus.set(`Searching for ${sim.name}…`);
+    this.musicBrainzService.searchArtists(sim.name, 5).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (artists) => {
+        // Prefer exact name match (case-insensitive), otherwise first result
+        const exact = artists.find(a => a.name.toLowerCase() === sim.name.toLowerCase());
+        const pick = exact || artists[0];
+        if (pick) {
+          this.selectArtist(pick);
+          this.similarStatus.set('');
+        } else {
+          this.similarStatus.set(`Could not find ${sim.name} on MusicBrainz.`);
+        }
+      },
+      error: () => {
+        this.similarStatus.set(`Search failed for ${sim.name}.`);
+      }
+    });
   }
 
   // Computed signals for Discogs data

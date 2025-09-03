@@ -51,7 +51,8 @@ export class LastfmAuthService {
       cb: this.config.callbackUrl
     });
 
-    window.location.href = `${this.config.authUrl}?${params}`;
+    const url = `${this.config.authUrl}?${params}`;
+    window.location.assign(url);
   }
 
   /**
