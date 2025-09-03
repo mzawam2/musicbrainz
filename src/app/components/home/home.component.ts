@@ -93,7 +93,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   similarArtists = signal<LastFmSimilarArtist[]>([]);
 
   // Similar artists playlist builder (inline)
-  similarLimit = signal<number>(20);
+  similarLimit = signal<number>(10);
   similarTracksPerArtist = signal<number>(2);
   isCreatingSimilarPlaylist = signal<boolean>(false);
   similarStatus = signal<string | null>(null);
