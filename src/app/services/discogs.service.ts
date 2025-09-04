@@ -38,7 +38,11 @@ export class DiscogsService {
   // Request queue for rate limiting (60 requests per minute)
   private requestQueue: DiscogsQueuedRequest<any>[] = [];
   private isProcessingQueue = false;
-  private queueProcessingInterval = 2000; // 30 requests per minute to be more conservative
+  private queueProcessingInterval = 1000; // 60 requests per minute (Discogs limit)
+
+  // Simple in-memory cache for direct URL GETs (e.g., artist releases URL)
+  private directUrlCache = new Map<string, { data: any; timestamp: number }>();
+  private readonly directUrlCacheTtlMs = 5 * 60 * 1000; // 5 minutes
   
   
   private config: DiscogsAuthConfig = {
@@ -254,10 +258,27 @@ export class DiscogsService {
    * Make a direct URL request (for releases_url from artist details)
    */
   makeDirectUrlRequest<T>(url: string, params?: HttpParams): Observable<T> {
+    const cacheKey = `${url}::${params ? params.toString() : ''}`;
+    const cached = this.directUrlCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.directUrlCacheTtlMs) {
+      return of(cached.data as T);
+    }
+
     return this.makeAuthenticatedRequest(() =>
       this.http.get<T>(url, {
         headers: this.getAuthHeaders(),
         params: params
+      })
+    ).pipe(
+      tap(resp => {
+        this.directUrlCache.set(cacheKey, { data: resp, timestamp: Date.now() });
+        // Optional: prune cache occasionally
+        if (this.directUrlCache.size > 100) {
+          const cutoff = Date.now() - this.directUrlCacheTtlMs;
+          for (const [k, v] of this.directUrlCache) {
+            if (v.timestamp < cutoff) this.directUrlCache.delete(k);
+          }
+        }
       })
     );
   }
