@@ -28,32 +28,6 @@
         </div>
       </div>
 
-      <!-- Last.fm Authentication Section -->
-      <div class="lastfm-auth-section">
-        @if (!isLastfmAuthenticated() && !hasDeclinedAuth()) {
-          <div class="auth-prompt">
-            <span class="auth-text">🎵 Connect to Last.fm for personalized music discovery</span>
-            <div class="auth-buttons">
-              <button (click)="signInWithLastfm()" class="lastfm-signin-btn">
-                Connect with Last.fm
-              </button>
-              <button (click)="declineLastfmAuth()" class="decline-btn">
-                Maybe Later
-              </button>
-            </div>
-          </div>
-        } @else {
-          <div class="auth-status">
-            <span class="connected-text">
-              🎵 Connected as <strong>{{ lastfmCurrentUser()?.name }}</strong>
-            </span>
-            <button (click)="signOutLastfm()" class="signout-btn">
-              Sign Out
-            </button>
-          </div>
-        }
-      </div>
-
       <!-- Controls -->
       <div class="discography-controls">
         <!-- Search -->
@@ -186,14 +160,10 @@
           <p>No releases found matching your criteria.</p>
         </div>
       } @else {
-        <div class="results-count">
-          Showing {{ filteredReleaseGroups().length }} of {{ totalReleases() }} releases
-        </div>
-        
-        <div class="release-container" [class]="'view-' + viewMode()">
+        <!-- Release Grid/List -->
+        <div class="release-container" [class.view-grid]="viewMode() === 'grid'" [class.view-list]="viewMode() === 'list'">
           @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id) {
-            <!-- Debug: {{ releaseGroup.title }} - thumb: {{ releaseGroup.thumb ? 'YES' : 'NO' }} -->
-            <app-release-card 
+            <app-release-card
               [releaseGroup]="releaseGroup"
               [discogsAlbumArt]="releaseGroup.thumb || null"
               [discogsResourceUrl]="releaseGroup.discogsResourceUrl || null"
@@ -202,14 +172,14 @@
             </app-release-card>
           }
         </div>
+      }
 
-        <!-- Collaboration Network Section -->
-        @if (discographyData()!.collaborations && (discographyData()!.collaborations?.length || 0) > 0) {
-          <app-collaboration-network
-            [collaborations]="discographyData()!.collaborations || []"
-            [artistName]="discographyData()!.artist.name">
-          </app-collaboration-network>
-        }
+      <!-- Collaboration Network Section -->
+      @if (discographyData()!.collaborations && (discographyData()!.collaborations?.length || 0) > 0) {
+        <app-collaboration-network
+          [collaborations]="discographyData()!.collaborations || []"
+          [artistName]="discographyData()!.artist.name">
+        </app-collaboration-network>
       }
     </div>
   }
