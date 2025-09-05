@@ -800,6 +800,14 @@ export class HomeComponent implements OnInit, OnDestroy {
             console.log(`🎵 Comparing "${result.title.toLowerCase().trim()}" === "${artistName.toLowerCase().trim()}" = ${titleMatch}`);
             return titleMatch;
           });
+          // Override with normalized-first match: strip trailing numeric qualifiers like " (2)" and
+          // take the first result whose normalized title equals the normalized artistName
+          const __norm = (s: string) => s.toLowerCase().trim().replace(/\s*\(\d+\)\s*$/, '');
+          const __target = __norm(artistName);
+          const __matches = searchResult.results.filter(r => __norm(r.title) === __target);
+          if (__matches.length > 0) {
+            selectedResult = __matches[0];
+          }
           
           if (!selectedResult) {
             // If no exact match, use first result

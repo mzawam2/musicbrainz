@@ -86,7 +86,7 @@
         }
         <div class="artist-meta">
      
-          @if (selectedArtist()!.country) {
+          <!-- @if (selectedArtist()!.country) {
           <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
           }
           @if (selectedArtist()!['life-span']?.begin) {
@@ -97,8 +97,8 @@
             - present
             }
           </p>
-          }
-          @if (selectedArtist()!.tags && selectedArtist()!.tags!.length > 0) {
+          } -->
+          <!-- @if (selectedArtist()!.tags && selectedArtist()!.tags!.length > 0) {
           <div class="artist-tags">
             <p><strong>Tags:</strong></p>
             <div class="tags-container">
@@ -125,9 +125,9 @@
             </div>
           </div>
           }
-          
+           -->
           <!-- Artist Bio Section -->
-          <div class="artist-bio">
+          <!-- <div class="artist-bio">
             @if (isLoadingBio()) {
               <div class="bio-loading">
                 <div class="spinner"></div>
@@ -148,7 +148,7 @@
                 <small>Biography not available</small>
               </div>
             }
-          </div>
+          </div> -->
           
           <!-- Last.fm Artist Info Section -->
           <div class="lastfm-info">
@@ -252,11 +252,12 @@
           </div>
         </div>
       </div>
-      <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
-      </app-label-grid>
-      <app-discography [discographyData]="enhancedDiscography()" [selectedArtist]="selectedArtist()" [loading]="discographyLoading()"
+            <app-discography [discographyData]="enhancedDiscography()" [selectedArtist]="selectedArtist()" [loading]="discographyLoading()"
         [error]="discographyError()">
       </app-discography>
+      <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
+      </app-label-grid>
+
     </div>
   </div>
 

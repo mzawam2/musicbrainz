@@ -285,7 +285,6 @@ export class DiscographyComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (searchResults) => {
           if (searchResults && searchResults.results && searchResults.results.length > 0) {
-            // Get the first matching artist and fetch their releases
             const discogsArtist = searchResults.results[0];
             this.fetchArtistReleases(discogsArtist.id);
           } else {
