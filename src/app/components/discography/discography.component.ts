@@ -361,6 +361,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
    */
   private matchReleasesToReleaseGroups(discogsReleases: DiscogsArtistRelease[]) {
     const releaseGroups = this.discographyData()?.releaseGroups || [];
+    const usedDiscogsIds = new Set<number>();
     
     console.log(`🎵 🔍 Starting to match ${releaseGroups.length} MusicBrainz release groups against ${discogsReleases.length} Discogs releases`);
     
@@ -368,12 +369,20 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     const updatedReleaseGroups = releaseGroups.map((releaseGroup, index) => {
       console.log(`🎵 [${index + 1}/${releaseGroups.length}] Processing MusicBrainz release: "${releaseGroup.title}" (ID: ${releaseGroup.id})`);
       
-      // Find matching Discogs release
-      const matchingRelease = this.findBestDiscogsReleaseMatch(releaseGroup, discogsReleases);
+      // Find matching Discogs release (consider year proximity and type)
+      const initialMatch = this.findBestDiscogsReleaseMatchByYear(releaseGroup, discogsReleases);
+      let matchingRelease = initialMatch;
+      if (matchingRelease && usedDiscogsIds.has(matchingRelease.id)) {
+        const unusedPool = discogsReleases.filter(r => !usedDiscogsIds.has(r.id));
+        const alternative = this.findBestDiscogsReleaseMatchByYear(releaseGroup, unusedPool);
+        matchingRelease = alternative || null;
+      }
       if (matchingRelease) {
         console.log(`🎵 ✅ MATCH FOUND: "${releaseGroup.title}" (MB ID: ${releaseGroup.id}) -> "${matchingRelease.title}" (Discogs ID: ${matchingRelease.id})`);
         console.log(`🎵 📸 Discogs thumb URL: ${matchingRelease.thumb || 'NO THUMB'}`);
         
+        // Avoid reusing the same Discogs item for other release groups
+        usedDiscogsIds.add(matchingRelease.id);
         // Create new release group object with thumb and resource URL
         const updatedReleaseGroup = { 
           ...releaseGroup, 
@@ -472,6 +481,30 @@ export class DiscographyComponent implements OnInit, OnDestroy {
       }
     }
     return primaryMatch;
+  }
+
+  /**
+   * Improved matcher: exact title, then closest year (exact year preferred), then prefer 'release' over 'master'.
+   */
+  private findBestDiscogsReleaseMatchByYear(
+    releaseGroup: EnhancedReleaseGroup,
+    discogsReleases: DiscogsArtistRelease[]
+  ): DiscogsArtistRelease | null {
+    const mbTitle = this.normalizeTitle(releaseGroup.title);
+    const mbYear = releaseGroup['first-release-date'] ? new Date(releaseGroup['first-release-date']).getFullYear() : null;
+
+    const exactMatches = discogsReleases.filter(r => this.normalizeTitle(r.title) === mbTitle);
+    if (exactMatches.length === 0) {
+      return null;
+    }
+
+    const scored = exactMatches.map(r => ({
+      item: r,
+      yearScore: (mbYear != null && r.year != null) ? Math.abs(r.year - mbYear) : Number.MAX_SAFE_INTEGER,
+      typeScore: r.type === 'release' ? 0 : 1
+    }));
+    scored.sort((a, b) => (a.yearScore - b.yearScore) || (a.typeScore - b.typeScore));
+    return scored[0].item;
   }
 
   
