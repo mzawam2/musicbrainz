@@ -95,6 +95,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Similar artists playlist builder (inline)
   similarLimit = signal<number>(10);
   similarTracksPerArtist = signal<number>(2);
+  useSpotifyTopTracksForSimilar = signal<boolean>(false);
   isCreatingSimilarPlaylist = signal<boolean>(false);
   similarStatus = signal<string | null>(null);
   
@@ -311,30 +312,48 @@ export class HomeComponent implements OnInit, OnDestroy {
     const tracksPer = Math.max(1, Math.min(10, this.similarTracksPerArtist()));
 
     this.isCreatingSimilarPlaylist.set(true);
-    this.similarStatus.set('Fetching top tracks from Last.fm…');
+    this.similarStatus.set(this.useSpotifyTopTracksForSimilar() ? 'Fetching top tracks from Spotify…' : 'Fetching top tracks from Last.fm…');
 
     try {
-      // Collect Last.fm top tracks
-      const wanted: Array<{ artist: string; title: string }> = [];
-      for (const a of selected) {
-        const top = await firstValueFrom(this.lastfmService.getTopTracks(a.name, tracksPer));
-        for (const t of top || []) {
-          if (t?.name) wanted.push({ artist: a.name, title: t.name });
-        }
-      }
-
-      if (wanted.length === 0) {
-        this.similarStatus.set('No top tracks found for similar artists.');
-        return;
-      }
-
-      // Resolve Spotify URIs
-      this.similarStatus.set(`Searching ${wanted.length} tracks on Spotify…`);
       const uris: string[] = [];
-      for (const w of wanted) {
-        const query = `track:"${w.title}" artist:"${w.artist}"`;
-        const results: SpotifyTrack[] = await firstValueFrom(this.spotifyService.searchTracks(query, 1));
-        if (results && results[0]?.uri) uris.push(results[0].uri);
+
+      if (this.useSpotifyTopTracksForSimilar()) {
+        // Use Spotify top tracks per artist directly (no text search resolution needed)
+        for (const a of selected) {
+          // Find Spotify artist ID (prefer exact name match among top few)
+          const candidates = await firstValueFrom(this.spotifyService.searchArtists(a.name, 5));
+          let artistId: string | null = null;
+          if (candidates && candidates.length > 0) {
+            const exact = candidates.find(c => c.name.toLowerCase() === a.name.toLowerCase());
+            artistId = (exact || candidates[0]).id;
+          }
+          if (!artistId) continue;
+          const topTracks = await firstValueFrom(this.spotifyService.getArtistTopTracks(artistId, 'US'));
+          const picks = (topTracks || []).slice(0, tracksPer);
+          for (const t of picks) {
+            if (t?.uri) uris.push(t.uri);
+          }
+        }
+      } else {
+        // Default: Use Last.fm top tracks, then resolve on Spotify via search
+        const wanted: Array<{ artist: string; title: string }> = [];
+        for (const a of selected) {
+          const top = await firstValueFrom(this.lastfmService.getTopTracks(a.name, tracksPer));
+          for (const t of top || []) {
+            if (t?.name) wanted.push({ artist: a.name, title: t.name });
+          }
+        }
+
+        if (wanted.length === 0) {
+          this.similarStatus.set('No top tracks found for similar artists.');
+          return;
+        }
+        this.similarStatus.set(`Searching ${wanted.length} tracks on Spotify…`);
+        for (const w of wanted) {
+          const query = `track:"${w.title}" artist:"${w.artist}"`;
+          const results: SpotifyTrack[] = await firstValueFrom(this.spotifyService.searchTracks(query, 1));
+          if (results && results[0]?.uri) uris.push(results[0].uri);
+        }
       }
 
       if (uris.length === 0) {
@@ -343,8 +362,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       }
 
       // Create playlist
-      const name = `Similar to ${seed} — Top Tracks`;
-      const desc = `Top ${tracksPer} tracks from artists similar to ${seed} (Last.fm)`;
+      const name = `Similar to ${seed} – Top Tracks`;
+      const desc = this.useSpotifyTopTracksForSimilar()
+        ? `Top ${tracksPer} tracks from artists similar to ${seed} (Spotify top-tracks)`
+        : `Top ${tracksPer} tracks from artists similar to ${seed} (Last.fm)`;
       const playlist: SpotifyPlaylist | null = await firstValueFrom(this.spotifyService.createPlaylist(name, desc, true));
       if (!playlist) {
         this.similarStatus.set('Failed to create playlist.');
@@ -376,6 +397,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   setSimilarTracks(ev: Event): void {
     const v = parseInt((ev.target as HTMLInputElement).value, 10);
     if (!isNaN(v)) this.similarTracksPerArtist.set(v);
+  }
+  setUseSpotifyForSimilar(ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    this.useSpotifyTopTracksForSimilar.set(checked);
   }
   isSpotifyAuthenticated(): boolean {
     return this.spotifyService.isAuthenticated();

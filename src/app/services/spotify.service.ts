@@ -41,6 +41,13 @@ export interface SpotifyTrack {
   duration_ms?: number;
 }
 
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  uri: string;
+  popularity?: number;
+}
+
 export interface SpotifyAlbum {
   id: string;
   name: string;
@@ -70,6 +77,10 @@ export interface SpotifySearchResult {
   };
   albums?: {
     items: SpotifyAlbum[];
+    total: number;
+  };
+  artists?: {
+    items: SpotifyArtist[];
     total: number;
   };
 }
@@ -235,6 +246,50 @@ export class SpotifyService {
       map(result => result.tracks.items),
       catchError(error => {
         console.error('Search error:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Search for artists on Spotify
+   */
+  searchArtists(query: string, limit: number = 10): Observable<SpotifyArtist[]> {
+    const apiLimit = Math.min(limit, 50);
+    const params = new HttpParams()
+      .set('q', query)
+      .set('type', 'artist')
+      .set('limit', apiLimit.toString());
+
+    return this.makeAuthenticatedRequest(() =>
+      this.http.get<SpotifySearchResult>(`${this.SPOTIFY_API_BASE}/search`, {
+        headers: this.getAuthHeaders(),
+        params
+      })
+    ).pipe(
+      map(result => result.artists?.items || []),
+      catchError(error => {
+        console.error('Artist search error:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get an artist's top tracks
+   * API: GET /v1/artists/{id}/top-tracks?market=US
+   */
+  getArtistTopTracks(artistId: string, market: string = 'US'): Observable<SpotifyTrack[]> {
+    const params = new HttpParams().set('market', market);
+    return this.makeAuthenticatedRequest(() =>
+      this.http.get<{ tracks: SpotifyTrack[] }>(`${this.SPOTIFY_API_BASE}/artists/${artistId}/top-tracks`, {
+        headers: this.getAuthHeaders(),
+        params
+      })
+    ).pipe(
+      map(resp => resp.tracks || []),
+      catchError(error => {
+        console.error(`Top tracks error for artist ${artistId}:`, error);
         return of([]);
       })
     );
