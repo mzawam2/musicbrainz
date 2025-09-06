@@ -215,6 +215,11 @@
                         }
                       }
                     </div>
+                    <div class="similar-actions" style="margin-top: 8px;">
+                      <button type="button" class="nav-btn" (click)="navigateToSimilarArtists()" aria-label="Open Similar Artists builder">
+                        Open Similar Artists
+                      </button>
+                    </div>
                     <div class="similar-builder">
                      <label>Count
                        <input type="number" min="1" max="50" [value]="similarLimit()" (input)="setSimilarLimit($event)">

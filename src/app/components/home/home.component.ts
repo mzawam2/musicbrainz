@@ -30,6 +30,11 @@ interface HomeComponentState {
   discogsArtistImages: any[];
   // Last.fm data
   lastfmArtistInfo: LastFmArtistInfo | null;
+  similarArtists: LastFmSimilarArtist[];
+  // Builder preferences
+  similarLimit: number;
+  similarTracksPerArtist: number;
+  useSpotifyTopTracksForSimilar: boolean;
 }
 
 @Component({
@@ -623,7 +628,12 @@ export class HomeComponent implements OnInit, OnDestroy {
         discogsArtistData: this.discogsArtistData(),
         discogsArtistImages: this.discogsArtistImages(),
         // Last.fm data
-        lastfmArtistInfo: this.lastfmArtistInfo()
+        lastfmArtistInfo: this.lastfmArtistInfo(),
+        similarArtists: this.similarArtists(),
+        // Builder preferences
+        similarLimit: this.similarLimit(),
+        similarTracksPerArtist: this.similarTracksPerArtist(),
+        useSpotifyTopTracksForSimilar: this.useSpotifyTopTracksForSimilar()
       };
       
       sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
@@ -701,6 +711,20 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Restore Last.fm data
       if (state.lastfmArtistInfo) {
         this.lastfmArtistInfo.set(state.lastfmArtistInfo);
+      }
+      // Restore similar artists list if available
+      if ((state as any).similarArtists && (state as any).similarArtists.length > 0) {
+        this.similarArtists.set((state as any).similarArtists);
+      }
+      // Restore builder preferences (with safe defaults)
+      if (typeof (state as any).similarLimit === 'number') {
+        this.similarLimit.set((state as any).similarLimit);
+      }
+      if (typeof (state as any).similarTracksPerArtist === 'number') {
+        this.similarTracksPerArtist.set((state as any).similarTracksPerArtist);
+      }
+      if (typeof (state as any).useSpotifyTopTracksForSimilar === 'boolean') {
+        this.useSpotifyTopTracksForSimilar.set((state as any).useSpotifyTopTracksForSimilar);
       }
 
       // Clear the flag after restoration is complete
