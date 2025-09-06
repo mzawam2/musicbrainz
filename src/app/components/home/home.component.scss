@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 2rem;
+  padding: 1rem;
   padding-bottom: 4rem;
 
   .search-header {
@@ -300,12 +300,12 @@
 
     .image-center {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
       margin-bottom: 1rem;
 
       .primary-artist-image {
-        max-height: 200px;
+        max-height: 328px;
         width: auto;
         height: auto;
         border-radius: 0.5rem;
