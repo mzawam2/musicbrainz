@@ -1,8 +1,9 @@
-import { Component, input, signal, computed, OnInit, OnDestroy, inject, ChangeDetectionStrategy, effect } from '@angular/core';
+import { Component, input, output, signal, computed, OnInit, OnDestroy, inject, ChangeDetectionStrategy, effect } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap, catchError, tap, retry, delay, timer } from 'rxjs';
+import { of } from 'rxjs';
 import { DiscographyData, EnhancedDiscographyData, EnhancedReleaseGroup, MusicBrainzArtist } from '../../models/musicbrainz.models';
 import { DiscogsService } from '../../services/discogs.service';
 import { LastfmAuthService } from '../../services/lastfm-auth.service';
@@ -22,12 +23,19 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   private discogsService = inject(DiscogsService);
   private lastfmAuth = inject(LastfmAuthService);
   private destroy$ = new Subject<void>();
+  
+  // Subject for triggering artist searches with proper cancellation
+  private artistSearchTrigger$ = new Subject<MusicBrainzArtist>();
 
   // Input signals
   discographyData = input<EnhancedDiscographyData | null>(null);
   selectedArtist = input<MusicBrainzArtist | null>(null);
   loading = input(false);
   error = input<string | null>(null);
+  
+  // Output signals for sharing Discogs artist data with parent
+  artistImagesLoaded = output<any[]>();
+  artistDataLoaded = output<any>();
 
   // Writable signal that extends discographyData with Discogs thumbs
   private enhancedDiscographyData = signal<EnhancedDiscographyData | null>(null);
@@ -56,16 +64,15 @@ export class DiscographyComponent implements OnInit, OnDestroy {
       console.log('dYZ� dY"< Forced sync of enhanced discography data to input change');
     });
 
-    // Use effect to watch for changes in artist and discography data
+    // Use effect to trigger artist search when artist changes
     effect(() => {
       const artist = this.selectedArtist();
-      const discography = this.discographyData();
       
-      console.log(`🎵 Effect triggered - Artist: ${artist?.name || 'null'}, Discography: ${discography ? 'present' : 'null'}, Release groups: ${discography?.releaseGroups?.length || 0}`);
+      console.log(`🎵 Discography effect triggered - Artist: ${artist?.name || 'null'}`);
       
-      if (artist && discography && discography.releaseGroups.length > 0) {
-        console.log(`🎵 Loading Discogs data for artist: ${artist.name}`);
-        this.loadDiscogsArtistReleases(artist);
+      if (artist) {
+        console.log(`🎵 Triggering artist search for: ${artist.name}`);
+        this.artistSearchTrigger$.next(artist);
       }
     });
   }
@@ -263,7 +270,91 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     const hasDeclined = localStorage.getItem('lastfm_auth_declined') === 'true';
     this.hasDeclinedAuth.set(hasDeclined);
     
-    // Effect in constructor handles Discogs data loading
+    // Set up artist search pipeline with proper cancellation
+    this.artistSearchTrigger$
+      .pipe(
+        tap(artist => console.log(`🎵 Starting artist search pipeline for: ${artist.name}`)),
+        switchMap(artist => 
+          this.discogsService.searchDatabase({
+            q: artist.name,
+            type: 'artist',
+            per_page: 10
+          }).pipe(
+            retry({
+              count: 2,
+              delay: (error, retryCount) => {
+                console.log(`🎵 Artist search retry ${retryCount} for "${artist.name}":`, error.message);
+                return timer(1000 * retryCount); // Exponential backoff: 1s, 2s
+              }
+            }),
+            switchMap(searchResults => {
+              if (searchResults && searchResults.results && searchResults.results.length > 0) {
+                // Use smart matching logic - look for exact matches and normalized matches
+                const artistName = artist.name;
+                console.log(`🎵 Found ${searchResults.results.length} Discogs artists for: "${artistName}"`);
+                console.log(`🎵 All results:`, searchResults.results.map(r => `"${r.title}" (ID: ${r.id})`));
+                
+                // Look for exact title match first
+                let selectedResult = searchResults.results.find(result => {
+                  const titleMatch = result.title.toLowerCase().trim() === artistName.toLowerCase().trim();
+                  console.log(`🎵 Comparing "${result.title.toLowerCase().trim()}" === "${artistName.toLowerCase().trim()}" = ${titleMatch}`);
+                  return titleMatch;
+                });
+                
+                // Override with normalized-first match: strip trailing numeric qualifiers like " (2)" and
+                // take the first result whose normalized title equals the normalized artistName
+                const normalizeTitle = (s: string) => s.toLowerCase().trim().replace(/\s*\(\d+\)\s*$/, '');
+                const targetTitle = normalizeTitle(artistName);
+                const normalizedMatches = searchResults.results.filter(r => normalizeTitle(r.title) === targetTitle);
+                if (normalizedMatches.length > 0) {
+                  selectedResult = normalizedMatches[0];
+                  console.log(`🎵 Using normalized match: "${selectedResult.title}" (normalized: "${normalizeTitle(selectedResult.title)}")`);
+                }
+                
+                if (!selectedResult) {
+                  // If no exact match, use first result
+                  selectedResult = searchResults.results[0];
+                  console.log(`🎵 No exact match found, using first result: "${selectedResult.title}"`);
+                } else {
+                  console.log(`🎵 Found exact match: "${selectedResult.title}"`);
+                }
+                
+                console.log(`🎵 Using Discogs artist: ${selectedResult.title} (ID: ${selectedResult.id}) - ${
+                  selectedResult.title.toLowerCase().trim() === artistName.toLowerCase().trim() ? 'EXACT MATCH' : 'FALLBACK MATCH'
+                }`);
+                
+                return this.discogsService.getArtist(selectedResult.id).pipe(
+                  retry({
+                    count: 2,
+                    delay: (error, retryCount) => {
+                      console.log(`🎵 Artist details retry ${retryCount} for ID ${selectedResult.id}:`, error.message);
+                      return timer(1000 * retryCount); // Exponential backoff: 1s, 2s
+                    }
+                  })
+                );
+              } else {
+                console.log(`🎵 No Discogs artist found for "${artist.name}"`);
+                return of(null);
+              }
+            }),
+            catchError(error => {
+              console.error(`🎵 Error in artist search pipeline for "${artist.name}" (after retries):`, error);
+              // Emit empty arrays to parent so UI shows "no data" state instead of hanging
+              this.artistImagesLoaded.emit([]);
+              this.artistDataLoaded.emit(null);
+              return of(null);
+            })
+          )
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(artistDetails => {
+        if (artistDetails) {
+          this.handleArtistDetailsReceived(artistDetails);
+        }
+      });
+    
+    // Effect in constructor handles triggering the search
   }
 
   ngOnDestroy() {
@@ -272,54 +363,30 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load all releases for the artist from Discogs using the artist releases endpoint
+   * Handle artist details received from the search pipeline
    */
-  private loadDiscogsArtistReleases(artist: MusicBrainzArtist) {
+  private handleArtistDetailsReceived(artistDetails: any) {
+    console.log(`🎵 Handling artist details:`, artistDetails);
     
-    // Search for the artist on Discogs first to get the artist ID
-    this.discogsService.searchDatabase({
-      q: artist.name,
-      type: 'artist',
-      per_page: 5
-    }).pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (searchResults) => {
-          if (searchResults && searchResults.results && searchResults.results.length > 0) {
-            const discogsArtist = searchResults.results[0];
-            this.fetchArtistReleases(discogsArtist.id);
-          } else {
-            console.log(`🎵 No Discogs artist found for "${artist.name}"`);
-          }
-        },
-        error: (error) => {
-          console.error(`🎵 Error searching for artist "${artist.name}" on Discogs:`, error);
-        }
-      });
+    // Emit artist data and images to parent component
+    this.artistDataLoaded.emit(artistDetails);
+    if (artistDetails.images && artistDetails.images.length > 0) {
+      console.log(`🎵 Emitting ${artistDetails.images.length} artist images to parent`);
+      this.artistImagesLoaded.emit(artistDetails.images);
+    } else {
+      console.log(`🎵 No artist images found, emitting empty array`);
+      this.artistImagesLoaded.emit([]);
+    }
+    
+    // Continue with releases if releases_url is available
+    if (artistDetails.releases_url) {
+      console.log(`🎵 Using releases_url: ${artistDetails.releases_url}`);
+      this.fetchArtistReleasesFromUrl(artistDetails.releases_url);
+    } else {
+      console.warn(`🎵 No releases_url found in artist details`);
+    }
   }
 
-  /**
-   * Fetch artist details first to get the releases_url, then fetch releases
-   */
-  private fetchArtistReleases(artistId: number) {
-    console.log(`🎵 Fetching artist details for Discogs artist ID: ${artistId}`);
-    
-    // First get artist details to get the releases_url
-    this.discogsService.getArtist(artistId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (artistDetails) => {
-          if (artistDetails && artistDetails.releases_url) {
-            console.log(`🎵 Using releases_url: ${artistDetails.releases_url}`);
-            this.fetchArtistReleasesFromUrl(artistDetails.releases_url);
-          } else {
-            console.warn(`🎵 No releases_url found for artist ${artistId}`);
-          }
-        },
-        error: (error) => {
-          console.error(`🎵 Error fetching Discogs artist details for ID ${artistId}:`, error);
-        }
-      });
-  }
 
   /**
    * Fetch releases using the releases_url from artist details
@@ -338,7 +405,16 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     console.log(`🎵 Fetching releases from: ${releasesUrl}`);
     
     this.discogsService.makeDirectUrlRequest<any>(releasesUrl, params)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        retry({
+          count: 2,
+          delay: (error, retryCount) => {
+            console.log(`🎵 Releases fetch retry ${retryCount} for URL ${releasesUrl}:`, error.message);
+            return timer(1500 * retryCount); // Slightly longer delays for releases: 1.5s, 3s
+          }
+        }),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (releasesResponse) => {
           if (releasesResponse && releasesResponse.releases) {
@@ -350,7 +426,14 @@ export class DiscographyComponent implements OnInit, OnDestroy {
           }
         },
         error: (error) => {
-          console.error(`🎵 Error fetching releases from URL ${releasesUrl}:`, error);
+          console.error(`🎵 Error fetching releases from URL ${releasesUrl} (after retries):`, error);
+          // Log additional context for debugging
+          console.error(`🎵 Error details:`, {
+            url: releasesUrl,
+            status: error.status,
+            message: error.message,
+            timestamp: new Date().toISOString()
+          });
         }
       });
   }

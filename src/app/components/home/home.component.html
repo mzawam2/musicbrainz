@@ -257,9 +257,14 @@
           </div>
         </div>
       </div>
-            <app-discography [discographyData]="enhancedDiscography()" [selectedArtist]="selectedArtist()" [loading]="discographyLoading()"
-        [error]="discographyError()">
-      </app-discography>
+            <app-discography 
+              [discographyData]="enhancedDiscography()" 
+              [selectedArtist]="selectedArtist()" 
+              [loading]="discographyLoading()"
+              [error]="discographyError()"
+              (artistImagesLoaded)="onArtistImagesLoaded($event)"
+              (artistDataLoaded)="onArtistDataLoaded($event)">
+            </app-discography>
       <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
       </app-label-grid>
 

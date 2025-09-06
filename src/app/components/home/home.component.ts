@@ -433,7 +433,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
-    this.searchDiscogsArtist(artist.name);
+    // Note: Discogs artist search is now handled by discography component to avoid duplicates
     this.loadLastfmArtistInfo(artist.id);
     this.similarArtists.set([]);
     this.loadLastfmSimilarArtists(artist.name);
@@ -467,6 +467,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.fromNavigationState = false;
     // Clear persisted state when user manually clears search
     this.clearPersistedState();
+  }
+
+  // Event handlers for Discogs data from discography component
+  onArtistImagesLoaded(images: any[]) {
+    console.log(`🎵 Home component received ${images.length} artist images from discography`);
+    this.discogsArtistImages.set(images);
+  }
+
+  onArtistDataLoaded(artistData: any) {
+    console.log(`🎵 Home component received artist data from discography:`, artistData);
+    this.discogsArtistData.set(artistData);
   }
 
   highlightSearchTerm(text: string, searchTerm: string): string {
@@ -802,6 +813,21 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Search for artist on Discogs and get artist details including images
    */
   private searchDiscogsArtist(artistName: string): void {
+    console.log(`🎵 searchDiscogsArtist called for: ${artistName}, isRestoringFromCache: ${this.isRestoringFromCache}`);
+    
+    // Check if we're restoring from cache and already have Discogs data
+    if (this.isRestoringFromCache) {
+      const hasDiscogsData = this.discogsArtistData() !== null;
+      const hasDiscogsImages = this.discogsArtistImages().length > 0;
+      
+      if (hasDiscogsData && hasDiscogsImages) {
+        console.log('🎵 Skipping Discogs artist search - already have cached data');
+        return;
+      } else {
+        console.log('🎵 Proceeding with Discogs search - missing cached data (data:', hasDiscogsData, ', images:', hasDiscogsImages, ')');
+      }
+    }
+    
     console.log(`🎵 Searching Discogs for artist: ${artistName}`);
     this.isLoadingDiscogsArtist.set(true);
     this.discogsArtistData.set(null);
