@@ -1072,10 +1072,49 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Open carousel album image in modal
    */
   openCarouselImage(item: { imageUri: string; title: string; resourceUrl?: string }): void {
+    const altText = `Album cover for ${item.title}`;
+    
+    // If we have a Discogs resource URL, fetch the full-size image
+    if (item.resourceUrl) {
+      this.discogsService.makeDirectUrlRequest<any>(item.resourceUrl)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (releaseItem) => {
+            let imageUri = item.imageUri; // fallback to thumbnail
+            
+            // Try to get the best image from the release/master
+            if (releaseItem && releaseItem.images && releaseItem.images.length > 0) {
+              // Find primary image or use first available
+              const primaryImage = releaseItem.images.find((img: any) => img.type === 'primary') || releaseItem.images[0];
+              imageUri = primaryImage.uri;
+              console.log(`🎵 🖼️ Using full-resolution image from Discogs API: ${imageUri}`);
+            } else {
+              console.log(`🎵 🖼️ No full-resolution images found, using thumbnail: ${imageUri}`);
+            }
+
+            this.openModalWithCarouselImage(imageUri, item.title, altText);
+          },
+          error: (error) => {
+            console.error(`🎵 Error fetching full-size image from Discogs:`, error);
+            // Fallback to thumbnail on error
+            this.openModalWithCarouselImage(item.imageUri, item.title, altText);
+          }
+        });
+    } else {
+      // No resource URL, use thumbnail directly
+      console.log(`🎵 🖼️ No resource URL available, using thumbnail: ${item.imageUri}`);
+      this.openModalWithCarouselImage(item.imageUri, item.title, altText);
+    }
+  }
+
+  /**
+   * Open modal with album image
+   */
+  private openModalWithCarouselImage(imageUri: string, title: string, altText: string): void {
     const modalData: ArtistPhotoModalData = {
-      imageUri: item.imageUri,
+      imageUri: imageUri,
       artistName: this.selectedArtist()?.name || 'Unknown Artist',
-      altText: `Album cover for ${item.title}`
+      altText: altText
     };
 
     this.dialog.open(ArtistPhotoModalComponent, {
