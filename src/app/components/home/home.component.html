@@ -60,30 +60,74 @@
   <div class="selected-artist">
     <div class="tree-container">
       <div class="artist-card">
-        @if (hasAnyArtistImage()) {
-          <div class="image-center">
-            @if (primaryArtistImage()) {
-              <img 
-                [src]="primaryArtistImage().uri" 
-                [alt]="'Photo of ' + selectedArtist()?.name"
-                class="primary-artist-image"
-                (click)="openImageFullSize(primaryArtistImage().uri)"
-                style="cursor: pointer;"
-                [title]="'Click to view full size image of ' + selectedArtist()?.name"
-              />
+        <div class="image-carousel-container">
+          <div class="artist-photo-section">
+            @if (hasAnyArtistImage()) {
+              <div class="image-center">
+                @if (primaryArtistImage()) {
+                  <img 
+                    [src]="primaryArtistImage().uri" 
+                    [alt]="'Photo of ' + selectedArtist()?.name"
+                    class="primary-artist-image"
+                    (click)="openImageFullSize(primaryArtistImage().uri)"
+                    style="cursor: pointer;"
+                    [title]="'Click to view full size image of ' + selectedArtist()?.name"
+                  />
+                }
+              </div>
+            } @else if (isLoadingDiscogsArtist()) {
+              <div class="image-loading">
+                <div class="spinner"></div>
+                <small>Loading artist image...</small>
+              </div>
+            } @else {
+              <div class="image-placeholder">
+                <div class="placeholder-icon">🎤</div>
+                <small>No artist image available</small>
+              </div>
             }
           </div>
-        } @else if (isLoadingDiscogsArtist()) {
-          <div class="image-loading">
-            <div class="spinner"></div>
-            <small>Loading artist image...</small>
+          
+          <div class="album-carousel-section">
+            <div class="carousel-header">
+              <h4>Album Covers</h4>
+            </div>
+            @if (displayedReleaseThumbs().length > 0) {
+              <div class="carousel-wrap">
+                <button 
+                  type="button" 
+                  class="carousel-nav left" 
+                  (click)="prevCovers()" 
+                  [disabled]="carouselIndex() === 0" 
+                  aria-label="Previous album covers">
+                  ‹
+                </button>
+                <div class="carousel">
+                  @for (cover of displayedReleaseThumbs(); track cover.resourceUrl || cover.imageUri) {
+                    <img 
+                      class="carousel-item" 
+                      [src]="cover.imageUri" 
+                      [alt]="cover.title" 
+                      [title]="cover.title"
+                      (click)="openCarouselImage(cover)" />
+                  }
+                </div>
+                <button 
+                  type="button" 
+                  class="carousel-nav right" 
+                  (click)="nextCovers()" 
+                  [disabled]="(carouselIndex() + displayedReleaseThumbs().length) >= releaseThumbs().length" 
+                  aria-label="Next album covers">
+                  ›
+                </button>
+              </div>
+            } @else {
+              <div class="no-covers">
+                <small class="muted">No album covers available</small>
+              </div>
+            }
           </div>
-        } @else {
-          <div class="image-placeholder">
-            <div class="placeholder-icon">🎤</div>
-            <small>No artist image available</small>
-          </div>
-        }
+        </div>
         <div class="artist-meta">
      
           <!-- @if (selectedArtist()!.country) {
@@ -263,7 +307,8 @@
               [loading]="discographyLoading()"
               [error]="discographyError()"
               (artistImagesLoaded)="onArtistImagesLoaded($event)"
-              (artistDataLoaded)="onArtistDataLoaded($event)">
+              (artistDataLoaded)="onArtistDataLoaded($event)"
+              (enhancedDataLoaded)="onEnhancedDataLoaded($event)">
             </app-discography>
       <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
       </app-label-grid>

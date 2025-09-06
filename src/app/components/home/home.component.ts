@@ -103,6 +103,74 @@ export class HomeComponent implements OnInit, OnDestroy {
   useSpotifyTopTracksForSimilar = signal<boolean>(false);
   isCreatingSimilarPlaylist = signal<boolean>(false);
   similarStatus = signal<string | null>(null);
+
+  // Album art carousel signals
+  carouselIndex = signal<number>(0);
+  carouselPageSize = signal<number>(4);
+  
+  // Enhanced discography data with thumbs from discography component
+  enhancedDiscographyFromChild = signal<EnhancedDiscographyData | null>(null);
+  
+  // Computed signals for album art carousel
+  releaseThumbs = computed(() => {
+    // First try enhanced data from discography component (has thumbs)
+    const enhancedFromChild = this.enhancedDiscographyFromChild();
+    if (enhancedFromChild?.releaseGroups) {
+      console.log(`🎵 📺 Using enhanced data from discography component`);
+      const discography = enhancedFromChild;
+      
+      const seen = new Set<string>();
+      const items: Array<{ imageUri: string; title: string; resourceUrl?: string }> = [];
+      
+      for (const rg of discography.releaseGroups) {
+        if ((rg as any).thumb) {
+          const uri = (rg as any).thumb;
+          if (!seen.has(uri)) {
+            seen.add(uri);
+            items.push({ 
+              imageUri: uri, 
+              title: rg.title, 
+              resourceUrl: (rg as any).discogsResourceUrl 
+            });
+          }
+        }
+      }
+      
+      console.log(`🎵 📺 Found ${items.length} release thumbs for carousel from enhanced data`);
+      return items;
+    }
+    
+    // Fallback to local enhanced discography (unlikely to have thumbs)
+    const discography = this.enhancedDiscography();
+    if (!discography?.releaseGroups) return [];
+    
+    const seen = new Set<string>();
+    const items: Array<{ imageUri: string; title: string; resourceUrl?: string }> = [];
+    
+    for (const rg of discography.releaseGroups) {
+      if ((rg as any).thumb) {
+        const uri = (rg as any).thumb;
+        if (!seen.has(uri)) {
+          seen.add(uri);
+          items.push({ 
+            imageUri: uri, 
+            title: rg.title, 
+            resourceUrl: (rg as any).discogsResourceUrl 
+          });
+        }
+      }
+    }
+    
+    console.log(`🎵 📺 Found ${items.length} release thumbs for carousel from fallback data`);
+    return items;
+  });
+  
+  displayedReleaseThumbs = computed(() => {
+    const items = this.releaseThumbs();
+    const start = this.carouselIndex();
+    const size = this.carouselPageSize();
+    return items.slice(start, start + size);
+  });
   
   /**
    * Select a similar artist in-place (no route change) using MBID
@@ -429,6 +497,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.artists.set([]);
     this.currentSearchTerm.set(''); // Clear search term to hide results
     this.fromNavigationState = false; // Reset navigation flag when artist is selected
+    this.carouselIndex.set(0); // Reset carousel to first page
+    this.enhancedDiscographyFromChild.set(null); // Clear enhanced data from previous artist
     console.log('🔄 About to load labels and discography for:', artist.id);
     this.loadArtistLabels(artist.id);
     this.loadArtistDiscography(artist.id);
@@ -478,6 +548,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   onArtistDataLoaded(artistData: any) {
     console.log(`🎵 Home component received artist data from discography:`, artistData);
     this.discogsArtistData.set(artistData);
+  }
+
+  onEnhancedDataLoaded(enhancedData: EnhancedDiscographyData) {
+    console.log(`🎵 Home component received enhanced discography data with ${enhancedData.releaseGroups.filter((rg: any) => rg.thumb).length} thumbs from discography`);
+    this.enhancedDiscographyFromChild.set(enhancedData);
   }
 
   highlightSearchTerm(text: string, searchTerm: string): string {
@@ -970,5 +1045,46 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.saveState();
     
     console.groupEnd();
+  }
+
+  /**
+   * Navigate to previous page of album covers
+   */
+  prevCovers(): void {
+    const currentIndex = this.carouselIndex();
+    const pageSize = this.carouselPageSize();
+    const newIndex = Math.max(0, currentIndex - pageSize);
+    this.carouselIndex.set(newIndex);
+  }
+
+  /**
+   * Navigate to next page of album covers
+   */
+  nextCovers(): void {
+    const currentIndex = this.carouselIndex();
+    const pageSize = this.carouselPageSize();
+    const totalItems = this.releaseThumbs().length;
+    const newIndex = Math.min(totalItems - pageSize, currentIndex + pageSize);
+    this.carouselIndex.set(newIndex);
+  }
+
+  /**
+   * Open carousel album image in modal
+   */
+  openCarouselImage(item: { imageUri: string; title: string; resourceUrl?: string }): void {
+    const modalData: ArtistPhotoModalData = {
+      imageUri: item.imageUri,
+      artistName: this.selectedArtist()?.name || 'Unknown Artist',
+      altText: `Album cover for ${item.title}`
+    };
+
+    this.dialog.open(ArtistPhotoModalComponent, {
+      data: modalData,
+      panelClass: 'artist-photo-modal',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      hasBackdrop: true,
+      disableClose: false
+    });
   }
 }

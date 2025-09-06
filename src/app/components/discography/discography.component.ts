@@ -36,6 +36,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   // Output signals for sharing Discogs artist data with parent
   artistImagesLoaded = output<any[]>();
   artistDataLoaded = output<any>();
+  enhancedDataLoaded = output<EnhancedDiscographyData>();
 
   // Writable signal that extends discographyData with Discogs thumbs
   private enhancedDiscographyData = signal<EnhancedDiscographyData | null>(null);
@@ -495,6 +496,10 @@ export class DiscographyComponent implements OnInit, OnDestroy {
       };
       this.enhancedDiscographyData.set(updatedData);
       console.log(`🎵 🔄 Updated enhanced discography data with ${updatedReleaseGroups.length} release groups`);
+      
+      // Emit the enhanced data to parent component for carousel
+      this.enhancedDataLoaded.emit(updatedData);
+      console.log(`🎵 📤 Emitted enhanced data with ${updatedData.releaseGroups.filter((rg: any) => rg.thumb).length} thumbs to parent`);
     }
   }
 
