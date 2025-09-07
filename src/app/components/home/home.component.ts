@@ -115,6 +115,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   // Album art carousel signals
   carouselIndex = signal<number>(0);
   carouselPageSize = signal<number>(4);
+
+  // Artist image navigation signals
+  artistImageIndex = signal<number>(0);
   
   // Enhanced discography data with thumbs from discography component
   enhancedDiscographyFromChild = signal<EnhancedDiscographyData | null>(null);
@@ -210,9 +213,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   // Computed signals for Discogs data
-  primaryArtistImage = computed(() => {
+  currentArtistImage = computed(() => {
     const images = this.discogsArtistImages();
-    return images.find(img => img.type === 'primary') || images[0] || null;
+    const currentIndex = this.artistImageIndex();
+    
+    if (images.length === 0) return null;
+    
+    // Ensure index is within bounds
+    const validIndex = Math.min(currentIndex, images.length - 1);
+    return images[validIndex] || null;
+  });
+
+  // Keep for backward compatibility, but now returns current image
+  primaryArtistImage = computed(() => {
+    return this.currentArtistImage();
   });
   
   hasPrimaryArtistImage = computed(() => {
@@ -1232,6 +1246,32 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const totalItems = this.releaseThumbs().length;
     const newIndex = Math.min(totalItems - pageSize, currentIndex + pageSize);
     this.carouselIndex.set(newIndex);
+  }
+
+  /**
+   * Navigate to previous artist image
+   */
+  previousArtistImage(): void {
+    const currentIndex = this.artistImageIndex();
+    const totalImages = this.discogsArtistImages().length;
+    
+    if (totalImages <= 1) return;
+    
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : totalImages - 1;
+    this.artistImageIndex.set(newIndex);
+  }
+
+  /**
+   * Navigate to next artist image
+   */
+  nextArtistImage(): void {
+    const currentIndex = this.artistImageIndex();
+    const totalImages = this.discogsArtistImages().length;
+    
+    if (totalImages <= 1) return;
+    
+    const newIndex = currentIndex < totalImages - 1 ? currentIndex + 1 : 0;
+    this.artistImageIndex.set(newIndex);
   }
 
   /**

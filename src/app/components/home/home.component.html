@@ -64,15 +64,38 @@
           <div class="artist-photo-section">
             @if (hasAnyArtistImage()) {
               <div class="image-center">
-                @if (primaryArtistImage()) {
-                  <img 
-                    [src]="primaryArtistImage().uri" 
-                    [alt]="'Photo of ' + selectedArtist()?.name"
-                    class="primary-artist-image"
-                    (click)="openImageFullSize(primaryArtistImage().uri)"
-                    style="cursor: pointer;"
-                    [title]="'Click to view full size image of ' + selectedArtist()?.name"
-                  />
+                @if (currentArtistImage()) {
+                  <div class="image-with-nav">
+                    <img 
+                      [src]="currentArtistImage().uri" 
+                      [alt]="'Photo of ' + selectedArtist()?.name"
+                      class="primary-artist-image"
+                      (click)="openImageFullSize(currentArtistImage().uri)"
+                      style="cursor: pointer;"
+                      [title]="'Click to view full size - Image ' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length"
+                    />
+                  </div>
+                  @if (discogsArtistImages().length > 1) {
+                    <div class="image-nav-controls">
+                      <button 
+                        type="button" 
+                        class="carousel-nav" 
+                        (click)="previousArtistImage()" 
+                        aria-label="Previous artist image"
+                        [title]="'Previous image (' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length + ')'">
+                        ‹
+                      </button>
+                      <span class="image-counter">{{ artistImageIndex() + 1 }} / {{ discogsArtistImages().length }}</span>
+                      <button 
+                        type="button" 
+                        class="carousel-nav" 
+                        (click)="nextArtistImage()" 
+                        aria-label="Next artist image"
+                        [title]="'Next image (' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length + ')'">
+                        ›
+                      </button>
+                    </div>
+                  }
                 }
               </div>
             } @else if (isLoadingDiscogsArtist()) {
