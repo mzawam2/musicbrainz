@@ -312,4 +312,33 @@ export class LastfmService {
       )
     );
   }
+
+  /**
+   * Fetch top tracks for an artist using MusicBrainz ID
+   * @param mbid MusicBrainz ID of the artist
+   * @param limit Number of tracks to fetch (default: 10)
+   * @returns Observable of top tracks
+   */
+  getTopTracksByMbid(mbid: string, limit: number = 10): Observable<LastFmTrack[]> {
+    const cacheKey = `toptracks-mbid-${mbid}-${limit}`;
+    const cached = this.getFromCache<LastFmTrack[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.getTopTracks')
+      .set('mbid', mbid)
+      .set('limit', limit.toString())
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmTopTracksResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response?.toptracks?.track || []),
+        tap(tracks => this.setCache(cacheKey, tracks)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
 }

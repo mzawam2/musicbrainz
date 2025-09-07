@@ -106,6 +106,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isCreatingSimilarPlaylist = signal<boolean>(false);
   similarStatus = signal<string | null>(null);
 
+  // Top tracks playlist builder
+  topTracksLimit = signal<number>(10);
+  useSpotifyTopTracks = signal<boolean>(false);
+  isCreatingTopTracksPlaylist = signal<boolean>(false);
+  topTracksStatus = signal<string | null>(null);
+
   // Album art carousel signals
   carouselIndex = signal<number>(0);
   carouselPageSize = signal<number>(4);
@@ -476,6 +482,153 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   setUseSpotifyForSimilar(ev: Event): void {
     const checked = (ev.target as HTMLInputElement).checked;
     this.useSpotifyTopTracksForSimilar.set(checked);
+  }
+
+  /**
+   * Create a Spotify playlist using top tracks for the selected artist
+   */
+  async createTopTracksPlaylist(): Promise<void> {
+    const artist = this.selectedArtist();
+    if (!artist) {
+      this.topTracksStatus.set('No artist selected.');
+      return;
+    }
+
+    if (!this.spotifyService.isAuthenticated()) {
+      this.topTracksStatus.set('Please sign in to Spotify first.');
+      return;
+    }
+
+    const limit = this.topTracksLimit();
+    const useSpotify = this.useSpotifyTopTracks();
+    this.isCreatingTopTracksPlaylist.set(true);
+
+    try {
+      let trackUris: string[] = [];
+      let foundCount = 0;
+      let playlistName: string;
+      let description: string;
+
+      if (useSpotify) {
+        // Use Spotify's top tracks directly
+        this.topTracksStatus.set('Fetching top tracks from Spotify...');
+
+        // First, search for the artist on Spotify to get their ID
+        const artistSearchResults = await firstValueFrom(
+          this.spotifyService.searchArtists(artist.name, 1)
+        );
+
+        if (!artistSearchResults || artistSearchResults.length === 0) {
+          this.topTracksStatus.set('Artist not found on Spotify.');
+          return;
+        }
+
+        const spotifyArtist = artistSearchResults[0];
+        const topTracks = await firstValueFrom(
+          this.spotifyService.getArtistTopTracks(spotifyArtist.id)
+        );
+
+        if (!topTracks || topTracks.length === 0) {
+          this.topTracksStatus.set('No top tracks found on Spotify for this artist.');
+          return;
+        }
+
+        // Take only the requested number of tracks
+        const selectedTracks = topTracks.slice(0, limit);
+        trackUris = selectedTracks.map(track => track.uri);
+        foundCount = selectedTracks.length;
+
+        playlistName = `${artist.name} - Top Tracks from Spotify`;
+        description = `Top ${selectedTracks.length} tracks by ${artist.name} according to Spotify. Created with MusicBrainz Discovery.`;
+
+        this.topTracksStatus.set(`Found ${foundCount} tracks, creating playlist...`);
+      } else {
+        // Use Last.fm top tracks (original logic)
+        if (!artist.id) {
+          this.topTracksStatus.set('Artist MBID not available for Last.fm lookup.');
+          return;
+        }
+
+        this.topTracksStatus.set('Fetching top tracks from Last.fm...');
+
+        // Fetch top tracks from Last.fm using MBID
+        const lastfmTracks = await firstValueFrom(
+          this.lastfmService.getTopTracksByMbid(artist.id, limit)
+        );
+
+        if (!lastfmTracks || lastfmTracks.length === 0) {
+          this.topTracksStatus.set('No top tracks found on Last.fm for this artist.');
+          return;
+        }
+
+        this.topTracksStatus.set(`Found ${lastfmTracks.length} tracks, searching on Spotify...`);
+
+        // Search for tracks on Spotify
+        for (const track of lastfmTracks) {
+          try {
+            // Create search query with artist name and track name
+            const query = `artist:"${artist.name}" track:"${track.name}"`;
+            const spotifyTracks = await firstValueFrom(
+              this.spotifyService.searchTracks(query, 1)
+            );
+
+            if (spotifyTracks && spotifyTracks.length > 0) {
+              trackUris.push(spotifyTracks[0].uri);
+              foundCount++;
+            }
+
+            // Add a small delay to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.warn(`Failed to search for track: ${track.name}`, error);
+          }
+        }
+
+        if (trackUris.length === 0) {
+          this.topTracksStatus.set('No matching tracks found on Spotify.');
+          return;
+        }
+
+        playlistName = `${artist.name} - Top Tracks from Last.fm`;
+        description = `Top ${lastfmTracks.length} tracks by ${artist.name} according to Last.fm. Created with MusicBrainz Discovery.`;
+
+        this.topTracksStatus.set(`Found ${foundCount} matches, creating playlist...`);
+      }
+
+      // Create playlist
+      const playlist = await firstValueFrom(
+        this.spotifyService.createPlaylist(playlistName, description)
+      );
+
+      if (!playlist) {
+        this.topTracksStatus.set('Failed to create Spotify playlist.');
+        return;
+      }
+
+      // Add tracks to playlist
+      await firstValueFrom(
+        this.spotifyService.addTracksToPlaylist(playlist.id, trackUris)
+      );
+
+      this.topTracksStatus.set(`Playlist created: "${playlist.name}" with ${foundCount} tracks`);
+    } catch (error) {
+      console.error('Top tracks playlist creation failed:', error);
+      this.topTracksStatus.set('Error creating playlist. Please try again.');
+    } finally {
+      this.isCreatingTopTracksPlaylist.set(false);
+    }
+  }
+
+  // Top tracks template helpers
+  setTopTracksLimit(ev: Event): void {
+    const v = parseInt((ev.target as HTMLInputElement).value, 10);
+    if (!isNaN(v) && v >= 1 && v <= 50) {
+      this.topTracksLimit.set(v);
+    }
+  }
+  setUseSpotifyTopTracks(ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    this.useSpotifyTopTracks.set(checked);
   }
   isSpotifyAuthenticated(): boolean {
     return this.spotifyService.isAuthenticated();

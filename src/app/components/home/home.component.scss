@@ -680,6 +680,113 @@
           }
         }
 
+        .lastfm-top-tracks {
+          margin-top: 1.5rem;
+          padding-top: 1rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+
+          p {
+            margin: 0 0 0.75rem 0;
+            text-align: left;
+            font-weight: 600;
+            color: white;
+            font-size: 1.1rem;
+          }
+
+          .top-tracks-builder {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 0.9rem;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+
+            label {
+              display: inline-flex;
+              gap: 0.5rem;
+              align-items: center;
+              color: rgba(255, 255, 255, 0.9);
+
+              input[type="number"] {
+                width: 5rem;
+                padding: 0.35rem 0.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                background: rgba(255, 255, 255, 0.18);
+                color: #fff;
+                transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+
+                &:focus {
+                  outline: none;
+                  border-color: rgba(255, 255, 255, 0.6);
+                  background: rgba(255, 255, 255, 0.22);
+                  box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+                }
+              }
+
+              &.toggle {
+                input[type="checkbox"] {
+                  margin-right: 0.25rem;
+                }
+              }
+            }
+
+            .spacer { flex: 1 1 auto; }
+
+            .nav-btn {
+              background: rgba(255, 255, 255, 0.2);
+              color: #fff;
+              border: 1px solid rgba(255, 255, 255, 0.3);
+              border-radius: 8px;
+              padding: 0.55rem 0.9rem;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: inline-flex;
+              align-items: center;
+              gap: 0.45rem;
+
+              &:hover {
+                background: rgba(255, 255, 255, 0.3);
+              }
+
+              &.primary {
+                background: #1DB954; // Spotify green
+                border-color: #169f47;
+                color: #000; // better contrast on Spotify green
+
+                &:hover {
+                  background: #1ed760;
+                  border-color: #19b155;
+                }
+
+                &:disabled,
+                &[disabled] {
+                  opacity: 0.7;
+                  filter: grayscale(5%);
+                  cursor: default;
+                }
+              }
+
+              .spotify-icon {
+                width: 18px;
+                height: 18px;
+              }
+            }
+          }
+
+          .top-tracks-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            text-align: center;
+          }
+        }
+
         .lastfm-similar {
           margin-top: 1.5rem; // more space on top
 
