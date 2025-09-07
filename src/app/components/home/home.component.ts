@@ -114,7 +114,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   // Album art carousel signals
   carouselIndex = signal<number>(0);
-  carouselPageSize = signal<number>(4);
+  carouselPageSize = signal<number>(3);
 
   // Artist image navigation signals
   artistImageIndex = signal<number>(0);
