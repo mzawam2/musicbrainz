@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy, ViewChild, ElementRef, Renderer2, AfterViewChecked } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
@@ -44,12 +44,14 @@ interface HomeComponentState {
   styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private musicBrainzService = inject(MusicBrainzService);
   private discogsService = inject(DiscogsService);
   private lastfmService = inject(LastfmService);
   private spotifyService = inject(SpotifyService);
   private router = inject(Router);
+  private renderer = inject(Renderer2);
+  private elementRef = inject(ElementRef);
   private dialog = inject(MatDialog);
   private destroy$ = new Subject<void>();
   
@@ -480,6 +482,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
   signInSpotify(): void {
     this.spotifyService.initiateAuth();
+  }
+
+  ngAfterViewChecked() {
+    // Find and update Last.fm bio links to open in new tab
+    const bioTextElements = this.elementRef.nativeElement.querySelectorAll('.bio-text a[href*="last.fm"]');
+    bioTextElements.forEach((link: HTMLAnchorElement) => {
+      if (!link.target) {
+        this.renderer.setAttribute(link, 'target', '_blank');
+        this.renderer.setAttribute(link, 'rel', 'noopener noreferrer');
+      }
+    });
   }
 
   ngOnDestroy() {
