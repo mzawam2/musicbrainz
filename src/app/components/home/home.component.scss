@@ -339,6 +339,7 @@
     .album-carousel-section {
       flex: 1;
       min-width: 0;
+      margin-top: 160px;
       
       .carousel-header {
         margin-bottom: 1rem;
@@ -391,6 +392,10 @@
           gap: 0.75rem;
           overflow: hidden;
           flex: 1;
+          
+          @media (max-width: 768px) {
+            margin-top: 0;
+          }
           
           .carousel-item {
             width: auto;

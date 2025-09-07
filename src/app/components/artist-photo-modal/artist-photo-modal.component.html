@@ -10,6 +10,36 @@
     <mat-icon>close</mat-icon>
   </button>
 
+  <!-- Navigation Controls -->
+  @if (hasCarouselData()) {
+    <button
+      mat-icon-button
+      class="nav-button nav-previous"
+      (click)="previousImage()"
+      [disabled]="!canNavigatePrevious()"
+      aria-label="Previous image"
+      title="Previous image (Left arrow)"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+
+    <button
+      mat-icon-button
+      class="nav-button nav-next"
+      (click)="nextImage()"
+      [disabled]="!canNavigateNext()"
+      aria-label="Next image"
+      title="Next image (Right arrow)"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+
+    <!-- Position indicator -->
+    <div class="position-indicator">
+      {{ getPositionText() }}
+    </div>
+  }
+
   <!-- Loading State -->
   @if (isLoading()) {
     <div class="loading-state">
@@ -30,12 +60,19 @@
   <!-- Image Display -->
   @if (!hasError()) {
     <img
-      [src]="data.imageUri"
-      [alt]="data.altText || 'Artist photo'"
+      [src]="getCurrentImageUri()"
+      [alt]="getCurrentAltText()"
       class="modal-image"
       (load)="onImageLoad()"
       (error)="onImageError()"
       [style.visibility]="isLoading() ? 'hidden' : 'visible'"
     />
+  }
+
+  <!-- Album Title -->
+  @if (hasCarouselData() && currentItem() && !isLoading()) {
+    <div class="album-title">
+      {{ currentItem()?.title }}
+    </div>
   }
 </div>

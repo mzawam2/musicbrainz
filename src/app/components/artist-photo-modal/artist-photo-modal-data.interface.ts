@@ -3,6 +3,20 @@ export interface ArtistPhotoModalData {
   artistName?: string;
   altText?: string;
   metadata?: ImageMetadata;
+  // Carousel navigation data
+  carouselData?: CarouselNavigationData;
+}
+
+export interface CarouselNavigationData {
+  currentIndex: number;
+  totalCount: number;
+  items: CarouselItem[];
+}
+
+export interface CarouselItem {
+  imageUri: string;
+  title: string;
+  resourceUrl?: string;
 }
 
 export interface ImageMetadata {

@@ -15,7 +15,7 @@ import { LastFmArtistInfo, LastFmSimilarArtist } from '../../models/lastfm.model
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
 import { ArtistPhotoModalComponent } from '../artist-photo-modal/artist-photo-modal.component';
-import { ArtistPhotoModalData } from '../artist-photo-modal/artist-photo-modal-data.interface';
+import { ArtistPhotoModalData, CarouselNavigationData, CarouselItem } from '../artist-photo-modal/artist-photo-modal-data.interface';
 
 // Interface for persisting component state
 interface HomeComponentState {
@@ -1072,6 +1072,10 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Open carousel album image in modal
    */
   openCarouselImage(item: { imageUri: string; title: string; resourceUrl?: string }): void {
+    // Find the index of this item in the carousel
+    const currentIndex = this.releaseThumbs().findIndex(thumb => 
+      thumb.imageUri === item.imageUri && thumb.title === item.title
+    );
     const altText = `Album cover for ${item.title}`;
     
     // If we have a Discogs resource URL, fetch the full-size image
@@ -1092,36 +1096,54 @@ export class HomeComponent implements OnInit, OnDestroy {
               console.log(`🎵 🖼️ No full-resolution images found, using thumbnail: ${imageUri}`);
             }
 
-            this.openModalWithCarouselImage(imageUri, item.title, altText);
+            this.openModalWithCarouselImage(imageUri, item.title, altText, currentIndex);
           },
           error: (error) => {
             console.error(`🎵 Error fetching full-size image from Discogs:`, error);
             // Fallback to thumbnail on error
-            this.openModalWithCarouselImage(item.imageUri, item.title, altText);
+            this.openModalWithCarouselImage(item.imageUri, item.title, altText, currentIndex);
           }
         });
     } else {
       // No resource URL, use thumbnail directly
       console.log(`🎵 🖼️ No resource URL available, using thumbnail: ${item.imageUri}`);
-      this.openModalWithCarouselImage(item.imageUri, item.title, altText);
+      this.openModalWithCarouselImage(item.imageUri, item.title, altText, currentIndex);
     }
   }
 
   /**
    * Open modal with album image
    */
-  private openModalWithCarouselImage(imageUri: string, title: string, altText: string): void {
+  private openModalWithCarouselImage(imageUri: string, title: string, altText: string, currentIndex: number): void {
+    const allItems = this.releaseThumbs();
+    
+    // Convert carousel items to the format expected by the modal
+    const carouselItems: CarouselItem[] = allItems.map(item => ({
+      imageUri: item.imageUri,
+      title: item.title,
+      resourceUrl: item.resourceUrl
+    }));
+
+    const carouselData: CarouselNavigationData = {
+      currentIndex: Math.max(0, currentIndex), // Ensure index is valid
+      totalCount: allItems.length,
+      items: carouselItems
+    };
+
     const modalData: ArtistPhotoModalData = {
       imageUri: imageUri,
       artistName: this.selectedArtist()?.name || 'Unknown Artist',
-      altText: altText
+      altText: altText,
+      carouselData: carouselData
     };
 
     this.dialog.open(ArtistPhotoModalComponent, {
       data: modalData,
       panelClass: 'artist-photo-modal',
-      maxWidth: '90vw',
-      maxHeight: '90vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
       hasBackdrop: true,
       disableClose: false
     });
