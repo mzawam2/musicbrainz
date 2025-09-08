@@ -153,6 +153,137 @@
       </div>
     </div>
 
+    <!-- Spotify Playlist Controls -->
+    <div class="playlist-controls-section">
+      <div class="playlist-main-control">
+        <button 
+          type="button"
+          class="playlist-btn"
+          [class.creating]="isCreatingPlaylist()"
+          [disabled]="!canCreatePlaylist()"
+          (click)="handlePlaylistAction()"
+        >
+          <span class="btn-icon">🎵</span>
+          <span class="btn-text">{{ playlistButtonText() }}</span>
+          @if (isCreatingPlaylist()) {
+            <div class="spinner"></div>
+          }
+        </button>
+        
+        @if (isSpotifyAuthenticated()) {
+          <button 
+            type="button"
+            class="playlist-settings-btn"
+            [class.active]="showPlaylistControls()"
+            (click)="togglePlaylistControls()"
+            title="Playlist Settings"
+          >
+            ⚙️
+          </button>
+        }
+      </div>
+
+      <!-- Configuration Panel -->
+      @if (showPlaylistControls() && isSpotifyAuthenticated()) {
+        <div class="playlist-config-panel">
+          <div class="config-grid">
+            <div class="config-group">
+              <label for="tracks-per-album">Tracks per album:</label>
+              <input 
+                id="tracks-per-album"
+                type="range" 
+                min="1" 
+                max="10" 
+                [ngModel]="tracksPerAlbum()"
+                (ngModelChange)="tracksPerAlbum.set($event)"
+                class="range-input"
+              />
+              <span class="range-value">{{ tracksPerAlbum() }}</span>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="includeFullAlbums()"
+                  (change)="includeFullAlbums.set($any($event.target).checked)"
+                />
+                <span>Include full albums</span>
+              </label>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="playlistIsPublic()"
+                  (change)="playlistIsPublic.set($any($event.target).checked)"
+                />
+                <span>Make playlist public</span>
+              </label>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="strictMode()"
+                  (change)="strictMode.set($any($event.target).checked)"
+                />
+                <span>Strict matching</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Success/Error Notifications -->
+    @if (playlistCreated()) {
+      <div class="playlist-notification success">
+        <div class="notification-content">
+          <span class="notification-icon">✅</span>
+          <div class="notification-text">
+            <strong>Playlist created successfully!</strong>
+            <p>{{ playlistCreated()!.name }}</p>
+          </div>
+          <a 
+            [href]="playlistCreated()!.external_urls.spotify" 
+            target="_blank" 
+            class="open-playlist-btn"
+          >
+            Open in Spotify
+          </a>
+          <button 
+            type="button" 
+            class="dismiss-btn"
+            (click)="dismissPlaylistNotification()"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (playlistError()) {
+      <div class="playlist-notification error">
+        <div class="notification-content">
+          <span class="notification-icon">⚠️</span>
+          <div class="notification-text">
+            <strong>Error creating playlist</strong>
+            <p>{{ playlistError() }}</p>
+          </div>
+          <button 
+            type="button" 
+            class="dismiss-btn"
+            (click)="dismissPlaylistNotification()"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    }
+
     <!-- Results -->
     <div class="discography-results">
       @if (filteredReleaseGroups().length === 0) {

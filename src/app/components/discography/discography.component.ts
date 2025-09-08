@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { DiscographyData, EnhancedDiscographyData, EnhancedReleaseGroup, MusicBrainzArtist } from '../../models/musicbrainz.models';
 import { DiscogsService } from '../../services/discogs.service';
 import { LastfmAuthService } from '../../services/lastfm-auth.service';
+import { SpotifyService, DiscographyPlaylistRequest, SpotifyPlaylist } from '../../services/spotify.service';
 import { DiscogsArtistRelease } from '../../models/discogs.models';
 import { ReleaseCardComponent } from './release-card/release-card.component';
 import { CollaborationNetworkComponent } from '../collaboration-network/collaboration-network.component';
@@ -22,6 +23,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   // Injected services
   private discogsService = inject(DiscogsService);
   private lastfmAuth = inject(LastfmAuthService);
+  private spotifyService = inject(SpotifyService);
   private destroy$ = new Subject<void>();
   
   // Subject for triggering artist searches with proper cancellation
@@ -87,6 +89,19 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   filterByGenre = signal('');
   viewMode = signal<'grid' | 'list'>('grid');
 
+  // Spotify playlist creation signals
+  isCreatingPlaylist = signal(false);
+  playlistProgress = signal<{ current: number; total: number; currentRelease?: string }>({ current: 0, total: 0 });
+  playlistCreated = signal<SpotifyPlaylist | null>(null);
+  playlistError = signal<string | null>(null);
+  showPlaylistControls = signal(false);
+  
+  // Playlist options
+  tracksPerAlbum = signal(3);
+  includeFullAlbums = signal(false);
+  playlistIsPublic = signal(true);
+  strictMode = signal(false);
+
   // Computed filtered and sorted release groups
   filteredReleaseGroups = computed(() => {
     // Use the enhanced discography data that includes thumbs
@@ -134,6 +149,19 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     const start = data.careerSpan.start.split('-')[0];
     const end = data.careerSpan.end ? data.careerSpan.end.split('-')[0] : 'present';
     return start === end ? start : `${start} - ${end}`;
+  });
+
+  // Spotify computed properties
+  isSpotifyAuthenticated = computed(() => this.spotifyService.isAuthenticated());
+  canCreatePlaylist = computed(() => 
+    this.isSpotifyAuthenticated() && 
+    this.filteredReleaseGroups().length > 0 && 
+    !this.isCreatingPlaylist()
+  );
+  playlistButtonText = computed(() => {
+    if (!this.isSpotifyAuthenticated()) return 'Login to Spotify';
+    if (this.isCreatingPlaylist()) return 'Creating Playlist...';
+    return 'Create Spotify Playlist';
   });
 
 
@@ -594,6 +622,105 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     return scored[0].item;
   }
 
-  
+  /**
+   * Toggle playlist controls visibility
+   */
+  togglePlaylistControls(): void {
+    this.showPlaylistControls.set(!this.showPlaylistControls());
+  }
+
+  /**
+   * Handle Spotify authentication or playlist creation
+   */
+  handlePlaylistAction(): void {
+    if (!this.isSpotifyAuthenticated()) {
+      // Initiate Spotify authentication
+      this.spotifyService.initiateAuth();
+    } else {
+      // Create playlist
+      this.createDiscographyPlaylist();
+    }
+  }
+
+  /**
+   * Create Spotify playlist from current filtered discography
+   */
+  private createDiscographyPlaylist(): void {
+    const filteredReleases = this.filteredReleaseGroups();
+    const artist = this.selectedArtist();
+
+    if (!artist || filteredReleases.length === 0) {
+      console.error('Cannot create playlist: No artist selected or no releases available');
+      return;
+    }
+
+    // Reset state
+    this.playlistCreated.set(null);
+    this.playlistError.set(null);
+    this.isCreatingPlaylist.set(true);
+    this.playlistProgress.set({ current: 0, total: filteredReleases.length });
+
+    // Build active filters list for naming
+    const activeFilters: string[] = [];
+    if (this.filterByType()) activeFilters.push(`Type: ${this.filterByType()}`);
+    if (this.filterByDecade()) activeFilters.push(`Decade: ${this.filterByDecade()}`);
+    if (this.filterByGenre()) activeFilters.push(`Genre: ${this.filterByGenre()}`);
+    if (this.searchTerm()) activeFilters.push(`Search: ${this.searchTerm()}`);
+
+    // Prepare request
+    const request: DiscographyPlaylistRequest = {
+      artistName: artist.name,
+      releases: filteredReleases.map(release => ({
+        artistName: artist.name,
+        releaseName: release.title,
+        releaseType: release['primary-type'] || 'Unknown',
+        totalTracks: release.totalTracks || 10,
+        releaseDate: release['first-release-date']
+      })),
+      filterInfo: {
+        activeFilters,
+        typeFilter: this.filterByType() || undefined,
+        decadeFilter: this.filterByDecade() || undefined,
+        genreFilter: this.filterByGenre() || undefined,
+        searchTerm: this.searchTerm() || undefined
+      },
+      options: {
+        tracksPerAlbum: this.tracksPerAlbum(),
+        includeFullAlbums: this.includeFullAlbums(),
+        isPublic: this.playlistIsPublic(),
+        strictMode: this.strictMode()
+      }
+    };
+
+    console.log('Creating discography playlist with request:', request);
+
+    // Create the playlist
+    this.spotifyService.createPlaylistFromDiscography(request)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (playlist) => {
+          this.isCreatingPlaylist.set(false);
+          if (playlist) {
+            this.playlistCreated.set(playlist);
+            console.log(`✅ Playlist created successfully: ${playlist.name}`);
+          } else {
+            this.playlistError.set('Failed to create playlist. Please try again.');
+          }
+        },
+        error: (error) => {
+          this.isCreatingPlaylist.set(false);
+          this.playlistError.set(error.message || 'An error occurred while creating the playlist.');
+          console.error('Error creating discography playlist:', error);
+        }
+      });
+  }
+
+  /**
+   * Dismiss playlist success notification
+   */
+  dismissPlaylistNotification(): void {
+    this.playlistCreated.set(null);
+    this.playlistError.set(null);
+  }
 
 }

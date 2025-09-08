@@ -553,9 +553,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         foundCount = selectedTracks.length;
 
         playlistName = `${artist.name} - Top Tracks from Spotify`;
-        description = `Top ${selectedTracks.length} tracks by ${artist.name} according to Spotify. Created with MusicBrainz Discovery.`;
+        description = `Top ${selectedTracks.length} tracks by ${artist.name} according to Spotify.  Generated with Vinyl Lens`;
 
-        this.topTracksStatus.set(`Found ${foundCount} tracks, creating playlist...`);
+        this.topTracksStatus.set(`Found ${foundCount} tracks, creating playlist...`); 
       } else {
         // Use Last.fm top tracks (original logic)
         if (!artist.id) {
@@ -604,7 +604,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
 
         playlistName = `${artist.name} - Top Tracks from Last.fm`;
-        description = `Top ${lastfmTracks.length} tracks by ${artist.name} according to Last.fm. Created with MusicBrainz Discovery.`;
+        description = `Top ${lastfmTracks.length} tracks by ${artist.name} according to Last.fm. Generated with Vinyl Lens.`;
 
         this.topTracksStatus.set(`Found ${foundCount} matches, creating playlist...`);
       }

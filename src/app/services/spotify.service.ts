@@ -101,6 +101,31 @@ export interface PlaylistCreationRequest {
   validationCallback?: (artistName: string, albumTitle: string) => { isValid: boolean; confidence: 'exact' | 'normalized' | 'none' };
 }
 
+export interface DiscographyPlaylistRequest {
+  artistName: string;
+  releases: Array<{
+    artistName: string;
+    releaseName: string;
+    releaseType: string;
+    totalTracks: number;
+    releaseDate?: string;
+  }>;
+  filterInfo: {
+    activeFilters: string[];
+    typeFilter?: string;
+    decadeFilter?: string;
+    genreFilter?: string;
+    searchTerm?: string;
+  };
+  options: {
+    tracksPerAlbum: number;
+    includeFullAlbums: boolean;
+    playlistName?: string;
+    isPublic: boolean;
+    strictMode: boolean;
+  };
+}
+
 export interface RateLimitInfo {
   retryAfter: number;
   timestamp: number;
@@ -1028,5 +1053,137 @@ export class SpotifyService {
       isRateLimited: this.rateLimitInfo().isRateLimited,
       queueLength: this.requestQueue.length
     };
+  }
+
+  /**
+   * Create playlist from discography releases
+   */
+  createPlaylistFromDiscography(request: DiscographyPlaylistRequest): Observable<SpotifyPlaylist | null> {
+    // Check authentication first
+    if (!this.isAuthenticated()) {
+      console.error('Not authenticated with Spotify');
+      return of(null);
+    }
+
+    // Ensure user is loaded
+    if (!this.currentUser()) {
+      console.log('User not loaded, loading user first...');
+      this.loadCurrentUser();
+      // Wait a moment for user to load, then retry
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (this.currentUser()) {
+            resolve(this.createPlaylistFromDiscography(request));
+          } else {
+            console.error('Failed to load user information');
+            resolve(of(null));
+          }
+        }, 1000);
+      }) as any;
+    }
+
+    // Generate filter-aware playlist name
+    const playlistName = this.generateDiscographyPlaylistName(request);
+    const description = this.generateDiscographyPlaylistDescription(request);
+
+    console.log(`Creating discography playlist: ${playlistName} with ${request.releases.length} releases`);
+
+    return this.createPlaylist(playlistName, description, request.options.isPublic).pipe(
+      switchMap(playlist => {
+        if (!playlist) {
+          console.error('Failed to create playlist');
+          return of(null);
+        }
+        
+        console.log(`Playlist created: ${playlist.name} (ID: ${playlist.id}), now adding tracks...`);
+        
+        // Convert releases to format expected by populatePlaylistFromReleases
+        const releaseData = request.releases.map(release => ({
+          artistName: release.artistName,
+          releaseName: release.releaseName,
+          trackCount: request.options.includeFullAlbums ? 999 : request.options.tracksPerAlbum
+        }));
+        
+        // Create a simplified request for the existing populate method
+        const populateRequest = {
+          labelName: request.artistName,
+          releases: releaseData,
+          strictMode: request.options.strictMode
+        };
+        
+        // Convert the promise to observable and wait for completion
+        return from(
+          this.populatePlaylistFromReleases(playlist.id, releaseData, populateRequest)
+            .then(() => {
+              console.log(`✅ Discography playlist "${playlist.name}" completed successfully`);
+              return playlist;
+            })
+            .catch((error: any) => {
+              console.error('Error adding tracks to discography playlist:', error);
+              return playlist; // Still return the playlist even if track adding fails
+            })
+        );
+      }),
+      catchError((error: any) => {
+        console.error('Error in createPlaylistFromDiscography:', error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Generate playlist name based on filters
+   */
+  private generateDiscographyPlaylistName(request: DiscographyPlaylistRequest): string {
+    const { artistName, filterInfo } = request;
+    const filters = filterInfo.activeFilters;
+    
+    if (request.options.playlistName) {
+      return request.options.playlistName;
+    }
+
+    let name = artistName;
+    
+    // Add filter-specific suffixes
+    if (filterInfo.typeFilter) {
+      name += ` - ${filterInfo.typeFilter}s`;
+    }
+    
+    if (filterInfo.decadeFilter) {
+      name += ` - ${filterInfo.decadeFilter}s`;
+    }
+    
+    if (filterInfo.searchTerm) {
+      name += ` - "${filterInfo.searchTerm}"`;
+    }
+    
+    // Default to "Discography" if no specific filters
+    if (filters.length === 0) {
+      name += ' - Discography';
+    }
+
+    return name;
+  }
+
+  /**
+   * Generate playlist description based on filters and options
+   */
+  private generateDiscographyPlaylistDescription(request: DiscographyPlaylistRequest): string {
+    const { artistName, releases, filterInfo, options } = request;
+    const totalReleases = releases.length;
+    
+    let description = `${artistName} discography playlist`;
+    
+    if (filterInfo.activeFilters.length > 0) {
+      description += ` filtered by: ${filterInfo.activeFilters.join(', ')}`;
+    }
+        
+    if (!options.includeFullAlbums) {
+      description += ` (${options.tracksPerAlbum} track${options.tracksPerAlbum > 1 ? 's' : ''} per release)`;
+    }
+    
+    description += '. Generated with Vinyl Lens.';
+    
+    return description;
   }
 }
