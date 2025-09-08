@@ -65,11 +65,17 @@
         <p>Discover artists, labels, and their connections</p>
       </div>
 
-      <div class="nav-links">
-        <a routerLink="/discography" routerLinkActive="active" class="nav-link">
+      <button class="hamburger-menu" (click)="toggleMobileMenu()" aria-label="Toggle navigation menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+
+      <div class="nav-links" [class.mobile-menu-open]="mobileMenuOpen">
+        <a routerLink="/discography" routerLinkActive="active" class="nav-link" (click)="closeMobileMenu()">
           <span class="nav-text">Artist Discography</span>
         </a>
-        <a routerLink="/label-family-trees" routerLinkActive="active" class="nav-link">
+        <a routerLink="/label-family-trees" routerLinkActive="active" class="nav-link" (click)="closeMobileMenu()">
           <span class="nav-text">Label Family Tree</span>
         </a>
       </div>

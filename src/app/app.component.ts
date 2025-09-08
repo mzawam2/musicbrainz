@@ -10,6 +10,7 @@ import { LastfmAuthService } from './services/lastfm-auth.service';
 })
 export class AppComponent implements OnInit {
   title = 'angularPlayground';
+  mobileMenuOpen = false;
   
   private readonly lastfmAuth = inject(LastfmAuthService);
 
@@ -31,5 +32,13 @@ export class AppComponent implements OnInit {
     } else {
       console.log('🎵 User already authenticated with Last.fm:', this.lastfmAuth.currentUser()?.name);
     }
+  }
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false;
   }
 }
