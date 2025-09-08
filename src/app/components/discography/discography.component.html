@@ -162,11 +162,14 @@
       } @else {
         <!-- Release Grid/List -->
         <div class="release-container" [class.view-grid]="viewMode() === 'grid'" [class.view-list]="viewMode() === 'list'">
-          @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id) {
+          @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id; let i = $index) {
             <app-release-card
               [releaseGroup]="releaseGroup"
               [discogsAlbumArt]="releaseGroup.thumb || null"
               [discogsResourceUrl]="releaseGroup.discogsResourceUrl || null"
+              [allReleaseGroups]="filteredReleaseGroups()"
+              [currentReleaseIndex]="i"
+              [artistName]="selectedArtist()?.name || ''"
               (expand)="onReleaseExpand($event)"
               (collapse)="onReleaseCollapse($event)">
             </app-release-card>

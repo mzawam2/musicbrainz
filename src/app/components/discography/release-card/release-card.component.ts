@@ -8,7 +8,7 @@ import { MusicBrainzService } from '../../../services/musicbrainz.service';
 import { DiscogsService } from '../../../services/discogs.service';
 import { DiscogsImage } from '../../../models/discogs.models';
 import { ArtistPhotoModalComponent } from '../../artist-photo-modal/artist-photo-modal.component';
-import { ArtistPhotoModalData } from '../../artist-photo-modal/artist-photo-modal-data.interface';
+import { ArtistPhotoModalData, CarouselNavigationData, CarouselItem } from '../../artist-photo-modal/artist-photo-modal-data.interface';
 
 @Component({
   selector: 'app-release-card',
@@ -22,6 +22,9 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   releaseGroup = input.required<EnhancedReleaseGroup>();
   discogsAlbumArt = input<string | null>(null);
   discogsResourceUrl = input<string | null>(null);
+  allReleaseGroups = input<EnhancedReleaseGroup[]>([]);
+  currentReleaseIndex = input<number>(0);
+  artistName = input<string>('');
   expand = output<string>();
   collapse = output<string>();
 
@@ -260,17 +263,66 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   }
 
   private openModalWithImage(imageUri: string, title: string, altText: string) {
+    const allReleases = this.allReleaseGroups();
+    const artistName = this.artistName();
+    
+    // If there are multiple albums, provide carousel navigation
+    if (allReleases.length > 1) {
+      this.openAlbumModalWithCarousel(imageUri, title, altText);
+    } else {
+      // Single album - use simple modal
+      const modalData: ArtistPhotoModalData = {
+        imageUri: imageUri,
+        artistName: artistName || title,
+        altText: altText
+      };
+
+      this.dialog.open(ArtistPhotoModalComponent, {
+        data: modalData,
+        panelClass: 'artist-photo-modal',
+        maxWidth: '90vw',
+        maxHeight: '90vh',
+        hasBackdrop: true,
+        disableClose: false
+      });
+    }
+  }
+
+  /**
+   * Open album modal with carousel navigation through all albums
+   */
+  private openAlbumModalWithCarousel(imageUri: string, title: string, altText: string): void {
+    const allReleases = this.allReleaseGroups();
+    const currentIndex = this.currentReleaseIndex();
+    const artistName = this.artistName();
+    
+    // Convert release groups to carousel items
+    const carouselItems: CarouselItem[] = allReleases.map(release => ({
+      imageUri: release.thumb || '', // Use Discogs thumbnail
+      title: release.title,
+      resourceUrl: release.discogsResourceUrl || undefined
+    })).filter(item => item.imageUri); // Only include items with images
+
+    const carouselData: CarouselNavigationData = {
+      currentIndex: Math.max(0, currentIndex),
+      totalCount: carouselItems.length,
+      items: carouselItems
+    };
+
     const modalData: ArtistPhotoModalData = {
       imageUri: imageUri,
-      artistName: title,
-      altText: altText
+      artistName: artistName || 'Unknown Artist',
+      altText: altText,
+      carouselData: carouselData
     };
 
     this.dialog.open(ArtistPhotoModalComponent, {
       data: modalData,
       panelClass: 'artist-photo-modal',
-      maxWidth: '90vw',
-      maxHeight: '90vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
       hasBackdrop: true,
       disableClose: false
     });

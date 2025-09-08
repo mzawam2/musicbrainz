@@ -1186,20 +1186,67 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Open image in full size in a modal
+   * Open image in full size in a modal with navigation support
    */
   openImageFullSize(imageUri: string): void {
+    const artistImages = this.discogsArtistImages();
+    
+    // If there are multiple artist images, provide carousel navigation
+    if (artistImages.length > 1) {
+      const currentIndex = this.artistImageIndex();
+      this.openArtistImageModalWithCarousel(imageUri, currentIndex);
+    } else {
+      // Single image - use simple modal
+      const modalData: ArtistPhotoModalData = {
+        imageUri: imageUri,
+        artistName: this.selectedArtist()?.name,
+        altText: `Photo of ${this.selectedArtist()?.name || 'artist'}`
+      };
+
+      this.dialog.open(ArtistPhotoModalComponent, {
+        data: modalData,
+        panelClass: 'artist-photo-modal',
+        maxWidth: '90vw',
+        maxHeight: '90vh',
+        hasBackdrop: true,
+        disableClose: false
+      });
+    }
+  }
+
+  /**
+   * Open artist image modal with carousel navigation
+   */
+  private openArtistImageModalWithCarousel(imageUri: string, currentIndex: number): void {
+    const allImages = this.discogsArtistImages();
+    
+    // Convert artist images to the format expected by the modal
+    const carouselItems: CarouselItem[] = allImages.map((image, index) => ({
+      imageUri: image.uri,
+      title: `${this.selectedArtist()?.name || 'Artist'} - Photo ${index + 1}`,
+      resourceUrl: image.resourceUrl || undefined
+    }));
+
+    const carouselData: CarouselNavigationData = {
+      currentIndex: Math.max(0, currentIndex),
+      totalCount: allImages.length,
+      items: carouselItems
+    };
+
     const modalData: ArtistPhotoModalData = {
       imageUri: imageUri,
-      artistName: this.selectedArtist()?.name,
-      altText: `Photo of ${this.selectedArtist()?.name || 'artist'}`
+      artistName: this.selectedArtist()?.name || 'Unknown Artist',
+      altText: `Photo of ${this.selectedArtist()?.name || 'artist'}`,
+      carouselData: carouselData
     };
 
     this.dialog.open(ArtistPhotoModalComponent, {
       data: modalData,
       panelClass: 'artist-photo-modal',
-      maxWidth: '90vw',
-      maxHeight: '90vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100vw',
+      height: '100vh',
       hasBackdrop: true,
       disableClose: false
     });
