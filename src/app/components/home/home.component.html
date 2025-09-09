@@ -325,6 +325,10 @@
                        <input type="checkbox" [checked]="useSpotifyTopTracksForSimilar()" (change)="setUseSpotifyForSimilar($event)">
                        <span>Use Spotify Top Tracks</span>
                      </label>
+                     <label class="toggle">
+                       <input type="checkbox" [checked]="randomizeTrackSelection()" (change)="setRandomizeTrackSelection($event)">
+                       <span>Randomize from top 10</span>
+                     </label>
                       <span class="spacer" aria-hidden="true"></span>
                      @if (!isSpotifyAuthenticated()) {
                        <button class="nav-btn" (click)="signInSpotify()">Sign in to Spotify</button>

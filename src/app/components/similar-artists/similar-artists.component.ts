@@ -38,6 +38,11 @@ interface SelectableArtist {
           <input type="number" min="1" max="10" [value]="tracksPerArtist()" (input)="onNumber(tracksPerArtist, $event)" />
         </label>
 
+        <label>
+          <input type="checkbox" [checked]="randomizeTrackSelection()" (change)="onCheckbox(randomizeTrackSelection, $event)" />
+          Randomize from top 10
+        </label>
+
         <button (click)="fetchSimilar()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Find Similar' }}</button>
       </div>
 
@@ -99,6 +104,7 @@ export class SimilarArtistsComponent {
   seedArtist = signal('');
   similarLimit = signal(20);
   tracksPerArtist = signal(2);
+  randomizeTrackSelection = signal(false);
   loading = signal(false);
   creating = signal(false);
   status = signal('');
@@ -114,6 +120,29 @@ export class SimilarArtistsComponent {
   onText(sig: ReturnType<typeof signal<string>>, ev: Event) {
     const v = (ev.target as HTMLInputElement).value ?? '';
     sig.set(v);
+  }
+  onCheckbox(sig: ReturnType<typeof signal<boolean>>, ev: Event) {
+    const checked = (ev.target as HTMLInputElement).checked;
+    sig.set(checked);
+  }
+
+  /**
+   * Helper method to randomly select tracks from an array
+   */
+  private randomlySelectTracks<T>(tracks: T[], count: number): T[] {
+    if (!this.randomizeTrackSelection() || tracks.length <= count) {
+      return tracks.slice(0, count);
+    }
+    
+    const shuffled = [...tracks];
+    const selected: T[] = [];
+    
+    for (let i = 0; i < count && shuffled.length > 0; i++) {
+      const randomIndex = Math.floor(Math.random() * shuffled.length);
+      selected.push(shuffled.splice(randomIndex, 1)[0]);
+    }
+    
+    return selected;
   }
 
   toggle(a: SelectableArtist) {
@@ -160,13 +189,15 @@ export class SimilarArtistsComponent {
       // Gather Last.fm top tracks per selected artist
       const trackTitles: Array<{ artist: string; title: string }> = [];
       for (const a of selected) {
+        const tracksToFetch = this.randomizeTrackSelection() ? 10 : this.tracksPerArtist();
         const tracks = await new Promise<import('../../models/lastfm.models').LastFmTrack[]>((resolve, reject) => {
-          this.lastfm.getTopTracks(a.name, this.tracksPerArtist()).subscribe({
+          this.lastfm.getTopTracks(a.name, tracksToFetch).subscribe({
             next: resolve,
             error: reject
           });
         });
-        for (const t of tracks) {
+        const selectedTracks = this.randomlySelectTracks(tracks, this.tracksPerArtist());
+        for (const t of selectedTracks) {
           if (t?.name) trackTitles.push({ artist: a.name, title: t.name });
         }
       }

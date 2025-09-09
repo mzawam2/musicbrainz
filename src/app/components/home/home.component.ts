@@ -35,6 +35,7 @@ interface HomeComponentState {
   similarLimit: number;
   similarTracksPerArtist: number;
   useSpotifyTopTracksForSimilar: boolean;
+  randomizeTrackSelection: boolean;
 }
 
 @Component({
@@ -103,6 +104,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   similarLimit = signal<number>(10);
   similarTracksPerArtist = signal<number>(2);
   useSpotifyTopTracksForSimilar = signal<boolean>(false);
+  randomizeTrackSelection = signal<boolean>(false);
   isCreatingSimilarPlaylist = signal<boolean>(false);
   similarStatus = signal<string | null>(null);
 
@@ -424,7 +426,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           }
           if (!artistId) continue;
           const topTracks = await firstValueFrom(this.spotifyService.getArtistTopTracks(artistId, 'US'));
-          const picks = (topTracks || []).slice(0, tracksPer);
+          // Use randomization helper to select tracks from top 10 if enabled
+          const tracksToFetch = this.randomizeTrackSelection() ? Math.min(10, topTracks?.length || 0) : tracksPer;
+          const allTracks = (topTracks || []).slice(0, tracksToFetch);
+          const picks = this.randomlySelectTracks(allTracks, tracksPer);
           for (const t of picks) {
             if (t?.uri) uris.push(t.uri);
           }
@@ -433,8 +438,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Default: Use Last.fm top tracks, then resolve on Spotify via search
         const wanted: Array<{ artist: string; title: string }> = [];
         for (const a of selected) {
-          const top = await firstValueFrom(this.lastfmService.getTopTracks(a.name, tracksPer));
-          for (const t of top || []) {
+          const tracksToFetch = this.randomizeTrackSelection() ? 10 : tracksPer;
+          const allTracks = await firstValueFrom(this.lastfmService.getTopTracks(a.name, tracksToFetch));
+          const selectedTracks = this.randomlySelectTracks(allTracks || [], tracksPer);
+          for (const t of selectedTracks) {
             if (t?.name) wanted.push({ artist: a.name, title: t.name });
           }
         }
@@ -496,6 +503,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   setUseSpotifyForSimilar(ev: Event): void {
     const checked = (ev.target as HTMLInputElement).checked;
     this.useSpotifyTopTracksForSimilar.set(checked);
+  }
+  setRandomizeTrackSelection(ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    this.randomizeTrackSelection.set(checked);
+  }
+
+  /**
+   * Helper method to randomly select tracks from an array
+   */
+  private randomlySelectTracks<T>(tracks: T[], count: number): T[] {
+    if (!this.randomizeTrackSelection() || tracks.length <= count) {
+      return tracks.slice(0, count);
+    }
+    
+    const shuffled = [...tracks];
+    const selected: T[] = [];
+    
+    for (let i = 0; i < count && shuffled.length > 0; i++) {
+      const randomIndex = Math.floor(Math.random() * shuffled.length);
+      selected.push(shuffled.splice(randomIndex, 1)[0]);
+    }
+    
+    return selected;
   }
 
   /**
@@ -899,7 +929,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Builder preferences
         similarLimit: this.similarLimit(),
         similarTracksPerArtist: this.similarTracksPerArtist(),
-        useSpotifyTopTracksForSimilar: this.useSpotifyTopTracksForSimilar()
+        useSpotifyTopTracksForSimilar: this.useSpotifyTopTracksForSimilar(),
+        randomizeTrackSelection: this.randomizeTrackSelection()
       };
       
       sessionStorage.setItem(this.STATE_STORAGE_KEY, JSON.stringify(state));
@@ -991,6 +1022,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
       if (typeof (state as any).useSpotifyTopTracksForSimilar === 'boolean') {
         this.useSpotifyTopTracksForSimilar.set((state as any).useSpotifyTopTracksForSimilar);
+      }
+      if (typeof (state as any).randomizeTrackSelection === 'boolean') {
+        this.randomizeTrackSelection.set((state as any).randomizeTrackSelection);
       }
 
       // Clear the flag after restoration is complete
