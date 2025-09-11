@@ -64,6 +64,9 @@ interface SelectableArtist {
           <button (click)="selectAll()">Select all</button>
           <button (click)="clearAll()">Clear</button>
           <button class="primary" (click)="createPlaylist()" [disabled]="!canCreate() || creating()">
+            <svg class="spotify-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path fill="currentColor" d="M12 1.5C6.21 1.5 1.5 6.21 1.5 12S6.21 22.5 12 22.5 22.5 17.79 22.5 12 17.79 1.5 12 1.5zm4.8 15.23a.75.75 0 01-1.03.24c-2.82-1.73-6.37-2.12-10.54-1.16a.75.75 0 11-.33-1.46c4.56-1.05 8.5-.61 11.63 1.3.36.22.47.69.27 1.08zm1.37-3.08a.9.9 0 01-1.24.29c-3.24-1.96-8.19-2.53-12.02-1.38a.9.9 0 11-.52-1.73c4.29-1.3 9.8-.67 13.48 1.58.43.26.57.83.3 1.24zm.14-3.2a1.05 1.05 0 01-1.45.35c-3.71-2.21-9.35-2.42-12.72-1.33a1.05 1.05 0 01-.65-2.02c3.97-1.28 10.16-1.03 14.39 1.47.5.3.66.96.43 1.53z"/>
+            </svg>
             {{ creating() ? 'Creating…' : 'Create Spotify Playlist' }}
           </button>
         </div>
@@ -85,7 +88,8 @@ interface SelectableArtist {
     .controls label { display: inline-flex; gap: .5rem; align-items: center; }
     .controls input[type="number"] { width: 4.5rem; padding: .35rem .4rem; }
     button { padding: .5rem .8rem; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; }
-    button.primary { background: #1DB954; color: #fff; border-color: #169f47; }
+    button.primary { background: #1DB954; color: #fff; border-color: #169f47; display: flex; align-items: center; gap: 0.5rem; }
+    .spotify-icon { width: 18px; height: 18px; flex-shrink: 0; }
     button.link { background: transparent; color: #1DB954; border: none; padding: 0 .25rem; }
     .auth-hint { margin-top: .75rem; color: #555; display: flex; align-items: center; gap: .5rem; }
     .results { margin-top: 1rem; }

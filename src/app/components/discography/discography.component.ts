@@ -161,7 +161,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   playlistButtonText = computed(() => {
     if (!this.isSpotifyAuthenticated()) return 'Login to Spotify';
     if (this.isCreatingPlaylist()) return 'Creating Playlist...';
-    return 'Create Spotify Playlist';
+    return 'Create Discography Playlist';
   });
 
 
