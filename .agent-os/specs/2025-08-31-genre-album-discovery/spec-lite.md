@@ -1,3 +1,0 @@
-# Spec Summary (Lite)
-
-Implement Last.fm API integration to enable genre-based album discovery, allowing users to browse top albums by specific genres through artist card tags. This feature will enhance music exploration by providing genre-focused discovery paths that integrate seamlessly with existing Spotify playlist creation functionality. Users can click genre tags to discover albums and add them directly to Spotify playlists.

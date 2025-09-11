@@ -1,3 +1,0 @@
-# Spec Summary (Lite)
-
-Implement a modal image viewer specifically for band photos on the artist discography page that displays full-size images in an overlay instead of opening them in a separate window. This feature will provide a better user experience by keeping users within the application context while viewing high-quality artist imagery, with proper loading states and multiple close options.
