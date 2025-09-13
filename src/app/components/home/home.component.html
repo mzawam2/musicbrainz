@@ -243,7 +243,7 @@
                     <p><strong>Last.fm Tags:</strong></p>
                     <div class="tags-container">
                       @for (tag of additionalLastfmTags(); track tag.name) {
-                        <span class="tag clickable" (click)="navigateToPlaylistWithTag(tag.name)" [title]="'Create playlist with ' + tag.name + ' tag'">{{ tag.name }}</span>
+                        <span class="artist-chip clickable" (click)="navigateToPlaylistWithTag(tag.name)" [title]="'Create playlist with ' + tag.name + ' tag'">{{ tag.name }}</span>
                       }
                     </div>
                   </div>

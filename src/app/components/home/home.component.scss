@@ -708,6 +708,31 @@
             gap: 0.5rem;
             margin-top: 0.5rem;
 
+            .artist-chip {
+              display: inline-flex;
+              align-items: center;
+              padding: 0.5rem 1rem;
+              background: rgba(255, 255, 255, 0.1);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 1.5rem;
+              color: rgba(255, 255, 255, 0.9);
+              font-size: 0.9rem;
+              font-weight: 500;
+              transition: all 0.3s ease;
+              backdrop-filter: blur(5px);
+              
+              &.clickable {
+                cursor: pointer;
+                
+                &:hover {
+                  background: rgba(255, 255, 255, 0.2);
+                  border-color: rgba(255, 255, 255, 0.4);
+                  transform: translateY(-1px);
+                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                }
+              }
+            }
+
             .tag {
               background: rgba(255, 255, 255, 0.1);
               border: 1px solid rgba(255, 255, 255, 0.2);
@@ -876,6 +901,8 @@
             &:hover {
               background: rgba(255, 255, 255, 0.15);
               border-color: rgba(255, 255, 255, 0.3);
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             }
             &.disabled {
               opacity: 0.6;
@@ -893,6 +920,8 @@
                 background: rgba(29, 185, 84, 0.3);
                 border-color: rgb(29 185 84 / 86%);
                 color: white;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(29, 185, 84, 0.2);
               }
             }
           }
