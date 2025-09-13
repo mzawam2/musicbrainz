@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, map, of, tap, firstValueFrom, switchMap, expand, reduce, EMPTY, from, throwError, delay, timer } from 'rxjs';
+import { Observable, catchError, map, of, tap, firstValueFrom, switchMap, expand, reduce, EMPTY, from, throwError, delay, timer, forkJoin } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PlaylistCreationResult, PlaylistCreationError, ErrorType } from '../models/playlist.models';
 
 export interface SpotifyAuthConfig {
   clientId: string;
@@ -304,7 +305,7 @@ export class SpotifyService {
    * Get an artist's top tracks
    * API: GET /v1/artists/{id}/top-tracks?market=US
    */
-  getArtistTopTracks(artistId: string, market: string = 'US'): Observable<SpotifyTrack[]> {
+  getArtistTopTracks(artistId: string, market: string = 'US', limit: number = 10): Observable<SpotifyTrack[]> {
     const params = new HttpParams().set('market', market);
     return this.makeAuthenticatedRequest(() =>
       this.http.get<{ tracks: SpotifyTrack[] }>(`${this.SPOTIFY_API_BASE}/artists/${artistId}/top-tracks`, {
@@ -312,7 +313,10 @@ export class SpotifyService {
         params
       })
     ).pipe(
-      map(resp => resp.tracks || []),
+      map(resp => {
+        const tracks = resp.tracks || [];
+        return tracks.slice(0, limit);
+      }),
       catchError(error => {
         console.error(`Top tracks error for artist ${artistId}:`, error);
         return of([]);
@@ -1185,5 +1189,202 @@ export class SpotifyService {
     description += '. Generated with Vinyl Lens.';
     
     return description;
+  }
+
+  /**
+   * Search for an artist on Spotify by name
+   * @param artistName - Name of the artist to search for
+   * @returns Observable of Spotify artist or null if not found
+   */
+  searchArtistByName(artistName: string): Observable<SpotifyArtist | null> {
+    const params = new HttpParams()
+      .set('q', artistName)
+      .set('type', 'artist')
+      .set('limit', '10'); // Increase limit to find exact matches
+
+    return this.makeAuthenticatedRequest(() =>
+      this.http.get<any>(`${this.SPOTIFY_API_BASE}/search`, {
+        headers: this.getAuthHeaders(),
+        params
+      })
+    ).pipe(
+      map(response => {
+        const artists = response?.artists?.items || [];
+        
+        // First, try to find an exact case-insensitive match
+        const exactMatch = artists.find((artist: any) => 
+          artist.name.toLowerCase() === artistName.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          return exactMatch;
+        }
+        
+        // If no exact match, try fuzzy matching (contains the search term)
+        const fuzzyMatch = artists.find((artist: any) => 
+          artist.name.toLowerCase().includes(artistName.toLowerCase()) ||
+          artistName.toLowerCase().includes(artist.name.toLowerCase())
+        );
+        
+        if (fuzzyMatch) {
+          return fuzzyMatch;
+        }
+        
+        // Fall back to first result if no good matches found
+        return artists.length > 0 ? artists[0] : null;
+      }),
+      catchError(error => {
+        console.error(`Error searching for artist "${artistName}":`, error);
+        return of(null);
+      })
+    );
+  }
+
+
+  /**
+   * Create a Spotify playlist from a list of artist names
+   * @param artists - Array of artist names to include
+   * @param playlistName - Name for the created playlist
+   * @param description - Optional playlist description
+   * @param tracksPerArtist - Number of top tracks per artist (default: 1)
+   * @returns Observable of playlist creation result
+   */
+  createPlaylistFromArtists(
+    artists: string[], 
+    playlistName: string, 
+    description?: string,
+    tracksPerArtist: number = 1
+  ): Observable<PlaylistCreationResult> {
+    const startTime = Date.now();
+    
+    // Validation
+    if (!artists || artists.length === 0) {
+      return throwError(() => new Error('Artist list cannot be empty'));
+    }
+    
+    if (!playlistName || playlistName.trim().length === 0) {
+      return throwError(() => new Error('Playlist name is required'));
+    }
+
+    const errors: PlaylistCreationError[] = [];
+    const artistsSkipped: string[] = [];
+    let artistsFound = 0;
+
+    // Step 1: Search for all artists and get their top tracks
+    const artistSearches = artists.map(artistName =>
+      this.searchArtistByName(artistName).pipe(
+        switchMap(artist => {
+          if (!artist) {
+            artistsSkipped.push(artistName);
+            errors.push({
+              type: ErrorType.ARTIST_NOT_FOUND,
+              message: `Artist "${artistName}" not found on Spotify`,
+              artistName,
+              retryable: false
+            });
+            return of([]);
+          }
+          
+          artistsFound++;
+          return this.getArtistTopTracks(artist.id, 'US', tracksPerArtist);
+        }),
+        catchError(error => {
+          errors.push({
+            type: ErrorType.SPOTIFY_API_ERROR,
+            message: `Error processing artist "${artistName}": ${error.message}`,
+            artistName,
+            retryable: true
+          });
+          return of([]);
+        })
+      )
+    );
+
+    return forkJoin(artistSearches).pipe(
+      switchMap(trackArrays => {
+        // Maintain artist order: process arrays in original sequence
+        // trackArrays[i] corresponds to artists[i], so order is preserved
+        const allTracks: any[] = [];
+        for (let i = 0; i < trackArrays.length; i++) {
+          const artistTracks = trackArrays[i].filter(track => track);
+          allTracks.push(...artistTracks);
+        }
+        
+        if (allTracks.length === 0) {
+          return of({
+            success: false,
+            artistsRequested: artists.length,
+            artistsFound: 0,
+            artistsSkipped,
+            errors: [...errors, {
+              type: ErrorType.ARTIST_NOT_FOUND,
+              message: 'No tracks found for any artists',
+              retryable: false
+            }],
+            duration: Date.now() - startTime
+          } as PlaylistCreationResult);
+        }
+
+        // Step 2: Create the playlist
+        return this.createPlaylist(playlistName, description || `Generated from artist list`).pipe(
+          switchMap(playlist => {
+            if (!playlist) {
+              return of({
+                success: false,
+                artistsRequested: artists.length,
+                artistsFound,
+                artistsSkipped,
+                errors: [...errors, {
+                  type: ErrorType.SPOTIFY_API_ERROR,
+                  message: 'Failed to create playlist',
+                  retryable: true
+                }],
+                duration: Date.now() - startTime
+              } as PlaylistCreationResult);
+            }
+
+            // Step 3: Add tracks to the playlist
+            // Remove duplicates while preserving artist ranking order
+            const seenUris = new Set<string>();
+            const uniqueTracks = allTracks.filter(track => {
+              if (seenUris.has(track.uri)) {
+                return false;
+              }
+              seenUris.add(track.uri);
+              return true;
+            });
+            const trackUris = uniqueTracks.map(track => track.uri);
+            
+            return this.addTracksToPlaylist(playlist.id, trackUris).pipe(
+              map(() => ({
+                success: true,
+                playlist,
+                artistsRequested: artists.length,
+                artistsFound,
+                artistsSkipped,
+                errors,
+                duration: Date.now() - startTime
+              } as PlaylistCreationResult))
+            );
+          })
+        );
+      }),
+      catchError(error => {
+        errors.push({
+          type: ErrorType.SPOTIFY_API_ERROR,
+          message: `Playlist creation failed: ${error.message}`,
+          retryable: true
+        });
+        
+        return of({
+          success: false,
+          artistsRequested: artists.length,
+          artistsFound,
+          artistsSkipped,
+          errors,
+          duration: Date.now() - startTime
+        } as PlaylistCreationResult);
+      })
+    );
   }
 }

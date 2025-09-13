@@ -19,7 +19,15 @@
       "Bash(npm install)",
       "Bash(npx ng:*)",
       "Bash(node:*)",
-      "Bash(echo \"Checking Last.fm service files for basic syntax issues...\" grep -n \"export\\|import\\|function\\|class\\|interface\" src/app/services/lastfm*.ts src/app/models/lastfm.models.ts src/app/components/lastfm-callback/lastfm-callback.component.ts)"
+      "Bash(echo \"Checking Last.fm service files for basic syntax issues...\" grep -n \"export\\|import\\|function\\|class\\|interface\" src/app/services/lastfm*.ts src/app/models/lastfm.models.ts src/app/components/lastfm-callback/lastfm-callback.component.ts)",
+      "Bash(scripts/check-task-prerequisites.sh:*)",
+      "Bash(CHROME_BIN=/usr/bin/chromium-browser npm test)",
+      "Bash(scripts/setup-plan.sh:*)",
+      "Bash(scripts/update-agent-context.sh:*)",
+      "Bash(npm test:*)",
+      "Bash(CHROME_BIN=/usr/bin/chromium-browser npm test -- --browsers=ChromeHeadless --watch=false --include=\"**/playlist-creation.component.spec.ts\")",
+      "WebFetch(domain:ws.audioscrobbler.com)",
+      "WebFetch(domain:api.spotify.com)"
     ],
     "deny": []
   }

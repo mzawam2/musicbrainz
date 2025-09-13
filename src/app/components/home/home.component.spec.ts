@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 
 import { HomeComponent } from './home.component';
@@ -32,15 +32,20 @@ describe('HomeComponent', () => {
   let mockDialog: jasmine.SpyObj<MatDialog>;
 
   beforeEach(async () => {
+    // Prevent auth flows during tests
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('lastfm_auth_declined', '1');
+    localStorage.setItem('spotify_auth_declined', '1');
+    
     mockDialog = jasmine.createSpyObj('MatDialog', ['open']);
 
     await TestBed.configureTestingModule({
-      imports: [HomeComponent],
+      imports: [HomeComponent, HttpClientTestingModule],
       providers: [
         { provide: MatDialog, useValue: mockDialog },
         { provide: LastfmService, useClass: MockLastfmService },
         { provide: SpotifyService, useClass: MockSpotifyService },
-        provideHttpClient(),
         provideRouter([])
       ]
     })

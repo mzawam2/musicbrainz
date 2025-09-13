@@ -3,11 +3,13 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/materia
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { DebugElement } from '@angular/core';
 
 import { ArtistPhotoModalComponent } from './artist-photo-modal.component';
 import { ArtistPhotoModalData } from './artist-photo-modal-data.interface';
+import { DiscogsService } from '../../services/discogs.service';
 
 describe('ArtistPhotoModalComponent', () => {
   let component: ArtistPhotoModalComponent;
@@ -23,17 +25,21 @@ describe('ArtistPhotoModalComponent', () => {
       altText: 'Photo of Test Artist'
     };
 
+    const mockDiscogsService = jasmine.createSpyObj('DiscogsService', ['searchArtist', 'getArtistDetails']);
+
     await TestBed.configureTestingModule({
       imports: [
         ArtistPhotoModalComponent,
         MatDialogModule,
         MatProgressSpinnerModule,
         MatIconModule,
-        MatButtonModule
+        MatButtonModule,
+        HttpClientTestingModule
       ],
       providers: [
         { provide: MatDialogRef, useValue: mockDialogRef },
-        { provide: MAT_DIALOG_DATA, useValue: mockData }
+        { provide: MAT_DIALOG_DATA, useValue: mockData },
+        { provide: DiscogsService, useValue: mockDiscogsService }
       ]
     }).compileComponents();
 
@@ -143,6 +149,8 @@ describe('ArtistPhotoModalComponent', () => {
       imageUri: 'https://example.com/test.jpg'
     };
 
+    const mockDiscogsServiceMinimal = jasmine.createSpyObj('DiscogsService', ['searchArtist', 'getArtistDetails']);
+
     // Reset TestBed for this specific test
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -151,11 +159,13 @@ describe('ArtistPhotoModalComponent', () => {
         MatDialogModule,
         MatProgressSpinnerModule,
         MatIconModule,
-        MatButtonModule
+        MatButtonModule,
+        HttpClientTestingModule
       ],
       providers: [
         { provide: MatDialogRef, useValue: mockDialogRef },
-        { provide: MAT_DIALOG_DATA, useValue: minimalData }
+        { provide: MAT_DIALOG_DATA, useValue: minimalData },
+        { provide: DiscogsService, useValue: mockDiscogsServiceMinimal }
       ]
     });
 

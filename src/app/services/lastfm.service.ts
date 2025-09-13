@@ -16,7 +16,10 @@ import {
   LastFmArtistInfoResponse,
   LastFmTopTracksResponse,
   LastFmTrack,
-  LastFmSimilarArtist
+  LastFmSimilarArtist,
+  LastfmTagArtist,
+  LastFmTopArtistsByTagResponse,
+  LastFmArtistTopTagsResponse
 } from '../models/lastfm.models';
 
 @Injectable({
@@ -337,6 +340,90 @@ export class LastfmService {
       this.http.get<LastFmTopTracksResponse>(this.API_BASE_URL, { params }).pipe(
         map(response => response?.toptracks?.track || []),
         tap(tracks => this.setCache(cacheKey, tracks)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Retrieve top artists for a specific tag from Last.fm
+   * @param tag - The Last.fm tag name
+   * @param limit - Maximum number of artists to return (default: 20)
+   * @param page - Page number for pagination (default: 1)
+   * @returns Observable of artists with tag-specific metadata
+   */
+  getTopArtistsByTag(tag: string, limit: number = 20, page: number = 1): Observable<LastfmTagArtist[]> {
+    // Validate input
+    if (!tag || tag.trim().length === 0) {
+      return throwError(() => new Error('Invalid tag parameter'));
+    }
+
+    const cacheKey = `topartists-tag-${tag}-${limit}-${page}`;
+    const cached = this.getFromCache<LastfmTagArtist[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'tag.gettopartists')
+      .set('tag', tag.trim())
+      .set('limit', limit.toString())
+      .set('page', page.toString())
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmTopArtistsByTagResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => {
+          const artists = response?.topartists?.artist || [];
+          // Transform to include tag ranking and relevance
+          return artists.map((artist, index) => ({
+            ...artist,
+            tagRank: index + 1 + ((page - 1) * limit), // Calculate position based on page
+            tagRelevance: Math.max(100 - (index * 2), 10) // Simple relevance calculation
+          }));
+        }),
+        tap(artists => this.setCache(cacheKey, artists)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Get top tags for a specific artist from Last.fm
+   * @param artistName - Name of the artist to get tags for
+   * @param limit - Maximum number of tags to return (default: 10)
+   * @returns Observable of tags for the artist
+   */
+  getArtistTopTags(artistName: string, limit: number = 10): Observable<LastFmTag[]> {
+    // Validate input
+    if (!artistName || artistName.trim().length === 0) {
+      return throwError(() => new Error('Invalid artist name parameter'));
+    }
+
+    const cacheKey = `artist-tags-${artistName.toLowerCase()}-${limit}`;
+    const cached = this.getFromCache<LastFmTag[]>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const params = new HttpParams()
+      .set('method', 'artist.gettoptags')
+      .set('artist', artistName.trim())
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmArtistTopTagsResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => {
+          const tags = response?.toptags?.tag || [];
+          // Limit the number of tags returned and ensure they have counts
+          return tags
+            .filter(tag => tag.name && tag.count !== undefined)
+            .slice(0, limit)
+            .sort((a, b) => (b.count || 0) - (a.count || 0)); // Sort by count descending
+        }),
+        tap(tags => this.setCache(cacheKey, tags)),
         catchError(this.handleError.bind(this))
       )
     );

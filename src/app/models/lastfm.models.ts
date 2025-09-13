@@ -49,6 +49,15 @@ export interface LastFmTopTagsResponse {
   };
 }
 
+export interface LastFmArtistTopTagsResponse {
+  toptags: {
+    tag: LastFmTag[];
+    '@attr': {
+      artist: string;
+    };
+  };
+}
+
 export interface LastFmError {
   error: number;
   message: string;
@@ -159,6 +168,29 @@ export interface LastFmTopTracksResponse {
     track: LastFmTrack[];
     '@attr': {
       artist: string;
+      page: string;
+      perPage: string;
+      totalPages: string;
+      total: string;
+    };
+  };
+}
+
+// Tag-based artist interfaces for playlist creation feature
+export interface LastfmTagArtist extends LastFmArtist {
+  streamable: string;
+  image: LastFmImage[];
+  tagRank: number;        // Position in tag ranking (1-based)
+  tagRelevance: number;   // Relevance score (0-100)  
+  listeners?: string;
+  playcount?: string;
+}
+
+export interface LastFmTopArtistsByTagResponse {
+  topartists: {
+    artist: LastfmTagArtist[];
+    '@attr': {
+      tag: string;
       page: string;
       perPage: string;
       totalPages: string;

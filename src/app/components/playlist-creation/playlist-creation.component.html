@@ -1,0 +1,286 @@
+<mat-card class="playlist-creation-card">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon>playlist_add</mat-icon>
+      Create Playlist from Last.fm Tag
+    </mat-card-title>
+    <mat-card-subtitle>
+      Generate a Spotify playlist with top artists from any Last.fm tag
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <!-- Success Popup -->
+  @if (completedPlaylist()) {
+    <div class="success-popup">
+      <div class="success-content">
+        <mat-icon class="success-icon">check_circle</mat-icon>
+        <h3>✓ Spotify Playlist Created!</h3>
+        <p><strong>{{ completedPlaylist()?.playlist?.name }}</strong></p>
+        <div class="playlist-stats">
+          {{ completedPlaylist()?.artistsFound }} artists • {{ (completedPlaylist()?.artistsFound || 0) * (form.get('tracksPerArtist')?.value || 1) }} tracks
+        </div>
+        @if (completedPlaylist()?.playlist?.external_urls?.spotify) {
+          <a [href]="completedPlaylist()?.playlist?.external_urls?.spotify" target="_blank" class="open-spotify-link">
+            <mat-icon>open_in_new</mat-icon>
+            Open in Spotify
+          </a>
+        }
+      </div>
+      <button class="close-popup" (click)="dismissSuccess()" type="button" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+  <mat-card-content>
+    <form [formGroup]="form" class="playlist-form">
+      <!-- Tag Name Input -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Last.fm Tag</mat-label>
+        <input 
+          matInput 
+          formControlName="tagName" 
+          placeholder="e.g. rock, electronic, jazz"
+          [readonly]="isCreating()"
+          (keydown.enter)="searchArtists()">
+        <mat-icon matSuffix>tag</mat-icon>
+        <mat-hint>Enter a musical genre or style tag from Last.fm</mat-hint>
+        @if (form.get('tagName')?.hasError('required')) {
+          <mat-error>Tag name is required</mat-error>
+        }
+        @if (form.get('tagName')?.hasError('maxlength')) {
+          <mat-error>Tag name must be 100 characters or less</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- Custom Playlist Name (Optional) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Playlist Name (Optional)</mat-label>
+        <input 
+          matInput 
+          formControlName="playlistName" 
+          placeholder="Leave blank for auto-generated name"
+          [readonly]="isCreating()">
+        <mat-icon matSuffix>playlist_play</mat-icon>
+        <mat-hint>Default: "Top [tag] Artists"</mat-hint>
+        @if (form.get('playlistName')?.hasError('maxlength')) {
+          <mat-error>Playlist name must be 200 characters or less</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- Artist Limit -->
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Number of Artists</mat-label>
+          <input 
+            matInput 
+            type="number" 
+            formControlName="artistLimit" 
+            min="1" 
+            max="50"
+            [readonly]="isCreating()">
+          <mat-icon matSuffix>people</mat-icon>
+          <mat-hint>1-50 artists</mat-hint>
+          @if (form.get('artistLimit')?.hasError('required')) {
+            <mat-error>Artist limit is required</mat-error>
+          }
+          @if (form.get('artistLimit')?.hasError('min') || form.get('artistLimit')?.hasError('max')) {
+            <mat-error>Must be between 1 and 50</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Tracks Per Artist -->
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Tracks per Artist</mat-label>
+          <input 
+            matInput 
+            type="number" 
+            formControlName="tracksPerArtist" 
+            min="1" 
+            max="5"
+            [readonly]="isCreating()">
+          <mat-icon matSuffix>music_note</mat-icon>
+          <mat-hint>1-5 tracks</mat-hint>
+          @if (form.get('tracksPerArtist')?.hasError('required')) {
+            <mat-error>Tracks per artist is required</mat-error>
+          }
+          @if (form.get('tracksPerArtist')?.hasError('min') || form.get('tracksPerArtist')?.hasError('max')) {
+            <mat-error>Must be between 1 and 5</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <!-- Search Button -->
+      <div class="search-section">
+        <button 
+          mat-raised-button 
+          color="accent" 
+          [disabled]="!canSearch()"
+          (click)="searchArtists()"
+          class="search-button"
+          data-testid="search-artists">
+          <mat-icon>search</mat-icon>
+          @if (isSearching()) {
+            <mat-spinner diameter="20"></mat-spinner>
+            Searching...
+          } @else {
+            Search Artists
+          }
+        </button>
+      </div>
+    </form>
+
+    <!-- Search Results -->
+    @if (hasSearched() && searchResults().length > 0) {
+      <div class="search-results">
+        <h3>
+          <mat-icon>people</mat-icon>
+          Found {{ searchResults().length }} Artists for "{{ form.get('tagName')?.value }}"
+        </h3>
+        <div class="artists-grid">
+          @for (artist of searchResults(); track artist.name) {
+            <mat-chip class="artist-chip">
+              <mat-icon matChipAvatar>person</mat-icon>
+              {{ artist.name }}
+              @if (artist.tagRank) {
+                <span class="rank">#{{ artist.tagRank }}</span>
+              }
+            </mat-chip>
+          }
+        </div>
+        <p class="results-note">
+          <mat-icon>info</mat-icon>
+          These artists will be used to create your Spotify playlist with {{ form.get('tracksPerArtist')?.value }} tracks per artist.
+        </p>
+      </div>
+    }
+
+    @if (hasSearched() && searchResults().length === 0) {
+      <div class="no-results">
+        <mat-icon>search_off</mat-icon>
+        <h3>No artists found</h3>
+        <p>Try a different tag name or check your spelling.</p>
+      </div>
+    }
+
+    <!-- Progress Section -->
+    @if (isCreating() || isFailed() || isCancelled()) {
+      <div class="progress-section">
+        <div class="progress-header">
+          <h3>{{ progress().message }}</h3>
+          @if (isCreating()) {
+            <mat-spinner diameter="24"></mat-spinner>
+          }
+          @if (isFailed()) {
+            <mat-icon class="error-icon">error</mat-icon>
+          }
+          @if (isCancelled()) {
+            <mat-icon class="warning-icon">cancel</mat-icon>
+          }
+        </div>
+
+        <!-- Progress Bar -->
+        @if (isCreating()) {
+          <mat-progress-bar 
+            mode="determinate" 
+            [value]="progressPercentage()"
+            [color]="getProgressColor()">
+          </mat-progress-bar>
+          <div class="progress-details">
+            Step {{ progress().currentStep }} of {{ progress().totalSteps }}
+            @if (progress().artistsProcessed > 0) {
+              • {{ progress().artistsFound }}/{{ progress().artistsProcessed }} artists found
+            }
+          </div>
+        }
+
+        @if (isFailed()) {
+          <div class="results-summary error">
+            <mat-icon>error_outline</mat-icon>
+            <div>
+              <strong>Creation failed</strong><br>
+              {{ getErrorMessage() }}
+            </div>
+          </div>
+        }
+
+        @if (isCancelled()) {
+          <div class="results-summary warning">
+            <mat-icon>info_outline</mat-icon>
+            <div>
+              <strong>Creation cancelled</strong><br>
+              You can start over by clicking "Create Playlist"
+            </div>
+          </div>
+        }
+
+        <!-- Errors List -->
+        @if (progress().errors.length > 0 && !isFailed()) {
+          <div class="errors-section">
+            <h4>Warnings:</h4>
+            <ul>
+              @for (error of progress().errors; track error.message) {
+                <li>
+                  <mat-icon class="warning-icon">warning</mat-icon>
+                  {{ error.message }}
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </mat-card-content>
+
+  <mat-card-actions>
+    <!-- Create Button -->
+    @if (hasSearched() && searchResults().length > 0) {
+      <button 
+        mat-raised-button 
+        color="primary" 
+        [disabled]="!canCreate() || isCreating()"
+        (click)="createPlaylist()"
+        data-testid="create-playlist">
+        <mat-icon>playlist_add</mat-icon>
+        @if (isCreating()) {
+          <mat-spinner diameter="20"></mat-spinner>
+          Creating...
+        } @else {
+          Create Playlist
+        }
+      </button>
+    }
+
+    <!-- Cancel Button -->
+    @if (canCancel()) {
+      <button 
+        mat-stroked-button 
+        color="warn"
+        (click)="cancelCreation()">
+        <mat-icon>cancel</mat-icon>
+        Cancel
+      </button>
+    }
+
+    <!-- Reset Button -->
+    @if (isFailed() || isCancelled()) {
+      <button 
+        mat-stroked-button 
+        (click)="reset()">
+        <mat-icon>refresh</mat-icon>
+        Reset
+      </button>
+    }
+
+    <!-- View Playlist Button -->
+    @if (isCompleted() && progress().artistsFound > 0 && completedPlaylist()?.playlist?.external_urls?.spotify) {
+      <button 
+        mat-stroked-button 
+        color="accent"
+        (click)="viewOnSpotify()">
+        <mat-icon>open_in_new</mat-icon>
+        View on Spotify
+      </button>
+    }
+  </mat-card-actions>
+</mat-card>

@@ -238,16 +238,20 @@
                     </div>
                   }
                 </div>
-                @if (lastfmArtistInfo()!.tags?.tag && lastfmArtistInfo()!.tags!.tag.length > 0) {
+                @if (additionalLastfmTags().length > 0) {
                   <div class="lastfm-tags">
                     <p><strong>Last.fm Tags:</strong></p>
                     <div class="tags-container">
-                      @for (tag of lastfmArtistInfo()!.tags!.tag.slice(0, 10); track tag.name) {
-                        <span class="tag">{{ tag.name }}</span>
+                      @for (tag of additionalLastfmTags(); track tag.name) {
+                        <span class="tag clickable" (click)="navigateToPlaylistWithTag(tag.name)" [title]="'Create playlist with ' + tag.name + ' tag'">{{ tag.name }}</span>
                       }
-                      @if (lastfmArtistInfo()!.tags!.tag.length > 10) {
-                        <span class="tag-count">+{{ lastfmArtistInfo()!.tags!.tag.length - 10 }} more</span>
-                      }
+                    </div>
+                  </div>
+                } @else if (isLoadingAdditionalTags()) {
+                  <div class="lastfm-tags">
+                    <p><strong>Last.fm Tags:</strong></p>
+                    <div class="tags-loading">
+                      <span>Loading tags...</span>
                     </div>
                   </div>
                 }

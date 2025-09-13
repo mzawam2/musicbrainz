@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:headless": "CHROME_BIN=/usr/bin/google-chrome ng test --browsers=ChromeHeadlessLocal --watch=false",
+    "test:ci": "CI=true ng test --watch=false --code-coverage"
   },
   "private": true,
   "dependencies": {

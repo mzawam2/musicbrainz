@@ -11,7 +11,7 @@ import { DiscogsService } from '../../services/discogs.service';
 import { LastfmService } from '../../services/lastfm.service';
 import { SpotifyService, SpotifyTrack, SpotifyPlaylist } from '../../services/spotify.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
-import { LastFmArtistInfo, LastFmSimilarArtist } from '../../models/lastfm.models';
+import { LastFmArtistInfo, LastFmSimilarArtist, LastFmTag } from '../../models/lastfm.models';
 import { LabelGridComponent } from '../label-grid/label-grid.component';
 import { DiscographyComponent } from '../discography/discography.component';
 import { ArtistPhotoModalComponent } from '../artist-photo-modal/artist-photo-modal.component';
@@ -31,6 +31,8 @@ interface HomeComponentState {
   // Last.fm data
   lastfmArtistInfo: LastFmArtistInfo | null;
   similarArtists: LastFmSimilarArtist[];
+  additionalLastfmTags: LastFmTag[];
+  tagsArtistName: string;
   // Builder preferences
   similarLimit: number;
   similarTracksPerArtist: number;
@@ -100,6 +102,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isLoadingLastfmArtist = signal(false);
   lastfmError = signal<string | null>(null);
   similarArtists = signal<LastFmSimilarArtist[]>([]);
+  
+  // Additional Last.fm tags (using dedicated API call for more tags)
+  additionalLastfmTags = signal<LastFmTag[]>([]);
+  isLoadingAdditionalTags = signal(false);
+  tagsArtistName = signal<string>(''); // Track which artist the current tags belong to
 
   // Similar artists playlist builder (inline)
   similarLimit = signal<number>(10);
@@ -626,6 +633,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Clear Last.fm data
     this.lastfmArtistInfo.set(null);
     this.lastfmError.set(null);
+    this.additionalLastfmTags.set([]);
+    this.isLoadingAdditionalTags.set(false);
+    this.tagsArtistName.set('');
     this.currentSearchTerm.set('');
     this.fromNavigationState = false;
     // Clear persisted state when user manually clears search
@@ -809,6 +819,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Last.fm data
         lastfmArtistInfo: this.lastfmArtistInfo(),
         similarArtists: this.similarArtists(),
+        additionalLastfmTags: this.additionalLastfmTags(),
+        tagsArtistName: this.tagsArtistName(),
         // Builder preferences
         similarLimit: this.similarLimit(),
         similarTracksPerArtist: this.similarTracksPerArtist(),
@@ -824,7 +836,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         labelsCount: state.labels.length,
         hasDiscography: !!state.discographyData,
         hasDiscogsData: !!state.discogsArtistData,
-        hasDiscogsImages: !!state.discogsArtistImages?.length
+        hasDiscogsImages: !!state.discogsArtistImages?.length,
+        hasLastfmInfo: !!state.lastfmArtistInfo,
+        additionalTagsCount: state.additionalLastfmTags.length
       });
     } catch (error) {
       console.error('Failed to save home component state:', error);
@@ -896,6 +910,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Restore similar artists list if available
       if ((state as any).similarArtists && (state as any).similarArtists.length > 0) {
         this.similarArtists.set((state as any).similarArtists);
+      }
+      // Restore additional Last.fm tags if available
+      if ((state as any).additionalLastfmTags && Array.isArray((state as any).additionalLastfmTags)) {
+        this.additionalLastfmTags.set((state as any).additionalLastfmTags);
+      }
+      // Restore tags artist name if available
+      if (typeof (state as any).tagsArtistName === 'string') {
+        this.tagsArtistName.set((state as any).tagsArtistName);
       }
       // Restore builder preferences (with safe defaults)
       if (typeof (state as any).similarLimit === 'number') {
@@ -1097,6 +1119,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           console.log('🎵 Last.fm artist info loaded successfully:', artistInfo);
           this.lastfmArtistInfo.set(artistInfo);
           this.isLoadingLastfmArtist.set(false);
+          
+          // Load additional tags using the artist name (only if not already loaded for this artist)
+          const selectedArtist = this.selectedArtist();
+          if (selectedArtist?.name && this.tagsArtistName() !== selectedArtist.name) {
+            this.loadAdditionalLastfmTags(selectedArtist.name);
+          }
         },
         error: (error) => {
           console.error('🎵 Error loading Last.fm artist info:', error);
@@ -1104,6 +1132,40 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.isLoadingLastfmArtist.set(false);
         }
       });
+  }
+
+  /**
+   * Load additional Last.fm tags using the artist name (for more comprehensive tag data)
+   */
+  private loadAdditionalLastfmTags(artistName: string): void {
+    console.log('🎵 Loading additional Last.fm tags for artist:', artistName);
+    this.isLoadingAdditionalTags.set(true);
+
+    this.lastfmService.getArtistTopTags(artistName, 10)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tags) => {
+          console.log(`🎵 Loaded ${tags.length} additional Last.fm tags for "${artistName}"`);
+          this.additionalLastfmTags.set(tags);
+          this.tagsArtistName.set(artistName);
+          this.isLoadingAdditionalTags.set(false);
+        },
+        error: (error) => {
+          console.error('🎵 Error loading additional Last.fm tags:', error);
+          this.additionalLastfmTags.set([]);
+          this.isLoadingAdditionalTags.set(false);
+        }
+      });
+  }
+
+  /**
+   * Navigate to playlist creation page with the clicked tag pre-filled
+   */
+  navigateToPlaylistWithTag(tagName: string): void {
+    console.log(`🎵 Navigating to playlist creation with tag: "${tagName}"`);
+    this.router.navigate(['/playlist-creation'], {
+      queryParams: { tag: tagName }
+    });
   }
 
   /**

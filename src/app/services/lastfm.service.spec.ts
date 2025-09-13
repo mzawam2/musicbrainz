@@ -7,7 +7,9 @@ import {
   LastFmTopAlbumsResponse, 
   LastFmTopTagsResponse, 
   AlbumDiscoveryResult,
-  LastFmError 
+  LastFmError,
+  LastfmTagArtist,
+  LastFmTopArtistsByTagResponse 
 } from '../models/lastfm.models';
 import { of, throwError } from 'rxjs';
 
@@ -313,6 +315,136 @@ describe('LastfmService', () => {
           expect(error).toBe(rateLimiterError);
         }
       });
+    });
+  });
+
+  describe('getTopArtistsByTag', () => {
+    const mockTopArtistsByTagResponse: LastFmTopArtistsByTagResponse = {
+      topartists: {
+        artist: [
+          {
+            name: 'The Beatles',
+            mbid: 'b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d',
+            url: 'https://www.last.fm/music/The+Beatles',
+            streamable: '0',
+            image: [
+              { '#text': 'https://example.com/beatles-small.jpg', size: 'small' },
+              { '#text': 'https://example.com/beatles-large.jpg', size: 'large' }
+            ],
+            tagRank: 1,
+            tagRelevance: 95,
+            listeners: '5000000',
+            playcount: '500000000'
+          },
+          {
+            name: 'Led Zeppelin',
+            mbid: '678d88b2-87b0-403b-b63d-5da7465aecc3',
+            url: 'https://www.last.fm/music/Led+Zeppelin',
+            streamable: '0',
+            image: [
+              { '#text': 'https://example.com/zeppelin-small.jpg', size: 'small' },
+              { '#text': 'https://example.com/zeppelin-large.jpg', size: 'large' }
+            ],
+            tagRank: 2,
+            tagRelevance: 92,
+            listeners: '4000000',
+            playcount: '400000000'
+          }
+        ],
+        '@attr': {
+          tag: 'rock',
+          page: '1',
+          perPage: '20',
+          totalPages: '500',
+          total: '10000'
+        }
+      }
+    };
+
+    it('should fetch top artists by tag successfully', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getTopArtistsByTag('rock', 20, 1).subscribe(artists => {
+        expect(artists).toBeDefined();
+        expect(artists.length).toBe(2);
+        expect(artists[0].name).toBe('The Beatles');
+        expect(artists[0].tagRank).toBe(1);
+        expect(artists[0].tagRelevance).toBe(100);
+        expect(artists[1].name).toBe('Led Zeppelin');
+        expect(artists[1].tagRank).toBe(2);
+        expect(artists[1].tagRelevance).toBe(98);
+      });
+
+      const req = httpMock.expectOne((request) => 
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'tag.gettopartists' &&
+        request.params.get('tag') === 'rock' &&
+        request.params.get('limit') === '20' &&
+        request.params.get('page') === '1'
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(mockTopArtistsByTagResponse);
+    });
+
+    it('should use default parameters when not provided', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getTopArtistsByTag('electronic').subscribe(artists => {
+        expect(artists).toBeDefined();
+        expect(artists.length).toBe(2);
+      });
+
+      const req = httpMock.expectOne((request) => 
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'tag.gettopartists' &&
+        request.params.get('tag') === 'electronic' &&
+        request.params.get('limit') === '20' &&
+        request.params.get('page') === '1'
+      );
+      req.flush(mockTopArtistsByTagResponse);
+    });
+
+    it('should handle invalid tag parameter', () => {
+      service.getTopArtistsByTag('', 20, 1).subscribe({
+        next: () => fail('should have failed'),
+        error: (error) => {
+          expect(error.message).toContain('Invalid tag parameter');
+        }
+      });
+
+      // No HTTP request should be made for invalid parameters
+    });
+
+    it('should handle tag not found error', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getTopArtistsByTag('nonexistent-tag-12345').subscribe({
+        next: () => fail('should have failed'),
+        error: (error) => {
+          expect(error.message).toContain('Last.fm API error 6');
+        }
+      });
+
+      const req = httpMock.expectOne((request) => 
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'tag.gettopartists'
+      );
+      req.flush({ error: 6, message: 'Tag not found' }, { status: 400, statusText: 'Bad Request' });
+    });
+
+    it('should respect rate limiting', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getTopArtistsByTag('jazz').subscribe();
+
+      const req = httpMock.expectOne((request) => 
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'tag.gettopartists'
+      );
+      req.flush(mockTopArtistsByTagResponse);
+
+      expect(rateLimiterService.queueRequest).toHaveBeenCalledTimes(1);
+      expect(rateLimiterService.queueRequest).toHaveBeenCalledWith(jasmine.any(Function));
     });
   });
 });

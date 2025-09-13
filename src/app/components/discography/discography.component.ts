@@ -49,6 +49,7 @@ export class DiscographyComponent implements OnInit, OnDestroy {
   readonly hasDeclinedAuth = signal(false);
 
 
+
   constructor() {
     // Sync input discographyData with enhanced signal
     effect(() => {
@@ -722,5 +723,6 @@ export class DiscographyComponent implements OnInit, OnDestroy {
     this.playlistCreated.set(null);
     this.playlistError.set(null);
   }
+
 
 }

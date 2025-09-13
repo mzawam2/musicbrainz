@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent)
   },
   {
+    path: 'playlist-creation',
+    loadComponent: () => import('./components/playlist-creation/playlist-creation.component').then(m => m.PlaylistCreationComponent)
+  },
+  {
     path: 'label-family-trees',
     loadComponent: () => import('./components/label-family-tree/label-family-tree.component').then(m => m.LabelFamilyTreeComponent)
   },
