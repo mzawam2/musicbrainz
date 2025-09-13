@@ -198,3 +198,23 @@ export interface LastFmTopArtistsByTagResponse {
     };
   };
 }
+
+// Tag info interfaces
+export interface LastFmTagWiki {
+  published: string;
+  summary: string;
+  content: string;
+}
+
+export interface LastFmTagInfo {
+  name: string;
+  url: string;
+  reach: number;
+  taggings: number;
+  streamable: string;
+  wiki?: LastFmTagWiki;
+}
+
+export interface LastFmTagInfoResponse {
+  tag: LastFmTagInfo;
+}

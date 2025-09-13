@@ -130,6 +130,40 @@
       </div>
     </form>
 
+    <!-- Tag Wiki Information -->
+    @if (tagInfo() && tagInfo()?.wiki) {
+      <div class="tag-wiki-section">
+        <h3>
+          <mat-icon>info</mat-icon>
+          About "{{ tagInfo()?.name }}"
+        </h3>
+        <div class="wiki-content">
+          @if (tagInfo()?.wiki?.summary) {
+            <p class="wiki-summary" [innerHTML]="formatWikiHtml(tagInfo()?.wiki?.summary)"></p>
+          }
+          @if (tagInfo()?.url) {
+            <a [href]="tagInfo()?.url" target="_blank" class="wiki-link">
+              <mat-icon>open_in_new</mat-icon>
+              Read more on Last.fm
+            </a>
+          }
+          @if (tagInfo()?.reach) {
+            <div class="tag-stats">
+              <mat-icon>people</mat-icon>
+              <span>Used by {{ tagInfo()?.reach | number }} Last.fm users</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    
+    @if (isLoadingTagInfo() && !tagInfo()) {
+      <div class="tag-wiki-loading">
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Loading tag information...</span>
+      </div>
+    }
+
     <!-- Search Results -->
     @if (hasSearched() && searchResults().length > 0) {
       <div class="search-results">
@@ -139,7 +173,7 @@
         </h3>
         <div class="artists-grid">
           @for (artist of searchResults(); track artist.name) {
-            <mat-chip class="artist-chip">
+            <mat-chip class="artist-chip clickable" (click)="navigateToArtistDiscography(artist.name)" [title]="'View ' + artist.name + ' discography'">
               <mat-icon matChipAvatar>person</mat-icon>
               {{ artist.name }}
               @if (artist.tagRank) {

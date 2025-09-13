@@ -167,6 +167,130 @@
   }
 }
 
+.tag-wiki-section {
+  margin-top: 20px;
+  padding: 20px;
+  /* Darker purple background to match site styling */
+  background-color: #4A148C; /* solid dark purple for contrast */
+  border-radius: 8px;
+  border: 1px solid #6A1B9A;
+  /* Light foreground for stronger contrast on dark purple */
+  color: rgba(255, 255, 255, 0.95);
+  
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px 0;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: #E1BEE7; /* light purple heading */
+    
+    mat-icon {
+      color: #E1BEE7;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+  
+  .wiki-content {
+    /* Override any inherited low-contrast text colors */
+    color: rgba(255, 255, 255, 0.95);
+    
+    a {
+      color: #FFFFFF;
+      text-decoration: underline;
+      font-weight: 500;
+      &:focus-visible {
+        outline: 2px solid #E1BEE7;
+        outline-offset: 2px;
+      }
+    }
+
+    .wiki-summary {
+      font-size: 1em;
+      line-height: 1.5;
+      margin: 0 0 12px 0;
+      color: rgba(255, 255, 255, 0.98);
+      font-weight: 500;
+    }
+
+    .wiki-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background-color: rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.95);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9em;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.25);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+    
+    .tag-stats {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background-color: rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      font-size: 0.85em;
+      color: #E1BEE7;
+      margin-top: 12px;
+      width: fit-content;
+      
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #E1BEE7;
+      }
+      
+      span {
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+.tag-wiki-loading {
+  margin-top: 20px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  
+  mat-spinner {
+    scale: 0.8;
+  }
+  
+  span {
+    font-size: 0.9em;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
 .search-results {
   margin-top: 24px;
   padding: 20px;
@@ -199,6 +323,21 @@
       align-items: center;
       gap: 8px;
       min-height: 36px;
+      
+      &.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background-color: rgba(25, 118, 210, 0.12);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        &:active {
+          transform: translateY(0);
+        }
+      }
       
       .rank {
         font-size: 0.8em;
@@ -460,6 +599,48 @@ mat-card-actions {
   
   .errors-section {
     background-color: rgba(255, 152, 0, 0.08);
+  }
+  
+  .tag-wiki-section {
+    background-color: #705dbd;
+    border-color: #6A1B9A;
+    color: rgba(255, 255, 255, 0.92);
+    
+    .wiki-content {
+      color: rgba(255, 255, 255, 0.92);
+      
+      .wiki-summary {
+        color: rgba(255, 255, 255, 0.96);
+      }
+      
+      .wiki-link {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.92);
+        
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+      }
+      
+      .tag-stats {
+        background-color: rgba(255, 255, 255, 0.14);
+        color: #E1BEE7;
+        
+        mat-icon {
+          color: #E1BEE7;
+        }
+      }
+    }
+  }
+  
+  .tag-wiki-loading {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+    
+    span {
+      color: rgba(255, 255, 255, 0.6);
+    }
   }
   
   .search-results {

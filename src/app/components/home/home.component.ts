@@ -3,7 +3,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 
-import { Router, NavigationEnd } from '@angular/router';
+import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, filter } from 'rxjs/operators';
 import { of, Subject, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
@@ -54,6 +54,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private lastfmService = inject(LastfmService);
   private spotifyService = inject(SpotifyService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private renderer = inject(Renderer2);
   private elementRef = inject(ElementRef);
   private dialog = inject(MatDialog);
@@ -291,26 +292,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
     }, 100);
     
-    // Check for navigation state first (artist from roster)
-    this.checkNavigationState();
-    
-    // If no navigation state, restore from cache
-    if (!this.pendingAutoSelectArtist) {
-      console.log('🔄 No navigation state, attempting to restore from cache');
-      this.restoreState();
-    }
-    
-    // Listen for navigation events to capture state
-    this.router.events
-      .pipe(
-        filter(event => event instanceof NavigationEnd),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(() => {
-        // Check for navigation state after navigation completes
-        this.checkNavigationState();
-      });
-    
+    // Set up search control subscription FIRST before any navigation handling
     this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
@@ -374,6 +356,106 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           console.log('🔄 No pending auto-select artist');
         }
       });
+    
+    // Now handle query parameters and other initialization
+    // Check for artist query parameter first (from playlist creation page)
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['artist']) {
+        console.log(`🔗 Found artist in query params: ${params['artist']}`);
+        
+        // Clear existing state (but not search control to avoid interference)
+        this.selectedArtist.set(null);
+        this.artists.set([]);
+        this.error.set(null);
+        this.labels.set([]);
+        this.labelsError.set(null);
+        this.discographyData.set(null);
+        this.discographyError.set(null);
+        this.discogsArtistData.set(null);
+        this.discogsArtistImages.set([]);
+        this.lastfmArtistInfo.set(null);
+        this.lastfmError.set(null);
+        this.additionalLastfmTags.set([]);
+        this.isLoadingAdditionalTags.set(false);
+        this.tagsArtistName.set('');
+        this.fromNavigationState = false;
+        
+        // Set the search term and trigger search directly
+        console.log(`🔗 Setting search control value to: ${params['artist']}`);
+        this.searchControl.setValue(params['artist'], { emitEvent: false });
+        this.currentSearchTerm.set(params['artist']);
+        
+        // Trigger search directly instead of relying on valueChanges
+        setTimeout(() => {
+          this.triggerArtistSearch(params['artist']);
+        }, 50);
+        
+        // Clear query params to clean up URL
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {}
+        });
+        
+        // Skip other initialization when we have artist query param
+        return;
+      }
+      
+      // Check for navigation state (artist from roster)
+      this.checkNavigationState();
+      
+      // If no navigation state, restore from cache
+      if (!this.pendingAutoSelectArtist) {
+        console.log('🔄 No navigation state, attempting to restore from cache');
+        this.restoreState();
+      }
+    });
+    
+    // Listen for navigation events to capture state
+    this.router.events
+      .pipe(
+        filter(event => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        // Check for navigation state after navigation completes
+        this.checkNavigationState();
+      });
+  }
+
+  /**
+   * Manually trigger artist search (used for auto-search from query params)
+   */
+  private triggerArtistSearch(query: string): void {
+    if (!query || query.length < 2) {
+      console.log('🔄 Query too short for manual search');
+      return;
+    }
+    
+    console.log('🔄 Manually executing search for:', query);
+    this.loading.set(true);
+    this.error.set(null);
+    this.currentSearchTerm.set(query);
+    
+    this.musicBrainzService.searchArtists(query).pipe(
+      catchError(err => {
+        this.error.set(err.message || 'Failed to search artists');
+        this.loading.set(false);
+        return of([]);
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(artists => {
+      console.log('🔄 Manual search completed, found', artists.length, 'artists');
+      this.artists.set(artists);
+      this.loading.set(false);
+      
+      // Auto-select the first artist if we have results
+      if (artists.length > 0) {
+        console.log('🔄 Auto-selecting first artist:', artists[0].name);
+        setTimeout(() => {
+          this.selectArtist(artists[0]);
+        }, 100);
+      }
+    });
   }
 
   /**

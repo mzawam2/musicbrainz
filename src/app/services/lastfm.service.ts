@@ -19,7 +19,9 @@ import {
   LastFmSimilarArtist,
   LastfmTagArtist,
   LastFmTopArtistsByTagResponse,
-  LastFmArtistTopTagsResponse
+  LastFmArtistTopTagsResponse,
+  LastFmTagInfo,
+  LastFmTagInfoResponse
 } from '../models/lastfm.models';
 
 @Injectable({
@@ -384,6 +386,43 @@ export class LastfmService {
           }));
         }),
         tap(artists => this.setCache(cacheKey, artists)),
+        catchError(this.handleError.bind(this))
+      )
+    );
+  }
+
+  /**
+   * Get information about a specific tag from Last.fm
+   * @param tag - The Last.fm tag name
+   * @param lang - Optional language code (ISO 639 alpha-2)
+   * @returns Observable of tag information including wiki content
+   */
+  getTagInfo(tag: string, lang?: string): Observable<LastFmTagInfo> {
+    // Validate input
+    if (!tag || tag.trim().length === 0) {
+      return throwError(() => new Error('Invalid tag parameter'));
+    }
+
+    const cacheKey = `tag-info-${tag}-${lang || 'default'}`;
+    const cached = this.getFromCache<LastFmTagInfo>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    let params = new HttpParams()
+      .set('method', 'tag.getinfo')
+      .set('tag', tag.trim())
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json');
+
+    if (lang && lang.trim().length > 0) {
+      params = params.set('lang', lang.trim());
+    }
+
+    return this.rateLimiter.queueRequest(() =>
+      this.http.get<LastFmTagInfoResponse>(this.API_BASE_URL, { params }).pipe(
+        map(response => response?.tag),
+        tap(tagInfo => this.setCache(cacheKey, tagInfo)),
         catchError(this.handleError.bind(this))
       )
     );

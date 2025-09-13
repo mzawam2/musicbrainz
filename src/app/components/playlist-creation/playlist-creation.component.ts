@@ -1,7 +1,7 @@
 import { Component, input, output, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,7 +21,7 @@ import {
   PlaylistCreationStage,
   PlaylistCreationProgress 
 } from '../../models/playlist.models';
-import { LastfmTagArtist } from '../../models/lastfm.models';
+import { LastfmTagArtist, LastFmTagInfo } from '../../models/lastfm.models';
 import { filter, take } from 'rxjs';
 
 @Component({
@@ -62,6 +62,7 @@ export class PlaylistCreationComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   // Form
   readonly form = this.formBuilder.group({
@@ -78,6 +79,8 @@ export class PlaylistCreationComponent {
   readonly isSearching = signal<boolean>(false);
   readonly searchResults = signal<LastfmTagArtist[]>([]);
   readonly hasSearched = signal<boolean>(false);
+  readonly tagInfo = signal<LastFmTagInfo | null>(null);
+  readonly isLoadingTagInfo = signal<boolean>(false);
   
   // Progress from service
   readonly progress = computed(() => this.playlistService.progress());
@@ -154,8 +157,21 @@ export class PlaylistCreationComponent {
 
     this.isSearching.set(true);
     this.searchResults.set([]);
+    this.isLoadingTagInfo.set(true);
 
     const limit = this.form.get('artistLimit')?.value || 20;
+
+    // Fetch tag info and artists in parallel
+    this.lastfmService.getTagInfo(tagName).subscribe({
+      next: (info) => {
+        this.tagInfo.set(info);
+        this.isLoadingTagInfo.set(false);
+      },
+      error: () => {
+        this.isLoadingTagInfo.set(false);
+        // Don't show error for tag info - it's optional
+      }
+    });
 
     this.lastfmService.getTopArtistsByTag(tagName, limit).subscribe({
       next: (artists) => {
@@ -257,6 +273,8 @@ export class PlaylistCreationComponent {
     this.isSearching.set(false);
     this.searchResults.set([]);
     this.hasSearched.set(false);
+    this.tagInfo.set(null);
+    this.isLoadingTagInfo.set(false);
   }
 
   /**
@@ -301,6 +319,37 @@ export class PlaylistCreationComponent {
    */
   dismissSuccess(): void {
     this.completedPlaylist.set(null);
+  }
+
+  /**
+   * Navigate to discography page with artist pre-filled and searched
+   */
+  navigateToArtistDiscography(artistName: string): void {
+    this.router.navigate(['/discography'], {
+      queryParams: { artist: artistName }
+    });
+  }
+
+  /**
+   * Format Last.fm wiki HTML to ensure links are clickable and safe.
+   * - Converts http Last.fm links to https
+   * - Adds target and rel attributes to anchors if missing
+   */
+  formatWikiHtml(source?: string | null): string {
+    if (!source) return '';
+    let html = source;
+    // Force HTTPS for Last.fm links
+    html = html.replace(/href=["']http:\/\/(www\.)?last\.fm/gi, 'href="https://$1last.fm');
+    // Ensure external links open in new tab and are safe
+    html = html.replace(/<a\s+([^>]*href=["'][^"']+["'][^>]*)>/gi, (_m, attrs: string) => {
+      const hasTarget = /target=/i.test(attrs);
+      const hasRel = /rel=/i.test(attrs);
+      let newAttrs = attrs;
+      if (!hasTarget) newAttrs += ' target="_blank"';
+      if (!hasRel) newAttrs += ' rel="noopener noreferrer nofollow"';
+      return `<a ${newAttrs}>`;
+    });
+    return html;
   }
 
 }
