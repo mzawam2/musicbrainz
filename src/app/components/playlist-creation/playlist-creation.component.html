@@ -85,15 +85,15 @@
                 type="number" 
                 formControlName="artistLimit" 
                 min="1" 
-                max="50"
+                max="100"
                 [readonly]="isCreating()"
                 class="field-input">
-              <div class="field-hint">1-50 artists</div>
+              <div class="field-hint">1-100 artists</div>
               @if (form.get('artistLimit')?.hasError('required')) {
                 <div class="field-error">Artist limit is required</div>
               }
               @if (form.get('artistLimit')?.hasError('min') || form.get('artistLimit')?.hasError('max')) {
-                <div class="field-error">Must be between 1 and 50</div>
+                <div class="field-error">Must be between 1 and 100</div>
               }
             </div>
 
@@ -107,15 +107,15 @@
                 type="number" 
                 formControlName="tracksPerArtist" 
                 min="1" 
-                max="5"
+                max="10"
                 [readonly]="isCreating()"
                 class="field-input">
-              <div class="field-hint">1-5 tracks</div>
+              <div class="field-hint">1-10 tracks</div>
               @if (form.get('tracksPerArtist')?.hasError('required')) {
                 <div class="field-error">Tracks per artist is required</div>
               }
               @if (form.get('tracksPerArtist')?.hasError('min') || form.get('tracksPerArtist')?.hasError('max')) {
-                <div class="field-error">Must be between 1 and 5</div>
+                <div class="field-error">Must be between 1 and 10</div>
               }
             </div>
           </div>

@@ -271,13 +271,13 @@
                     <p><strong>Similar Artists:</strong></p>
                     <div class="similar-chips">
                       @if (similarArtists().length > 0) {
-                        @for (a of similarArtists().slice(0, 20); track a.name) {
+                        @for (a of similarArtists().slice(0, 50); track a.name) {
                           <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
                             {{ a.name }}
                           </a>
                         } 
                       } @else if (lastfmArtistInfo()!.similar?.artist && lastfmArtistInfo()!.similar!.artist.length > 0) {
-                        @for (a of lastfmArtistInfo()!.similar!.artist.slice(0, 20); track a.name) {
+                        @for (a of lastfmArtistInfo()!.similar!.artist.slice(0, 50); track a.name) {
                           <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
                             {{ a.name }}
                           </a>
@@ -324,7 +324,7 @@
                           <div class="settings-row">
                             <label class="setting-item">
                               <span class="setting-label">Artist Count:</span>
-                              <input type="number" min="1" max="50" [value]="similarLimit()" (input)="setSimilarLimit($event)" class="setting-input">
+                              <input type="number" min="1" max="100" [value]="similarLimit()" (input)="setSimilarLimit($event)" class="setting-input">
                             </label>
                             <label class="setting-item">
                               <span class="setting-label">Tracks per Artist:</span>

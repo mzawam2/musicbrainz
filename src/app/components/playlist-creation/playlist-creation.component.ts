@@ -46,7 +46,7 @@ import { filter, take } from 'rxjs';
 export class PlaylistCreationComponent {
   // Inputs
   readonly tagName = input<string>('');
-  readonly artistLimit = input<number>(20);
+  readonly artistLimit = input<number>(50);
   readonly tracksPerArtist = input<number>(1);
   readonly autoCreate = input<boolean>(false);
 
@@ -66,8 +66,8 @@ export class PlaylistCreationComponent {
   readonly form = this.formBuilder.group({
     tagName: [this.tagName(), [Validators.required, Validators.maxLength(100)]],
     playlistName: ['', [Validators.maxLength(200)]],
-    artistLimit: [this.artistLimit(), [Validators.required, Validators.min(1), Validators.max(50)]],
-    tracksPerArtist: [this.tracksPerArtist(), [Validators.required, Validators.min(1), Validators.max(5)]]
+    artistLimit: [this.artistLimit(), [Validators.required, Validators.min(1), Validators.max(100)]],
+    tracksPerArtist: [this.tracksPerArtist(), [Validators.required, Validators.min(1), Validators.max(10)]]
   });
 
   // State

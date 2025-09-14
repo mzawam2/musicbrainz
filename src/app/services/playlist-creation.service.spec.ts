@@ -277,7 +277,7 @@ describe('PlaylistCreationService', () => {
     it('should validate artist limit bounds', (done) => {
       const request: PlaylistCreationRequest = {
         tagName: 'rock',
-        artistLimit: 100, // exceeds max of 50
+        artistLimit: 101, // exceeds max of 100
         tracksPerArtist: 1
       };
 
@@ -286,7 +286,7 @@ describe('PlaylistCreationService', () => {
           if ('success' in update) {
             const result = update as PlaylistCreationResult;
             expect(result.success).toBe(false);
-            expect(result.errors[0].message).toContain('Artist limit must be between 1 and 50');
+            expect(result.errors[0].message).toContain('Artist limit must be between 1 and 100');
             done();
           }
         }
@@ -297,7 +297,7 @@ describe('PlaylistCreationService', () => {
       const request: PlaylistCreationRequest = {
         tagName: 'rock',
         artistLimit: 10,
-        tracksPerArtist: 10 // exceeds max of 5
+        tracksPerArtist: 11 // exceeds max of 10
       };
 
       service.createPlaylistFromTag(request).subscribe({
@@ -305,7 +305,7 @@ describe('PlaylistCreationService', () => {
           if ('success' in update) {
             const result = update as PlaylistCreationResult;
             expect(result.success).toBe(false);
-            expect(result.errors[0].message).toContain('Tracks per artist must be between 1 and 5');
+            expect(result.errors[0].message).toContain('Tracks per artist must be between 1 and 10');
             done();
           }
         }

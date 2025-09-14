@@ -180,18 +180,18 @@ export class PlaylistCreationService {
       };
     }
 
-    if (request.artistLimit < 1 || request.artistLimit > 50) {
+    if (request.artistLimit < 1 || request.artistLimit > 100) {
       return {
         type: ErrorType.LASTFM_API_ERROR,
-        message: 'Artist limit must be between 1 and 50',
+        message: 'Artist limit must be between 1 and 100',
         retryable: false
       };
     }
 
-    if (request.tracksPerArtist < 1 || request.tracksPerArtist > 5) {
+    if (request.tracksPerArtist < 1 || request.tracksPerArtist > 10) {
       return {
         type: ErrorType.LASTFM_API_ERROR,
-        message: 'Tracks per artist must be between 1 and 5',
+        message: 'Tracks per artist must be between 1 and 10',
         retryable: false
       };
     }

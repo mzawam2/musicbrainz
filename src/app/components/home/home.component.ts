@@ -110,8 +110,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   tagsArtistName = signal<string>(''); // Track which artist the current tags belong to
 
   // Similar artists playlist builder (inline)
-  similarLimit = signal<number>(10);
-  similarTracksPerArtist = signal<number>(2);
+  similarLimit = signal<number>(20);
+  similarTracksPerArtist = signal<number>(1);
   useSpotifyTopTracksForSimilar = signal<boolean>(false);
   randomizeTrackSelection = signal<boolean>(false);
   isCreatingSimilarPlaylist = signal<boolean>(false);
@@ -465,7 +465,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const artist = this.selectedArtist();
     if (!artist) return;
     const seed = artist.name;
-    const similarCount = Math.min(10, this.lastfmArtistInfo()?.similar?.artist?.length || 10);
+    const similarCount = Math.min(this.similarLimit(), this.lastfmArtistInfo()?.similar?.artist?.length || this.similarLimit());
     this.router.navigate(['/similar-artists'], {
       queryParams: { seed, count: similarCount, tracks: 2 }
     });
@@ -580,7 +580,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   // Template helpers
   setSimilarLimit(ev: Event): void {
     const v = parseInt((ev.target as HTMLInputElement).value, 10);
-    if (!isNaN(v)) this.similarLimit.set(v);
+    if (!isNaN(v)) {
+      this.similarLimit.set(v);
+      // Re-fetch similar artists with the new limit
+      const artist = this.selectedArtist();
+      if (artist) {
+        this.loadLastfmSimilarArtists(artist.name);
+      }
+    }
   }
   setSimilarTracks(ev: Event): void {
     const v = parseInt((ev.target as HTMLInputElement).value, 10);
@@ -827,7 +834,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private loadLastfmSimilarArtists(artistName: string): void {
-    this.lastfmService.getSimilarArtists(artistName, 20).pipe(takeUntil(this.destroy$)).subscribe({
+    this.lastfmService.getSimilarArtists(artistName, this.similarLimit()).pipe(takeUntil(this.destroy$)).subscribe({
       next: (artists: LastFmSimilarArtist[]) => {
         this.similarArtists.set(artists || []);
       },
