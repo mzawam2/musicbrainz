@@ -672,7 +672,7 @@ export class SpotifyService {
     }
 
     // Generate description with year range info
-    let description = `All of the releases from ${request.labelName}. Generated with Vinyl Lense`;
+    let description = `All of the releases from ${request.labelName}. Generated with Vinyl Lens`;
     if (request.yearFilter?.enabled) {
       const startYear = request.yearFilter.startYear;
       const endYear = request.yearFilter.endYear;
