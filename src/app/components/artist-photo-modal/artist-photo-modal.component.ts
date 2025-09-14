@@ -111,7 +111,17 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
 
   private updateCurrentItem(): void {
     if (this.data.carouselData) {
-      const item = this.data.carouselData.items[this.currentIndex()];
+      const index = this.currentIndex();
+      const items = this.data.carouselData.items;
+      
+      // Validate index bounds and clamp if necessary
+      if (index < 0 || index >= items.length) {
+        const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
+        this.currentIndex.set(clampedIndex);
+        console.warn(`Carousel index ${index} out of bounds, clamped to ${clampedIndex}`);
+      }
+      
+      const item = items[this.currentIndex()];
       this.currentItem.set(item);
     }
   }

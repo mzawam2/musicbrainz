@@ -1,48 +1,25 @@
-<div class="artist-photo-modal-container">
+<div class="artist-photo-modal-container" (click)="close()">
   <!-- Close Button -->
   <button
     mat-icon-button
     class="close-button"
-    (click)="close()"
+    (click)="close(); $event.stopPropagation()"
     aria-label="Close image modal"
     title="Close"
   >
     <mat-icon>close</mat-icon>
   </button>
 
-  <!-- Navigation Controls -->
+  <!-- Position indicator -->
   @if (hasCarouselData()) {
-    <button
-      mat-icon-button
-      class="nav-button nav-previous"
-      (click)="previousImage()"
-      [disabled]="!canNavigatePrevious()"
-      aria-label="Previous image"
-      title="Previous image (Left arrow)"
-    >
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-
-    <button
-      mat-icon-button
-      class="nav-button nav-next"
-      (click)="nextImage()"
-      [disabled]="!canNavigateNext()"
-      aria-label="Next image"
-      title="Next image (Right arrow)"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-
-    <!-- Position indicator -->
-    <div class="position-indicator">
+    <div class="position-indicator" (click)="$event.stopPropagation()">
       {{ getPositionText() }}
     </div>
   }
 
   <!-- Loading State -->
   @if (isLoading()) {
-    <div class="loading-state">
+    <div class="loading-state" (click)="$event.stopPropagation()">
       <mat-spinner diameter="50"></mat-spinner>
       <p>Loading image...</p>
     </div>
@@ -50,10 +27,10 @@
 
   <!-- Error State -->
   @if (hasError()) {
-    <div class="error-state">
+    <div class="error-state" (click)="$event.stopPropagation()">
       <mat-icon>error</mat-icon>
       <p>Failed to load image</p>
-      <button mat-button (click)="close()">Close</button>
+      <button mat-button (click)="close(); $event.stopPropagation()">Close</button>
     </div>
   }
 
@@ -69,10 +46,34 @@
     />
   }
 
-  <!-- Album Title -->
+  <!-- Album Title with Navigation Controls -->
   @if (hasCarouselData() && currentItem() && !isLoading()) {
-    <div class="album-title">
-      {{ currentItem()?.title }}
+    <div class="album-title-container" (click)="$event.stopPropagation()">
+      <button
+        mat-icon-button
+        class="nav-button nav-previous"
+        (click)="previousImage(); $event.stopPropagation()"
+        [disabled]="!canNavigatePrevious()"
+        aria-label="Previous image"
+        title="Previous image (Left arrow)"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      
+      <div class="album-title">
+        {{ currentItem()?.title }}
+      </div>
+      
+      <button
+        mat-icon-button
+        class="nav-button nav-next"
+        (click)="nextImage(); $event.stopPropagation()"
+        [disabled]="!canNavigateNext()"
+        aria-label="Next image"
+        title="Next image (Right arrow)"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
     </div>
   }
 </div>

@@ -303,8 +303,16 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
       resourceUrl: release.discogsResourceUrl || undefined
     })).filter(item => item.imageUri); // Only include items with images
 
+    // Find the correct index in the filtered carousel items
+    // by matching the current release with the clicked release
+    const currentRelease = allReleases[currentIndex];
+    const adjustedIndex = carouselItems.findIndex(item => 
+      item.title === currentRelease?.title && 
+      item.resourceUrl === currentRelease?.discogsResourceUrl
+    );
+
     const carouselData: CarouselNavigationData = {
-      currentIndex: Math.max(0, currentIndex),
+      currentIndex: Math.max(0, adjustedIndex >= 0 ? adjustedIndex : 0),
       totalCount: carouselItems.length,
       items: carouselItems
     };
