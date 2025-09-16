@@ -284,11 +284,10 @@
               data-testid="create-playlist">
               @if (isCreating()) {
                 <div class="spinner"></div>
-                Creating...
               } @else {
                 <mat-icon>playlist_add</mat-icon>
-                Create Playlist
               }
+              {{ createButtonText() }}
             </button>
           }
 

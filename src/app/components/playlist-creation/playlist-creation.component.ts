@@ -14,6 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PlaylistCreationService } from '../../services/playlist-creation.service';
 import { LastfmService } from '../../services/lastfm.service';
+import { SpotifyService } from '../../services/spotify.service';
 import { 
   PlaylistCreationRequest, 
   PlaylistCreationResult, 
@@ -57,6 +58,7 @@ export class PlaylistCreationComponent {
   // Services
   private readonly playlistService = inject(PlaylistCreationService);
   private readonly lastfmService = inject(LastfmService);
+  private readonly spotifyService = inject(SpotifyService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute);
@@ -104,6 +106,16 @@ export class PlaylistCreationComponent {
   readonly canCreate = computed(() => 
     this.form.valid && !this.isCreating() && this.hasSearched() && this.searchResults().length > 0
   );
+
+  readonly createButtonText = computed(() => {
+    if (this.isCreating()) {
+      return 'Creating...';
+    }
+    if (!this.spotifyService.isAuthenticated()) {
+      return 'Sign in to Spotify';
+    }
+    return 'Create Playlist';
+  });
 
   readonly canSearch = computed(() => {
     const tagName = this.form.get('tagName')?.value?.trim();
@@ -196,6 +208,12 @@ export class PlaylistCreationComponent {
   createPlaylist(): void {
     if (!this.form.valid) {
       this.snackBar.open('Please fill in all required fields correctly', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (!this.spotifyService.isAuthenticated()) {
+      this.snackBar.open('Please sign in to Spotify first', 'Close', { duration: 3000 });
+      this.spotifyService.initiateAuth();
       return;
     }
 

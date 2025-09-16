@@ -611,8 +611,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const hasArtist = this.selectedArtist() !== null;
     const hasSimilarArtists = this.similarArtists().length > 0 || 
       (this.lastfmArtistInfo()?.similar?.artist && this.lastfmArtistInfo()!.similar!.artist.length > 0);
-    const isAuthenticated = this.spotifyService.isAuthenticated();
-    return hasArtist && hasSimilarArtists && isAuthenticated;
+    return hasArtist && hasSimilarArtists;
   });
 
   similarPlaylistButtonText = computed(() => {
