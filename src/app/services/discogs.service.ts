@@ -289,7 +289,6 @@ export class DiscogsService {
   private getAuthHeaders(): HttpHeaders {
     // Use simple key/secret authentication
     return new HttpHeaders({
-      'User-Agent': 'MusicBrainzApp/1.0',
       'Authorization': `Discogs key=${this.config.consumerKey}, secret=${this.config.consumerSecret}`
     });
   }

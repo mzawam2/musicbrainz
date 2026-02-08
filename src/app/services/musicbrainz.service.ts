@@ -33,9 +33,7 @@ import {
 export class MusicBrainzService {
   private readonly baseUrl = 'https://musicbrainz.org/ws/2';
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
-  private readonly defaultHeaders = new HttpHeaders({
-    'User-Agent': 'AngularPlayground/1.0 (musicbrainz@example.com)'
-  });
+  private readonly defaultHeaders = new HttpHeaders();
   
   // Cache for artist searches
   private artistSearchCache = new Map<string, { data: MusicBrainzArtist[], timestamp: number }>();
