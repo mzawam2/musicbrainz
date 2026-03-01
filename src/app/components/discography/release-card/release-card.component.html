@@ -1,16 +1,17 @@
 <div class="release-card" [attr.data-type]="primaryType().toLowerCase()" [class.expanded]="isExpanded()">
   <!-- Cover Art Section -->
-  <div class="cover-art-section">
-    <!-- Album art with Cover Art Archive primary, Discogs fallback -->
-    <img
-      [src]="primaryAlbumArtUrl()"
-      [alt]="'Album cover for ' + releaseGroup().title"
-      class="cover-art"
-      (click)="openAlbumArtModal()"
-      (error)="onAlbumArtError($event)"
-      [title]="'Click to view full size album art for ' + releaseGroup().title"
-    />
-  </div>
+  @if (imageVisible()) {
+    <div class="cover-art-section">
+      <img
+        [src]="displayImageUrl()"
+        [alt]="'Album cover for ' + releaseGroup().title"
+        class="cover-art"
+        (click)="openAlbumArtModal()"
+        (error)="onAlbumArtError($event)"
+        [title]="'Click to view full size album art for ' + releaseGroup().title"
+      />
+    </div>
+  }
 
 
   <div class="release-main-content">

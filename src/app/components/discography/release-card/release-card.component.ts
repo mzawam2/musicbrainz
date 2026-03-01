@@ -40,6 +40,10 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   error = signal<string | null>(null);
   isExpanded = signal(false);
 
+  // Album art fallback state
+  private caaFailed = signal(false);
+  private discogsFailed = signal(false);
+
   // Computed values
   primaryType = computed(() => this.releaseGroup()['primary-type'] || 'Other');
   secondaryTypes = computed(() => this.releaseGroup()['secondary-types']?.join(', ') || '');
@@ -50,10 +54,10 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   releaseDate = computed(() => {
     const firstReleaseDate = this.releaseGroup()['first-release-date'];
     if (!firstReleaseDate) return 'Unknown date';
-    
+
     const date = new Date(firstReleaseDate);
     if (isNaN(date.getTime())) return firstReleaseDate;
-    
+
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -63,7 +67,7 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
   artistCredit = computed(() => {
     const artistCredit = this.releaseGroup()['artist-credit'];
     if (!artistCredit || artistCredit.length === 0) return '';
-    
+
     return artistCredit
       .map(credit => credit.name + (credit.joinphrase || ''))
       .join('');
@@ -74,6 +78,26 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     const rg = this.releaseGroup();
     return this.coverArtService.getReleaseGroupThumbnailUrl(rg.id);
   });
+
+  // Reactive image URL that handles the CAA -> Discogs fallback chain.
+  // When the Discogs thumb arrives after the CAA image has already failed,
+  // this computed recalculates and provides the new URL to the template.
+  displayImageUrl = computed(() => {
+    if (!this.caaFailed()) {
+      return this.primaryAlbumArtUrl();
+    }
+
+    // CAA failed — try Discogs fallback
+    const rg = this.releaseGroup();
+    const discogsFallback = this.discogsAlbumArt() || rg.thumb;
+    if (discogsFallback && !this.discogsFailed()) {
+      return discogsFallback;
+    }
+
+    return null;
+  });
+
+  imageVisible = computed(() => this.displayImageUrl() !== null);
 
 
   private destroy$ = new Subject<void>();
@@ -216,19 +240,12 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     const img = event.target as HTMLImageElement;
     const rg = this.releaseGroup();
 
-    // Determine what URL failed
     if (img.src.includes('coverartarchive.org')) {
-      // Cover Art Archive failed - try Discogs fallback
-      if (rg.thumb) {
-        console.log(`Cover Art Archive not found for "${rg.title}", using Discogs fallback`);
-        img.src = rg.thumb;
-      } else {
-        // No fallback - hide image
-        img.style.display = 'none';
-      }
+      console.log(`Cover Art Archive not found for "${rg.title}", will use Discogs fallback if available`);
+      this.caaFailed.set(true);
     } else {
-      // Discogs also failed - hide image
-      img.style.display = 'none';
+      console.log(`Discogs fallback also failed for "${rg.title}"`);
+      this.discogsFailed.set(true);
     }
   }
 
@@ -298,6 +315,7 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
         imageUri: this.coverArtService.getReleaseGroupFrontCoverUrl(release.id, 1200),
         // Fallback should be non-CAA artwork only, otherwise CAA URLs can bounce in error handling loops.
         fallbackImageUri: release.thumb || undefined,
+        discogsResourceUrl: release.discogsResourceUrl,
         title: release.title,
         releaseGroupId: release.id
       }));
