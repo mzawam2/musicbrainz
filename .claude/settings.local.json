@@ -27,7 +27,16 @@
       "Bash(npm test:*)",
       "Bash(CHROME_BIN=/usr/bin/chromium-browser npm test -- --browsers=ChromeHeadless --watch=false --include=\"**/playlist-creation.component.spec.ts\")",
       "WebFetch(domain:ws.audioscrobbler.com)",
-      "WebFetch(domain:api.spotify.com)"
+      "WebFetch(domain:api.spotify.com)",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_run_code"
     ],
     "deny": []
   }

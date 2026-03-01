@@ -35,14 +35,15 @@
   }
 
   <!-- Image Display -->
-  @if (!hasError()) {
+  @if (!hasError() && getCurrentImageUri()) {
     <img
       [src]="getCurrentImageUri()"
       [alt]="getCurrentAltText()"
       class="modal-image"
       (load)="onImageLoad()"
-      (error)="onImageError()"
+      (error)="onImageError($event)"
       [style.visibility]="isLoading() ? 'hidden' : 'visible'"
+      [attr.data-index]="currentIndex()"
     />
   }
 

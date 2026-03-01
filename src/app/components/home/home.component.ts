@@ -8,6 +8,7 @@ import { debounceTime, distinctUntilChanged, switchMap, catchError, takeUntil, f
 import { of, Subject, firstValueFrom } from 'rxjs';
 import { MusicBrainzService } from '../../services/musicbrainz.service';
 import { DiscogsService } from '../../services/discogs.service';
+import { CoverArtArchiveService } from '../../services/cover-art-archive.service';
 import { LastfmService } from '../../services/lastfm.service';
 import { SpotifyService, SpotifyTrack, SpotifyPlaylist } from '../../services/spotify.service';
 import { MusicBrainzArtist, LabelWithReleaseCount, EnhancedDiscographyData } from '../../models/musicbrainz.models';
@@ -51,6 +52,7 @@ interface HomeComponentState {
 export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private musicBrainzService = inject(MusicBrainzService);
   private discogsService = inject(DiscogsService);
+  private coverArtService = inject(CoverArtArchiveService);
   private lastfmService = inject(LastfmService);
   private spotifyService = inject(SpotifyService);
   private router = inject(Router);
@@ -131,58 +133,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   
   // Computed signals for album art carousel
   releaseThumbs = computed(() => {
-    // First try enhanced data from discography component (has thumbs)
-    const enhancedFromChild = this.enhancedDiscographyFromChild();
-    if (enhancedFromChild?.releaseGroups) {
-      console.log(`🎵 📺 Using enhanced data from discography component`);
-      const discography = enhancedFromChild;
-      
-      const seen = new Set<string>();
-      const items: Array<{ imageUri: string; title: string; resourceUrl?: string }> = [];
-      
-      for (const rg of discography.releaseGroups) {
-        if ((rg as any).thumb) {
-          const uri = (rg as any).thumb;
-          if (!seen.has(uri)) {
-            seen.add(uri);
-            items.push({ 
-              imageUri: uri, 
-              title: rg.title, 
-              resourceUrl: (rg as any).discogsResourceUrl 
-            });
-          }
-        }
-      }
-      
-      console.log(`🎵 📺 Found ${items.length} release thumbs for carousel from enhanced data`);
-      return items;
-    }
-    
-    // Fallback to local enhanced discography (unlikely to have thumbs)
-    const discography = this.enhancedDiscography();
-    if (!discography?.releaseGroups) return [];
-    
-    const seen = new Set<string>();
-    const items: Array<{ imageUri: string; title: string; resourceUrl?: string }> = [];
-    
-    for (const rg of discography.releaseGroups) {
-      if ((rg as any).thumb) {
-        const uri = (rg as any).thumb;
-        if (!seen.has(uri)) {
-          seen.add(uri);
-          items.push({ 
-            imageUri: uri, 
-            title: rg.title, 
-            resourceUrl: (rg as any).discogsResourceUrl 
-          });
-        }
-      }
-    }
-    
-    console.log(`🎵 📺 Found ${items.length} release thumbs for carousel from fallback data`);
-    return items;
+    const data = this.enhancedDiscographyFromChild();
+    if (!data?.releaseGroups) return [];
+
+    return data.releaseGroups
+      // Include all release groups with IDs so CAA-only artwork is shown too.
+      .filter(rg => !!rg.id)
+      .map(rg => ({
+        imageUri: this.coverArtService.getReleaseGroupThumbnailUrl(rg.id),
+        title: rg.title,
+        releaseGroupId: rg.id,
+        fallbackUrl: rg.thumb  // Discogs fallback
+      }));
   });
-  
+
   displayedReleaseThumbs = computed(() => {
     const items = this.releaseThumbs();
     const start = this.carouselIndex();
@@ -1392,84 +1356,42 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.artistImageIndex.set(newIndex);
   }
 
-  /**
-   * Open carousel album image in modal
-   */
-  openCarouselImage(item: { imageUri: string; title: string; resourceUrl?: string }): void {
-    // Find the index of this item in the carousel
-    const currentIndex = this.releaseThumbs().findIndex(thumb => 
-      thumb.imageUri === item.imageUri && thumb.title === item.title
-    );
-    const altText = `Album cover for ${item.title}`;
-    
-    // If we have a Discogs resource URL, fetch the full-size image
-    if (item.resourceUrl) {
-      this.discogsService.makeDirectUrlRequest<any>(item.resourceUrl)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (releaseItem) => {
-            let imageUri = item.imageUri; // fallback to thumbnail
-            
-            // Try to get the best image from the release/master
-            if (releaseItem && releaseItem.images && releaseItem.images.length > 0) {
-              // Find primary image or use first available
-              const primaryImage = releaseItem.images.find((img: any) => img.type === 'primary') || releaseItem.images[0];
-              imageUri = primaryImage.uri;
-              console.log(`🎵 🖼️ Using full-resolution image from Discogs API: ${imageUri}`);
-            } else {
-              console.log(`🎵 🖼️ No full-resolution images found, using thumbnail: ${imageUri}`);
-            }
+  onCarouselCoverError(
+    event: Event,
+    cover: { imageUri: string; title: string; releaseGroupId: string; fallbackUrl?: string }
+  ): void {
+    const img = event.target as HTMLImageElement;
 
-            this.openModalWithCarouselImage(imageUri, item.title, altText, currentIndex);
-          },
-          error: (error) => {
-            console.error(`🎵 Error fetching full-size image from Discogs:`, error);
-            // Fallback to thumbnail on error
-            this.openModalWithCarouselImage(item.imageUri, item.title, altText, currentIndex);
-          }
-        });
-    } else {
-      // No resource URL, use thumbnail directly
-      console.log(`🎵 🖼️ No resource URL available, using thumbnail: ${item.imageUri}`);
-      this.openModalWithCarouselImage(item.imageUri, item.title, altText, currentIndex);
+    if (img.src.includes('coverartarchive.org') && cover.fallbackUrl) {
+      img.src = cover.fallbackUrl;
+      return;
     }
+
+    img.style.display = 'none';
   }
 
   /**
-   * Open modal with album image
+   * Open carousel album image in modal
    */
-  private openModalWithCarouselImage(imageUri: string, title: string, altText: string, currentIndex: number): void {
-    const allItems = this.releaseThumbs();
-    
-    // Convert carousel items to the format expected by the modal
-    const carouselItems: CarouselItem[] = allItems.map(item => ({
-      imageUri: item.imageUri,
-      title: item.title,
-      resourceUrl: item.resourceUrl
+  openCarouselImage(item: { imageUri: string; title: string; releaseGroupId: string; fallbackUrl?: string }): void {
+    // Build carousel items with high-res URLs
+    const carouselItems: CarouselItem[] = this.releaseThumbs().map(thumb => ({
+      imageUri: this.coverArtService.getReleaseGroupFrontCoverUrl(thumb.releaseGroupId, 1200),
+      fallbackImageUri: thumb.fallbackUrl,
+      title: thumb.title,
+      releaseGroupId: thumb.releaseGroupId
     }));
 
-    const carouselData: CarouselNavigationData = {
-      currentIndex: Math.max(0, currentIndex), // Ensure index is valid
-      totalCount: allItems.length,
-      items: carouselItems
-    };
-
-    const modalData: ArtistPhotoModalData = {
-      imageUri: imageUri,
-      artistName: this.selectedArtist()?.name || 'Unknown Artist',
-      altText: altText,
-      carouselData: carouselData
-    };
+    const currentIndex = this.releaseThumbs().findIndex(t => t.releaseGroupId === item.releaseGroupId);
 
     this.dialog.open(ArtistPhotoModalComponent, {
-      data: modalData,
+      data: {
+        carouselItems,
+        currentIndex: Math.max(0, currentIndex),
+        imageType: 'album-art'
+      } as ArtistPhotoModalData,
       panelClass: 'artist-photo-modal',
-      maxWidth: '100vw',
-      maxHeight: '100vh',
-      width: '100vw',
-      height: '100vh',
-      hasBackdrop: true,
-      disableClose: false
+      autoFocus: false
     });
   }
 }

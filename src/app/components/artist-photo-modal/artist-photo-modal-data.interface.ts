@@ -1,10 +1,14 @@
 export interface ArtistPhotoModalData {
-  imageUri: string;
+  imageUri?: string;
   artistName?: string;
   altText?: string;
   metadata?: ImageMetadata;
   // Carousel navigation data
   carouselData?: CarouselNavigationData;
+  // New carousel-only data
+  carouselItems?: CarouselItem[];
+  currentIndex?: number;
+  imageType?: 'album-art' | 'artist-photo';
 }
 
 export interface CarouselNavigationData {
@@ -14,9 +18,11 @@ export interface CarouselNavigationData {
 }
 
 export interface CarouselItem {
-  imageUri: string;
+  imageUri: string;           // High-res Cover Art Archive URL or Discogs URL
+  fallbackImageUri?: string;  // Discogs thumb fallback when CAA image is missing
   title: string;
-  resourceUrl?: string;
+  releaseGroupId?: string;    // For constructing fallback URLs
+  resourceUrl?: string;       // DEPRECATED: Discogs resource URL
 }
 
 export interface ImageMetadata {

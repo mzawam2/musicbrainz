@@ -5,10 +5,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
 import { MusicBrainzService } from '../../../services/musicbrainz.service';
-import { DiscogsService } from '../../../services/discogs.service';
-import { DiscogsImage } from '../../../models/discogs.models';
+import { CoverArtArchiveService } from '../../../services/cover-art-archive.service';
 import { ArtistPhotoModalComponent } from '../../artist-photo-modal/artist-photo-modal.component';
-import { ArtistPhotoModalData, CarouselNavigationData, CarouselItem } from '../../artist-photo-modal/artist-photo-modal-data.interface';
+import { ArtistPhotoModalData, CarouselItem } from '../../artist-photo-modal/artist-photo-modal-data.interface';
 
 @Component({
   selector: 'app-release-card',
@@ -30,7 +29,7 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
 
   // Injected services
   private musicBrainzService = inject(MusicBrainzService);
-  private discogsService = inject(DiscogsService);
+  private coverArtService = inject(CoverArtArchiveService);
   private dialog = inject(MatDialog);
 
   // State signals
@@ -68,6 +67,12 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
     return artistCredit
       .map(credit => credit.name + (credit.joinphrase || ''))
       .join('');
+  });
+
+  // Primary album art URL (Cover Art Archive)
+  primaryAlbumArtUrl = computed(() => {
+    const rg = this.releaseGroup();
+    return this.coverArtService.getReleaseGroupThumbnailUrl(rg.id);
   });
 
 
@@ -207,67 +212,52 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
       });
   }
 
+  onAlbumArtError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    const rg = this.releaseGroup();
+
+    // Determine what URL failed
+    if (img.src.includes('coverartarchive.org')) {
+      // Cover Art Archive failed - try Discogs fallback
+      if (rg.thumb) {
+        console.log(`Cover Art Archive not found for "${rg.title}", using Discogs fallback`);
+        img.src = rg.thumb;
+      } else {
+        // No fallback - hide image
+        img.style.display = 'none';
+      }
+    } else {
+      // Discogs also failed - hide image
+      img.style.display = 'none';
+    }
+  }
+
 
   openAlbumArtModal() {
     const releaseGroup = this.releaseGroup();
-    const discogsResourceUrl = this.discogsResourceUrl();
-    const discogsArt = this.discogsAlbumArt();
-    const coverArt = this.coverArt();
 
-    let altText = `Album art for ${releaseGroup.title}`;
+    // Try Cover Art Archive high-res first (1200px)
+    const highResUrl = this.coverArtService.getReleaseGroupFrontCoverUrl(releaseGroup.id, 1200);
+    const altText = `Album art for ${releaseGroup.title}`;
 
-    // If we have a Discogs resource URL, fetch the full-size image
-    if (discogsResourceUrl) {
-      this.discogsService.makeDirectUrlRequest<any>(discogsResourceUrl)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (item) => {
-            let imageUri = '';
-            
-            // Try to get the best image from the release/master
-            if (item && item.images && item.images.length > 0) {
-              // Find primary image or use first available
-              const primaryImage = item.images.find((img: any) => img.type === 'primary') || item.images[0];
-              imageUri = primaryImage.uri;
-            } else if (discogsArt) {
-              // Fallback to thumbnail if no full-size images
-              imageUri = discogsArt;
-            }
-
-            if (imageUri) {
-              this.openModalWithImage(imageUri, releaseGroup.title, altText);
-            }
-          },
-          error: (error) => {
-            console.error('Error fetching Discogs resource details:', error);
-            // Fallback to thumbnail on error
-            if (discogsArt) {
-              this.openModalWithImage(discogsArt, releaseGroup.title, altText);
-            }
-          }
-        });
-    } else {
-      // No Discogs resource URL, use available image sources
-      let imageUri = '';
-      
-      if (discogsArt) {
-        imageUri = discogsArt;
-      } else if (coverArt && coverArt.images && coverArt.images.length > 0) {
-        imageUri = coverArt.images[0].image || '';
-      }
-
-      if (imageUri) {
-        this.openModalWithImage(imageUri, releaseGroup.title, altText);
-      }
-    }
+    // Open modal with high-res image
+    this.openModalWithImage(highResUrl, releaseGroup.title, altText);
   }
 
   private openModalWithImage(imageUri: string, title: string, altText: string) {
     const allReleases = this.allReleaseGroups();
     const artistName = this.artistName();
+    const carouselReleases = this.getCarouselEligibleReleaseGroups(allReleases);
+
+    console.log('[DiscographyCarousel] openModalWithImage', {
+      clickedTitle: title,
+      clickedReleaseId: this.releaseGroup().id,
+      totalVisibleReleases: allReleases.length,
+      eligibleCarouselReleases: carouselReleases.length
+    });
     
     // If there are multiple albums, provide carousel navigation
-    if (allReleases.length > 1) {
+    if (carouselReleases.length > 1) {
       this.openAlbumModalWithCarousel(imageUri, title, altText);
     } else {
       // Single album - use simple modal
@@ -293,35 +283,50 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
    */
   private openAlbumModalWithCarousel(imageUri: string, title: string, altText: string): void {
     const allReleases = this.allReleaseGroups();
-    const currentIndex = this.currentReleaseIndex();
     const artistName = this.artistName();
-    
-    // Convert release groups to carousel items
-    const carouselItems: CarouselItem[] = allReleases.map(release => ({
-      imageUri: release.thumb || '', // Use Discogs thumbnail
-      title: release.title,
-      resourceUrl: release.discogsResourceUrl || undefined
-    })).filter(item => item.imageUri); // Only include items with images
+    const clickedRelease = this.releaseGroup();
+    const currentIndex = this.currentReleaseIndex();
+    const carouselReleases = this.getCarouselEligibleReleaseGroups(allReleases);
 
-    // Find the correct index in the filtered carousel items
-    // by matching the current release with the clicked release
-    const currentRelease = allReleases[currentIndex];
-    const adjustedIndex = carouselItems.findIndex(item => 
-      item.title === currentRelease?.title && 
-      item.resourceUrl === currentRelease?.discogsResourceUrl
+    const excludedReleases = allReleases
+      .filter(release => !release.id)
+      .map(release => ({ id: release.id, title: release.title, hasId: !!release.id }));
+
+    // Convert artwork-eligible release groups to carousel items with Cover Art Archive high-res URLs
+    const carouselItems: CarouselItem[] = carouselReleases
+      .map(release => ({
+        imageUri: this.coverArtService.getReleaseGroupFrontCoverUrl(release.id, 1200),
+        // Fallback should be non-CAA artwork only, otherwise CAA URLs can bounce in error handling loops.
+        fallbackImageUri: release.thumb || undefined,
+        title: release.title,
+        releaseGroupId: release.id
+      }));
+
+    // Always anchor to the clicked card release ID (not list index).
+    const adjustedIndex = carouselItems.findIndex(item =>
+      item.releaseGroupId === clickedRelease.id
     );
 
-    const carouselData: CarouselNavigationData = {
-      currentIndex: Math.max(0, adjustedIndex >= 0 ? adjustedIndex : 0),
-      totalCount: carouselItems.length,
-      items: carouselItems
-    };
+    console.log('[DiscographyCarousel] openAlbumModalWithCarousel', {
+      currentIndex,
+      currentReleaseId: clickedRelease.id,
+      currentReleaseTitle: clickedRelease.title,
+      carouselItemCount: carouselItems.length,
+      adjustedIndex,
+      carouselItems: carouselItems.map(item => ({
+        releaseGroupId: item.releaseGroupId,
+        title: item.title,
+        hasFallback: !!item.fallbackImageUri
+      })),
+      excludedNoThumbReleases: excludedReleases
+    });
 
     const modalData: ArtistPhotoModalData = {
-      imageUri: imageUri,
+      carouselItems: carouselItems,
+      currentIndex: Math.max(0, adjustedIndex >= 0 ? adjustedIndex : 0),
+      imageType: 'album-art',
       artistName: artistName || 'Unknown Artist',
-      altText: altText,
-      carouselData: carouselData
+      altText: altText
     };
 
     this.dialog.open(ArtistPhotoModalComponent, {
@@ -334,6 +339,24 @@ export class ReleaseCardComponent implements OnInit, OnDestroy {
       hasBackdrop: true,
       disableClose: false
     });
+  }
+
+  /**
+   * Build the album-art carousel source list:
+   * - include all releases with IDs (matching top carousel behavior)
+   */
+  private getCarouselEligibleReleaseGroups(releases: EnhancedReleaseGroup[]): EnhancedReleaseGroup[] {
+    const eligible = releases.filter(release =>
+      !!release.id
+    );
+
+    console.log('[DiscographyCarousel] getCarouselEligibleReleaseGroups', {
+      totalReleases: releases.length,
+      eligibleCount: eligible.length,
+      ineligibleCount: releases.length - eligible.length
+    });
+
+    return eligible;
   }
 
   formatDuration(milliseconds: number): string {

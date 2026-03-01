@@ -123,12 +123,13 @@
                   ‹
                 </button>
                 <div class="carousel">
-                  @for (cover of displayedReleaseThumbs(); track cover.resourceUrl || cover.imageUri) {
-                    <img 
-                      class="carousel-item" 
-                      [src]="cover.imageUri" 
-                      [alt]="cover.title" 
+                  @for (cover of displayedReleaseThumbs(); track cover.releaseGroupId || cover.imageUri) {
+                    <img
+                      class="carousel-item"
+                      [src]="cover.imageUri"
+                      [alt]="cover.title"
                       [title]="cover.title"
+                      (error)="onCarouselCoverError($event, cover)"
                       (click)="openCarouselImage(cover)" />
                   }
                 </div>
