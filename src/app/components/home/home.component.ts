@@ -137,13 +137,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!data?.releaseGroups) return [];
 
     return data.releaseGroups
-      // Include all release groups with IDs so CAA-only artwork is shown too.
-      .filter(rg => !!rg.id)
+      // Only include releases that have matched artwork metadata.
+      .filter(rg => !!rg.id && !!rg.thumb)
       .map(rg => ({
         imageUri: this.coverArtService.getReleaseGroupThumbnailUrl(rg.id),
         title: rg.title,
         releaseGroupId: rg.id,
-        fallbackUrl: rg.thumb  // Discogs fallback
+        fallbackUrl: rg.thumb,  // Discogs thumbnail fallback
+        discogsResourceUrl: rg.discogsResourceUrl  // Discogs API URL for full-size image
       }));
   });
 
@@ -1373,11 +1374,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   /**
    * Open carousel album image in modal
    */
-  openCarouselImage(item: { imageUri: string; title: string; releaseGroupId: string; fallbackUrl?: string }): void {
+  openCarouselImage(item: { imageUri: string; title: string; releaseGroupId: string; fallbackUrl?: string; discogsResourceUrl?: string }): void {
     // Build carousel items with high-res URLs
     const carouselItems: CarouselItem[] = this.releaseThumbs().map(thumb => ({
       imageUri: this.coverArtService.getReleaseGroupFrontCoverUrl(thumb.releaseGroupId, 1200),
       fallbackImageUri: thumb.fallbackUrl,
+      discogsResourceUrl: thumb.discogsResourceUrl,
       title: thumb.title,
       releaseGroupId: thumb.releaseGroupId
     }));

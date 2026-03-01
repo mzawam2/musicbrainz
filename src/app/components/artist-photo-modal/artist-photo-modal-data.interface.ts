@@ -18,11 +18,12 @@ export interface CarouselNavigationData {
 }
 
 export interface CarouselItem {
-  imageUri: string;           // High-res Cover Art Archive URL or Discogs URL
-  fallbackImageUri?: string;  // Discogs thumb fallback when CAA image is missing
+  imageUri: string;              // High-res Cover Art Archive URL or Discogs URL
+  fallbackImageUri?: string;     // Discogs thumb fallback when CAA image is missing
+  discogsResourceUrl?: string;   // Discogs API URL to fetch full-size image
   title: string;
-  releaseGroupId?: string;    // For constructing fallback URLs
-  resourceUrl?: string;       // DEPRECATED: Discogs resource URL
+  releaseGroupId?: string;       // For constructing fallback URLs
+  resourceUrl?: string;          // DEPRECATED: Discogs resource URL
 }
 
 export interface ImageMetadata {

@@ -6,6 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
 import { Subject } from 'rxjs';
 import { CoverArtArchiveService } from '../../services/cover-art-archive.service';
+import { DiscogsService } from '../../services/discogs.service';
 
 import { ArtistPhotoModalData, CarouselItem } from './artist-photo-modal-data.interface';
 
@@ -31,6 +32,7 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
   public dialogRef = inject(MatDialogRef<ArtistPhotoModalComponent>);
   public data = inject<ArtistPhotoModalData>(MAT_DIALOG_DATA);
   private coverArtService = inject(CoverArtArchiveService);
+  private discogsService = inject(DiscogsService);
 
   private keydownListener?: (event: KeyboardEvent) => void;
   private destroy$ = new Subject<void>();
@@ -107,7 +109,8 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
       currentTitle: currentItem?.title,
       releaseGroupId: currentItem?.releaseGroupId,
       failedSrc,
-      hasFallback: !!currentItem?.fallbackImageUri
+      hasFallback: !!currentItem?.fallbackImageUri,
+      hasDiscogsResourceUrl: !!currentItem?.discogsResourceUrl
     });
 
     // Retry CAA once at 500px, but never bounce back if we already tried the designated fallback URL.
@@ -132,9 +135,23 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // If CAA failed, try Discogs thumb fallback when available.
+    // If CAA failed, try to fetch full-size image from Discogs API
+    if (
+      currentItem?.discogsResourceUrl &&
+      img.src.includes('coverartarchive.org')
+    ) {
+      console.log('[ArtistPhotoModal] fetching full-size image from Discogs API', {
+        currentIndex: this.currentIndex(),
+        discogsResourceUrl: currentItem.discogsResourceUrl
+      });
+
+      this.fetchDiscogsFullSizeImage(currentItem.discogsResourceUrl, img);
+      return;
+    }
+
+    // If Discogs API fetch failed, try Discogs thumb fallback when available.
     if (currentItem?.fallbackImageUri && img.src !== currentItem.fallbackImageUri) {
-      console.log('[ArtistPhotoModal] switching to Discogs fallback', {
+      console.log('[ArtistPhotoModal] switching to Discogs thumbnail fallback', {
         currentIndex: this.currentIndex(),
         title: currentItem.title,
         fallbackImageUri: currentItem.fallbackImageUri
@@ -156,13 +173,91 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
       failedIndices: Array.from(this.failedIndices.values())
     });
 
-    // All Cover Art Archive resolutions failed - show error state
+    // All fallbacks failed - show error state
     this.isLoading.set(false);
     this.hasError.set(true);
   }
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  private fetchDiscogsFullSizeImage(resourceUrl: string, imgElement: HTMLImageElement): void {
+    // Parse the resource URL to determine if it's a master or release
+    // Example: https://api.discogs.com/masters/757578 or https://api.discogs.com/releases/12345
+    const masterMatch = resourceUrl.match(/\/masters\/(\d+)/);
+    const releaseMatch = resourceUrl.match(/\/releases\/(\d+)/);
+
+    if (masterMatch) {
+      const masterId = parseInt(masterMatch[1], 10);
+      console.log('[ArtistPhotoModal] fetching master details', { masterId });
+
+      this.discogsService.getMaster(masterId).subscribe({
+        next: (master) => {
+          if (master?.images && master.images.length > 0) {
+            // Find primary image, or use first image if no primary
+            const primaryImage = master.images.find(img => img.type === 'primary') || master.images[0];
+            console.log('[ArtistPhotoModal] using full-size Discogs image from master', {
+              masterId,
+              imageUri: primaryImage.uri
+            });
+            imgElement.src = primaryImage.uri;
+          } else {
+            console.warn('[ArtistPhotoModal] no images in master response', { masterId });
+            this.fallbackToThumbnail(imgElement);
+          }
+        },
+        error: (error) => {
+          console.error('[ArtistPhotoModal] error fetching master details', { masterId, error });
+          this.fallbackToThumbnail(imgElement);
+        }
+      });
+    } else if (releaseMatch) {
+      const releaseId = parseInt(releaseMatch[1], 10);
+      console.log('[ArtistPhotoModal] fetching release details', { releaseId });
+
+      this.discogsService.getRelease(releaseId).subscribe({
+        next: (release) => {
+          if (release?.images && release.images.length > 0) {
+            // Find primary image, or use first image if no primary
+            const primaryImage = release.images.find(img => img.type === 'primary') || release.images[0];
+            console.log('[ArtistPhotoModal] using full-size Discogs image from release', {
+              releaseId,
+              imageUri: primaryImage.uri
+            });
+            imgElement.src = primaryImage.uri;
+          } else {
+            console.warn('[ArtistPhotoModal] no images in release response', { releaseId });
+            this.fallbackToThumbnail(imgElement);
+          }
+        },
+        error: (error) => {
+          console.error('[ArtistPhotoModal] error fetching release details', { releaseId, error });
+          this.fallbackToThumbnail(imgElement);
+        }
+      });
+    } else {
+      console.warn('[ArtistPhotoModal] could not parse Discogs resource URL', { resourceUrl });
+      this.fallbackToThumbnail(imgElement);
+    }
+  }
+
+  private fallbackToThumbnail(imgElement: HTMLImageElement): void {
+    const currentItem = this.currentItem();
+    if (currentItem?.fallbackImageUri && imgElement.src !== currentItem.fallbackImageUri) {
+      console.log('[ArtistPhotoModal] falling back to Discogs thumbnail', {
+        fallbackImageUri: currentItem.fallbackImageUri
+      });
+      imgElement.src = currentItem.fallbackImageUri;
+    } else {
+      // Mark as failed and skip to next
+      this.failedIndices.add(this.currentIndex());
+      if (this.hasCarouselData() && this.skipToNextAvailableImage()) {
+        return;
+      }
+      this.isLoading.set(false);
+      this.hasError.set(true);
+    }
   }
 
   // Carousel navigation methods
