@@ -447,4 +447,56 @@ describe('LastfmService', () => {
       expect(rateLimiterService.queueRequest).toHaveBeenCalledWith(jasmine.any(Function));
     });
   });
+
+  describe('getArtistInfo fallback behavior', () => {
+    const mbid = 'd2db1078-c170-4e22-b261-14f3ad60a690';
+    const fallbackArtistName = 'DEVO';
+    const mockArtistInfo = {
+      name: 'Devo',
+      mbid: '608c2606-f75d-4faa-a6a9-260ccf711034',
+      url: 'https://www.last.fm/music/Devo',
+      streamable: '0'
+    };
+
+    it('should fallback to artist name when MBID lookup returns Last.fm error payload', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getArtistInfo(mbid, 'en', fallbackArtistName).subscribe(artistInfo => {
+        expect(artistInfo.name).toBe('Devo');
+        expect(artistInfo.url).toContain('last.fm/music/Devo');
+      });
+
+      const mbidReq = httpMock.expectOne((request) =>
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'artist.getInfo' &&
+        request.params.get('mbid') === mbid
+      );
+      mbidReq.flush({ error: 6, message: 'The artist you supplied could not be found', links: [] });
+
+      const fallbackReq = httpMock.expectOne((request) =>
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'artist.getInfo' &&
+        request.params.get('artist') === fallbackArtistName
+      );
+      fallbackReq.flush({ artist: mockArtistInfo });
+    });
+
+    it('should surface Last.fm API error when MBID lookup fails and no fallback name is provided', () => {
+      rateLimiterService.queueRequest.and.callFake((requestFn) => requestFn());
+
+      service.getArtistInfo(mbid).subscribe({
+        next: () => fail('should have failed'),
+        error: (error) => {
+          expect(error.message).toContain('Last.fm API error 6');
+        }
+      });
+
+      const req = httpMock.expectOne((request) =>
+        request.url === service['API_BASE_URL'] &&
+        request.params.get('method') === 'artist.getInfo' &&
+        request.params.get('mbid') === mbid
+      );
+      req.flush({ error: 6, message: 'The artist you supplied could not be found', links: [] });
+    });
+  });
 });

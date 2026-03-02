@@ -46,6 +46,82 @@ export class LastfmService {
   private cache = new Map<string, { data: any; timestamp: number }>();
 
   /**
+   * Checks whether a response payload is a Last.fm API error object.
+   */
+  private isLastFmErrorResponse(response: unknown): response is LastFmError {
+    return !!response && typeof response === 'object' && 'error' in response;
+  }
+
+  /**
+   * Converts artist.getInfo response payload into artist info or throws for API-level errors.
+   */
+  private extractArtistInfo(response: LastFmArtistInfoResponse | LastFmError): LastFmArtistInfo {
+    if (this.isLastFmErrorResponse(response)) {
+      throw new Error(`Last.fm API error ${response.error}: ${response.message}`);
+    }
+
+    if (!response?.artist) {
+      throw new Error('Last.fm API returned empty artist data');
+    }
+
+    return response.artist;
+  }
+
+  /**
+   * Returns true when an MBID lookup should retry with artist name.
+   */
+  private shouldFallbackToArtistName(error: unknown): boolean {
+    if (error instanceof HttpErrorResponse) {
+      const payload = error.error as Partial<LastFmError> | undefined;
+      return !!payload && payload.error === 6;
+    }
+
+    if (error instanceof Error) {
+      return error.message.includes('Last.fm API error 6') || error.message.includes('empty artist data');
+    }
+
+    return false;
+  }
+
+  /**
+   * Builds artist.getInfo params for name-based lookups.
+   */
+  private buildArtistInfoByNameParams(artistName: string, lang: string): HttpParams {
+    return new HttpParams()
+      .set('method', 'artist.getInfo')
+      .set('artist', artistName)
+      .set('api_key', this.config.apiKey)
+      .set('format', 'json')
+      .set('lang', lang)
+      .set('autocorrect', '1');
+  }
+
+  /**
+   * Executes a direct (non-queued) artist name lookup.
+   * Used for MBID fallback to avoid nested queue deadlocks.
+   */
+  private fetchArtistInfoByNameDirect(artistName: string, lang: string): Observable<LastFmArtistInfo> {
+    const params = this.buildArtistInfoByNameParams(artistName, lang);
+    return this.http.get<LastFmArtistInfoResponse | LastFmError>(this.API_BASE_URL, { params }).pipe(
+      map(response => this.extractArtistInfo(response)),
+      catchError(error => this.toServiceError(error))
+    );
+  }
+
+  /**
+   * Normalizes unknown errors into application errors.
+   */
+  private toServiceError(error: unknown): Observable<never> {
+    if (error instanceof HttpErrorResponse) {
+      return this.handleError(error);
+    }
+    if (error instanceof Error) {
+      return throwError(() => error);
+    }
+    return throwError(() => new Error('An unknown error occurred'));
+  }
+
+  /**
    * Fetches top albums for a specific genre/tag
    * @param genre The genre/tag name
    * @param limit Number of results (default: 50)
@@ -202,10 +278,12 @@ export class LastfmService {
    * Fetches artist information using MusicBrainz ID
    * @param mbid MusicBrainz ID of the artist
    * @param lang Language for biography (optional)
+   * @param fallbackArtistName Artist name fallback when MBID lookup is not found on Last.fm
    * @returns Observable of artist information
    */
-  getArtistInfo(mbid: string, lang: string = 'en'): Observable<LastFmArtistInfo> {
+  getArtistInfo(mbid: string, lang: string = 'en', fallbackArtistName?: string): Observable<LastFmArtistInfo> {
     const cacheKey = `artist-info-${mbid}-${lang}`;
+    const normalizedFallbackArtistName = fallbackArtistName?.trim();
     
     // Check cache first
     const cached = this.getFromCache<LastFmArtistInfo>(cacheKey);
@@ -223,10 +301,22 @@ export class LastfmService {
 
     // Queue request through rate limiter
     return this.rateLimiter.queueRequest(() =>
-      this.http.get<LastFmArtistInfoResponse>(this.API_BASE_URL, { params }).pipe(
-        map(response => response.artist || {} as LastFmArtistInfo),
+      this.http.get<LastFmArtistInfoResponse | LastFmError>(this.API_BASE_URL, { params }).pipe(
+        map(response => this.extractArtistInfo(response)),
         tap(artistInfo => this.setCache(cacheKey, artistInfo)),
-        catchError(this.handleError.bind(this))
+        catchError(error => {
+          if (normalizedFallbackArtistName && this.shouldFallbackToArtistName(error)) {
+            const fallbackCacheKey = `artist-info-name-${normalizedFallbackArtistName}-${lang}`;
+            return this.fetchArtistInfoByNameDirect(normalizedFallbackArtistName, lang).pipe(
+              tap(artistInfo => {
+                this.setCache(cacheKey, artistInfo);
+                this.setCache(fallbackCacheKey, artistInfo);
+              })
+            );
+          }
+
+          return this.toServiceError(error);
+        })
       )
     );
   }
@@ -242,19 +332,9 @@ export class LastfmService {
       return of(cached);
     }
 
-    const params = new HttpParams()
-      .set('method', 'artist.getInfo')
-      .set('artist', artistName)
-      .set('api_key', this.config.apiKey)
-      .set('format', 'json')
-      .set('lang', lang)
-      .set('autocorrect', '1');
-
     return this.rateLimiter.queueRequest(() =>
-      this.http.get<LastFmArtistInfoResponse>(this.API_BASE_URL, { params }).pipe(
-        map(response => response.artist || {} as LastFmArtistInfo),
+      this.fetchArtistInfoByNameDirect(artistName, lang).pipe(
         tap(artistInfo => this.setCache(cacheKey, artistInfo)),
-        catchError(this.handleError.bind(this))
       )
     );
   }

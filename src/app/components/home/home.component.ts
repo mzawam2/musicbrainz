@@ -657,7 +657,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.loadArtistDiscography(artist.id);
     this.loadArtistBio(artist.name);
     // Note: Discogs artist search is now handled by discography component to avoid duplicates
-    this.loadLastfmArtistInfo(artist.id);
+    this.loadLastfmArtistInfo(artist.id, artist.name);
     this.similarArtists.set([]);
     this.loadLastfmSimilarArtists(artist.name);
     
@@ -1160,12 +1160,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   /**
    * Load Last.fm artist information using MusicBrainz ID
    */
-  private loadLastfmArtistInfo(musicBrainzId: string): void {
+  private loadLastfmArtistInfo(musicBrainzId: string, artistName?: string): void {
     console.log('🎵 Loading Last.fm artist info for MBID:', musicBrainzId);
     this.isLoadingLastfmArtist.set(true);
     this.lastfmError.set(null);
 
-    this.lastfmService.getArtistInfo(musicBrainzId)
+    this.lastfmService.getArtistInfo(musicBrainzId, 'en', artistName)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (artistInfo) => {
