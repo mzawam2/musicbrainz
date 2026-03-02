@@ -8,6 +8,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 
   &:hover {
     transform: translateY(-2px);
@@ -52,12 +53,112 @@
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     object-fit: cover;
+    transition: transform 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+      transform: scale(1.02);
+    }
+
+    &.discogs-art {
+      border: 2px solid #4CAF50;
+    }
+
+    &.musicbrainz-art {
+      border: 2px solid #2196F3;
+    }
   }
+
+  &.loading {
+    .art-loading-placeholder {
+      width: 150px;
+      height: 150px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .spinner-small {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #e0e0e0;
+        border-top: 2px solid #4CAF50;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    }
+  }
+
+  // Only apply the right-side positioning on viewports smaller than 768px
+  @media (max-width: 767px) {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    padding: 0;
+
+    .cover-art {
+      width: 150px;
+      height: 150px;
+      max-width: 150px;
+      max-height: 150px;
+    }
+
+    &.loading {
+      .art-loading-placeholder {
+        width: 150px;
+        height: 150px;
+
+        .spinner-small {
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    right: 12px;
+
+    .cover-art {
+      width: 110px;
+      height: 110px;
+      max-width: 110px;
+      max-height: 110px;
+    }
+
+    &.loading {
+      .art-loading-placeholder {
+        width: 110px;
+        height: 110px;
+
+        .spinner-small {
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .release-main-content {
   padding: 16px;
   flex: 1;
+
+  // Only add right padding on viewports smaller than 768px to make room for repositioned album art
+  @media (max-width: 767px) {
+    padding: 16px 186px 16px 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 16px 186px 16px 16px;
+  }
 }
 
 .release-header {
@@ -109,11 +210,6 @@
   }
 }
 
-.release-year {
-  font-size: 0.875rem;
-  color: #666;
-  font-weight: 500;
-}
 
 .release-content {
   margin-bottom: 12px;
@@ -165,6 +261,37 @@
     font-weight: 500;
     border: 1px solid #bbdefb;
     margin: 2px 0;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-block;
+
+    &:hover {
+      background: #1976d2;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+    }
+
+    &:focus {
+      outline: 2px solid #1976d2;
+      outline-offset: 2px;
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .label-link {
+    // Additional styles specific to links if needed
+    &:visited {
+      color: #1976d2; // Keep the same color for visited links
+      
+      &:hover {
+        color: white;
+      }
+    }
   }
 }
 
@@ -391,20 +518,8 @@
   }
 }
 
-// Mobile responsiveness
-@media (max-width: 768px) {
-  .release-main-content {
-    padding: 12px;
-  }
-
-  .cover-art-section {
-    padding: 12px 12px 0 12px;
-
-    .cover-art {
-      max-width: 120px;
-      max-height: 120px;
-    }
-  }
+// Additional mobile responsiveness adjustments
+@media (max-width: 480px) {
 
   .release-title {
     font-size: 1rem;

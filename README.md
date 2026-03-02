@@ -85,7 +85,7 @@ Development requests are proxied through `proxy.conf.json` to handle CORS:
 ```json
 {
   "/api/*": {
-    "target": "https://musicbrainz.org/ws/2",
+    "target": "http://localhost:5000/ws/2",
     "headers": {
       "User-Agent": "AngularPlayground/1.0.0 (claude-assistant@example.com)"
     }

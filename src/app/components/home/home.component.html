@@ -2,7 +2,6 @@
   <div class="search-header">
     <h1 #pageHeading tabindex="-1">Artist Discography</h1>
   </div>
-
   <div class="search-box">
     <label for="artist-search" class="sr-only">Search for an artist</label>
     <input id="artist-search" type="text" [formControl]="searchControl" placeholder="Search for an artist..."
@@ -60,81 +59,255 @@
   <div class="selected-artist">
     <div class="tree-container">
       <div class="artist-card">
-        <h3>{{ selectedArtist()!.name }}</h3>
-        <div class="artist-meta">
-          @if (selectedArtist()!.disambiguation) {
-          <p><strong>Description:</strong> {{ selectedArtist()!.disambiguation }}</p>
-          }
-          @if (selectedArtist()!.country) {
-          <p><strong>Country:</strong> {{ selectedArtist()!.country }}</p>
-          }
-          @if (selectedArtist()!['life-span']?.begin) {
-          <p><strong>Active:</strong> {{ selectedArtist()!['life-span']!.begin }}
-            @if (selectedArtist()!['life-span']!.end) {
-            - {{ selectedArtist()!['life-span']!.end }}
-            } @else {
-            - present
-            }
-          </p>
-          }
-          @if (selectedArtist()!.tags && selectedArtist()!.tags!.length > 0) {
-          <div class="artist-tags">
-            <p><strong>Tags:</strong></p>
-            <div class="tags-container">
-              @for (tag of selectedArtist()!.tags!; track tag.name) {
-              <span class="tag" [title]="'Count: ' + tag.count">
-                {{ tag.name }}
-              </span>
-              }
-            </div>
-          </div>
-          }
-          @if (selectedArtist()!.genres && selectedArtist()!.genres!.length > 0) {
-          <div class="artist-genres">
-            <p><strong>Genres:</strong></p>
-            <div class="genres-container">
-              @for (genre of selectedArtist()!.genres!.slice(0, 6); track genre.id) {
-              <span class="genre" [title]="'Count: ' + genre.count">
-                {{ genre.name }}
-              </span>
-              }
-              @if (selectedArtist()!.genres!.length > 6) {
-              <span class="genre-count">+{{ selectedArtist()!.genres!.length - 6 }} more</span>
-              }
-            </div>
-          </div>
-          }
-          
-          <!-- Artist Bio Section -->
-          <div class="artist-bio">
-            @if (isLoadingBio()) {
-              <div class="bio-loading">
+        <div class="image-carousel-container">
+          <div class="artist-photo-section">
+            @if (hasAnyArtistImage()) {
+              <div class="image-center">
+                @if (currentArtistImage()) {
+                  <div class="image-with-nav">
+                    <img 
+                      [src]="currentArtistImage().uri" 
+                      [alt]="'Photo of ' + selectedArtist()?.name"
+                      class="primary-artist-image"
+                      (click)="openImageFullSize(currentArtistImage().uri)"
+                      style="cursor: pointer;"
+                      [title]="'Click to view full size - Image ' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length"
+                    />
+                  </div>
+                  @if (discogsArtistImages().length > 1) {
+                    <div class="image-nav-controls">
+                      <button 
+                        type="button" 
+                        class="carousel-nav" 
+                        (click)="previousArtistImage()" 
+                        aria-label="Previous artist image"
+                        [title]="'Previous image (' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length + ')'">
+                        ‹
+                      </button>
+                      <span class="image-counter">{{ artistImageIndex() + 1 }} / {{ discogsArtistImages().length }}</span>
+                      <button 
+                        type="button" 
+                        class="carousel-nav" 
+                        (click)="nextArtistImage()" 
+                        aria-label="Next artist image"
+                        [title]="'Next image (' + (artistImageIndex() + 1) + ' of ' + discogsArtistImages().length + ')'">
+                        ›
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+            } @else if (isLoadingDiscogsArtist()) {
+              <div class="image-loading">
                 <div class="spinner"></div>
-                <span>Loading biography...</span>
+                <small>Loading artist image...</small>
               </div>
-            } @else if (artistBio()) {
-              <div class="bio-content">
-                <p><strong>Biography:</strong></p>
-                <div class="bio-text">
-                  {{ artistBio() }}
-                </div>
-                <div class="bio-source">
-                  <small>Source: Wikipedia</small>
-                </div>
+            } @else {
+              <div class="image-placeholder">
+                <div class="placeholder-icon">🎤</div>
+                <small>No artist image available</small>
               </div>
-            } @else if (bioError()) {
-              <div class="bio-error">
-                <small>Biography not available</small>
+            }
+          </div>
+          
+          <div class="album-carousel-section">
+            @if (displayedReleaseThumbs().length > 0) {
+              <div class="carousel-wrap">
+                <button 
+                  type="button" 
+                  class="carousel-nav left" 
+                  (click)="prevCovers()" 
+                  [disabled]="carouselIndex() === 0" 
+                  aria-label="Previous album covers">
+                  ‹
+                </button>
+                <div class="carousel">
+                  @for (cover of displayedReleaseThumbs(); track cover.releaseGroupId || cover.imageUri) {
+                    <img
+                      class="carousel-item"
+                      [src]="cover.imageUri"
+                      [alt]="cover.title"
+                      [title]="cover.title"
+                      (error)="onCarouselCoverError($event, cover)"
+                      (click)="openCarouselImage(cover)" />
+                  }
+                </div>
+                <button 
+                  type="button" 
+                  class="carousel-nav right" 
+                  (click)="nextCovers()" 
+                  [disabled]="(carouselIndex() + displayedReleaseThumbs().length) >= releaseThumbs().length" 
+                  aria-label="Next album covers">
+                  ›
+                </button>
+              </div>
+            } @else {
+              <div class="no-covers">
+                <small class="muted">No album covers available</small>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="artist-meta">
+     
+          <!-- Last.fm Artist Info Section -->
+          <div class="lastfm-info">
+            @if (isLoadingLastfmArtist()) {
+              <div class="lastfm-loading">
+                <div class="spinner"></div>
+                <span>Loading Last.fm data...</span>
+              </div>
+            } @else if (lastfmArtistInfo()) {
+              <div class="lastfm-content">
+                <p><strong>Last.fm Info:</strong></p>
+                <div class="lastfm-stats">
+                  @if (lastfmArtistInfo()!.stats?.listeners) {
+                    <div class="stat-item">
+                      <span class="stat-label">Listeners:</span>
+                      <span class="stat-value">{{ lastfmArtistInfo()!.stats!.listeners | number }}</span>
+                    </div>
+                  }
+                  @if (lastfmArtistInfo()!.stats?.playcount) {
+                    <div class="stat-item">
+                      <span class="stat-label">Plays:</span>
+                      <span class="stat-value">{{ lastfmArtistInfo()!.stats!.playcount | number }}</span>
+                    </div>
+                  }
+                </div>
+                @if (additionalLastfmTags().length > 0) {
+                  <div class="lastfm-tags">
+                    <p><strong>Last.fm Tags:</strong></p>
+                    <div class="tags-container">
+                      @for (tag of additionalLastfmTags(); track tag.name) {
+                        <span class="artist-chip clickable" (click)="navigateToPlaylistWithTag(tag.name)" [title]="'Create playlist with ' + tag.name + ' tag'">{{ tag.name }}</span>
+                      }
+                    </div>
+                  </div>
+                } @else if (isLoadingAdditionalTags()) {
+                  <div class="lastfm-tags">
+                    <p><strong>Last.fm Tags:</strong></p>
+                    <div class="tags-loading">
+                      <span>Loading tags...</span>
+                    </div>
+                  </div>
+                }
+                @if (lastfmArtistInfo()!.bio?.summary) {
+                  <div class="lastfm-bio">
+                    <p><strong>Last.fm Bio:</strong></p>
+                    <div class="bio-text" [innerHTML]="lastfmArtistInfo()!.bio!.summary"></div>
+                    <div class="bio-source">
+                      <small>Source: Last.fm</small>
+                    </div>
+                  </div>
+                }
+
+
+                @if (similarArtists().length > 0 || (lastfmArtistInfo()!.similar?.artist && lastfmArtistInfo()!.similar!.artist.length > 0)) {
+                  <div class="lastfm-similar" style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 1rem; margin-top: 1.5rem;">
+                    <p><strong>Similar Artists:</strong></p>
+                    <div class="similar-chips">
+                      @if (similarArtists().length > 0) {
+                        @for (a of similarArtists().slice(0, 50); track a.name) {
+                          <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
+                            {{ a.name }}
+                          </a>
+                        } 
+                      } @else if (lastfmArtistInfo()!.similar?.artist && lastfmArtistInfo()!.similar!.artist.length > 0) {
+                        @for (a of lastfmArtistInfo()!.similar!.artist.slice(0, 50); track a.name) {
+                          <a href="#" class="chip link" [class.disabled]="!a.mbid" (click)="$event.preventDefault(); navigateToSimilarArtist(a)" [title]="a.name">
+                            {{ a.name }}
+                          </a>
+                        }
+                      }
+                      <button type="button" class="chip open-similar-btn" (click)="navigateToSimilarArtists()" title="Open Similar Artists">
+                        Open Similar Artists
+                      </button>
+                    </div>
+                    <!-- Similar Artists Playlist Controls -->
+                    <div class="playlist-controls-section" style="margin-top: 1rem;">
+                      <div class="playlist-main-control">
+                        <button 
+                          type="button"
+                          class="playlist-btn"
+                          [class.creating]="isCreatingSimilarPlaylist()"
+                          [disabled]="!canCreateSimilarPlaylist()"
+                          (click)="handleSimilarPlaylistAction()"
+                        >
+                          <svg class="spotify-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path fill="currentColor" d="M12 1.5C6.21 1.5 1.5 6.21 1.5 12S6.21 22.5 12 22.5 22.5 17.79 22.5 12 17.79 1.5 12 1.5zm4.8 15.23a.75.75 0 01-1.03.24c-2.82-1.73-6.37-2.12-10.54-1.16a.75.75 0 11-.33-1.46c4.56-1.05 8.5-.61 11.63 1.3.36.22.47.69.27 1.08zm1.37-3.08a.9.9 0 01-1.24.29c-3.24-1.96-8.19-2.53-12.02-1.38a.9.9 0 11-.52-1.73c4.29-1.3 9.8-.67 13.48 1.58.43.26.57.83.3 1.24zm.14-3.2a1.05 1.05 0 01-1.45.35c-3.71-2.21-9.35-2.42-12.72-1.33a1.05 1.05 0 01-.65-2.02c3.97-1.28 10.16-1.03 14.39 1.47.5.3.66.96.43 1.53z"/>
+                          </svg>
+                          <span class="btn-text">{{ similarPlaylistButtonText() }}</span>
+                          @if (isCreatingSimilarPlaylist()) {
+                            <div class="spinner"></div>
+                          }
+                        </button>
+                        
+                        @if (isSpotifyAuthenticated()) {
+                          <button 
+                            type="button"
+                            class="playlist-settings-btn"
+                            [class.active]="showSimilarPlaylistControls()"
+                            (click)="toggleSimilarPlaylistControls()"
+                            title="Playlist Settings"
+                          >
+                            ⚙️
+                          </button>
+                        }
+                      </div>
+                      
+                      @if (showSimilarPlaylistControls()) {
+                        <div class="playlist-settings">
+                          <div class="settings-row">
+                            <label class="setting-item">
+                              <span class="setting-label">Artist Count:</span>
+                              <input type="number" min="1" max="100" [value]="similarLimit()" (input)="setSimilarLimit($event)" class="setting-input">
+                            </label>
+                            <label class="setting-item">
+                              <span class="setting-label">Tracks per Artist:</span>
+                              <input type="number" min="1" max="10" [value]="similarTracksPerArtist()" (input)="setSimilarTracks($event)" class="setting-input">
+                            </label>
+                          </div>
+                          <div class="settings-row">
+                            <label class="setting-toggle">
+                              <input type="checkbox" [checked]="useSpotifyTopTracksForSimilar()" (change)="setUseSpotifyForSimilar($event)">
+                              <span>Use Spotify Top Tracks</span>
+                            </label>
+                            <label class="setting-toggle">
+                              <input type="checkbox" [checked]="randomizeTrackSelection()" (change)="setRandomizeTrackSelection($event)">
+                              <span>Randomize from top 10</span>
+                            </label>
+                          </div>
+                        </div>
+                      }
+                      
+                      @if (similarStatus()) {
+                        <div class="playlist-status">{{ similarStatus() }}</div>
+                      }
+                    </div>
+
+                  </div>
+                }
+              </div>
+            } @else if (lastfmError()) {
+              <div class="lastfm-error">
+                <small>{{ lastfmError() }}</small>
               </div>
             }
           </div>
         </div>
       </div>
+            <app-discography 
+              [discographyData]="enhancedDiscography()" 
+              [selectedArtist]="selectedArtist()" 
+              [loading]="discographyLoading()"
+              [error]="discographyError()"
+              (artistImagesLoaded)="onArtistImagesLoaded($event)"
+              (artistDataLoaded)="onArtistDataLoaded($event)"
+              (enhancedDataLoaded)="onEnhancedDataLoaded($event)">
+            </app-discography>
       <app-label-grid [labels]="labels()" [loading]="labelsLoading()" [error]="labelsError()">
       </app-label-grid>
-      <app-discography [discographyData]="enhancedDiscography()" [loading]="discographyLoading()"
-        [error]="discographyError()">
-      </app-discography>
+
     </div>
   </div>
 

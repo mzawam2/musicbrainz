@@ -1,0 +1,80 @@
+<div class="artist-photo-modal-container" (click)="close()">
+  <!-- Close Button -->
+  <button
+    mat-icon-button
+    class="close-button"
+    (click)="close(); $event.stopPropagation()"
+    aria-label="Close image modal"
+    title="Close"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <!-- Position indicator -->
+  @if (hasCarouselData()) {
+    <div class="position-indicator" (click)="$event.stopPropagation()">
+      {{ getPositionText() }}
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state" (click)="$event.stopPropagation()">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading image...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (hasError()) {
+    <div class="error-state" (click)="$event.stopPropagation()">
+      <mat-icon>error</mat-icon>
+      <p>Failed to load image</p>
+      <button mat-button (click)="close(); $event.stopPropagation()">Close</button>
+    </div>
+  }
+
+  <!-- Image Display -->
+  @if (!hasError() && getCurrentImageUri()) {
+    <img
+      [src]="getCurrentImageUri()"
+      [alt]="getCurrentAltText()"
+      class="modal-image"
+      (load)="onImageLoad()"
+      (error)="onImageError($event)"
+      [style.visibility]="isLoading() ? 'hidden' : 'visible'"
+      [attr.data-index]="currentIndex()"
+    />
+  }
+
+  <!-- Album Title with Navigation Controls -->
+  @if (hasCarouselData() && currentItem() && !isLoading()) {
+    <div class="album-title-container" (click)="$event.stopPropagation()">
+      <button
+        mat-icon-button
+        class="nav-button nav-previous"
+        (click)="previousImage(); $event.stopPropagation()"
+        [disabled]="!canNavigatePrevious()"
+        aria-label="Previous image"
+        title="Previous image (Left arrow)"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      
+      <div class="album-title">
+        {{ currentItem()?.title }}
+      </div>
+      
+      <button
+        mat-icon-button
+        class="nav-button nav-next"
+        (click)="nextImage(); $event.stopPropagation()"
+        [disabled]="!canNavigateNext()"
+        aria-label="Next image"
+        title="Next image (Right arrow)"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  }
+</div>

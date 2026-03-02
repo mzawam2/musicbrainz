@@ -1,15 +1,18 @@
 <div class="release-card" [attr.data-type]="primaryType().toLowerCase()" [class.expanded]="isExpanded()">
   <!-- Cover Art Section -->
-  @if (coverArt() && coverArt()!.artwork && coverArt()!.images && (coverArt()!.images?.length || 0) > 0) {
+  @if (imageVisible()) {
     <div class="cover-art-section">
-      <img 
-        [src]="coverArt()!.images?.[0]?.thumbnails?.['250'] || ''" 
-        [alt]="'Cover art for ' + releaseGroup().title"
+      <img
+        [src]="displayImageUrl()"
+        [alt]="'Album cover for ' + releaseGroup().title"
         class="cover-art"
-(error)="$any($event.target).style.display='none'"
+        (click)="openAlbumArtModal()"
+        (error)="onAlbumArtError($event)"
+        [title]="'Click to view full size album art for ' + releaseGroup().title"
       />
     </div>
   }
+
 
   <div class="release-main-content">
     <div class="release-header">
@@ -20,12 +23,17 @@
         @if (releaseGroup().labels && (releaseGroup().labels?.length || 0) > 0) {
           <div class="release-labels-header">
             @for (label of releaseGroup().labels || []; track label.label.id) {
-              <span class="label-name">{{ label.label.name }}</span>
+              <a 
+                class="label-name label-link" 
+                [routerLink]="'/label-family-trees'"
+                [queryParams]="{ labelId: label.label.id, labelName: label.label.name }"
+                [title]="'View ' + label.label.name + ' family tree'">
+                {{ label.label.name }}
+              </a>
             }
           </div>
         }
       </div>
-      <div class="release-year">{{ releaseYear() }}</div>
     </div>
     
     <div class="release-content">

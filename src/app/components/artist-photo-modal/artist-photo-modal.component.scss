@@ -1,0 +1,190 @@
+.artist-photo-modal-container {
+  position: relative;
+  display: contents;
+  align-items: center;
+  justify-content: center;
+  width: 120vw;
+  height: 120vh;
+  background: transparent;
+  overflow: visible;
+
+  .close-button {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.9);
+    }
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .album-title-container {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background-color: rgb(0 0 0 / 73%);
+    border-radius: 20px;
+    padding: 8px 16px;
+    backdrop-filter: blur(4px);
+
+    .nav-button {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+      width: 40px;
+      height: 40px;
+      transition: all 0.3s ease;
+
+      &:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+  }
+
+  .position-indicator {
+    position: absolute;
+    top: -48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
+
+  .album-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+@media (max-width: 768px) {
+      margin-top: 0px;
+}
+  .modal-image {
+    // max-width: 100%;
+    max-height: 659px;
+    width: auto;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: white;
+
+    mat-spinner {
+      margin-bottom: 16px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+  }
+
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: white;
+    text-align: center;
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: #f44336;
+    }
+
+    p {
+      margin: 0 0 24px 0;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+}
+
+// Global modal styling for dark backdrop
+::ng-deep .artist-photo-modal {
+  .mat-mdc-dialog-container {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    z-index: 1200 !important;
+    overflow: hidden !important;
+  }
+  
+  .mdc-dialog__surface {
+    background: transparent;
+    box-shadow: none;
+    z-index: 1200 !important;
+    overflow: hidden !important;
+  }
+
+  .cdk-overlay-container {
+    z-index: 1200 !important;
+    overflow: hidden !important;
+  }
+
+  .cdk-overlay-backdrop {
+    z-index: 1100 !important;
+  }
+
+  .cdk-overlay-pane {
+    overflow: hidden !important;
+  }
+}

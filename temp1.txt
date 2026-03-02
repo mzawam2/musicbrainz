@@ -1,0 +1,294 @@
+﻿import { Component, input, output, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+
+import { Subject, takeUntil, forkJoin } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { RouterLink } from '@angular/router';
+import { EnhancedReleaseGroup, DetailedRelease, CoverArtInfo } from '../../../models/musicbrainz.models';
+import { MusicBrainzService } from '../../../services/musicbrainz.service';
+import { DiscogsService } from '../../../services/discogs.service';
+import { DiscogsImage } from '../../../models/discogs.models';
+import { ArtistPhotoModalComponent } from '../../artist-photo-modal/artist-photo-modal.component';
+import { ArtistPhotoModalData } from '../../artist-photo-modal/artist-photo-modal-data.interface';
+
+@Component({
+  selector: 'app-release-card',
+  imports: [RouterLink],
+  templateUrl: './release-card.component.html',
+  styleUrl: './release-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class ReleaseCardComponent implements OnInit, OnDestroy {
+  // Input and output functions
+  releaseGroup = input.required<EnhancedReleaseGroup>();
+  discogsAlbumArt = input<string | null>(null);
+  discogsResourceUrl = input<string | null>(null);
+  expand = output<string>();
+  collapse = output<string>();
+
+  // Injected services
+  private musicBrainzService = inject(MusicBrainzService);
+  private discogsService = inject(DiscogsService);
+  private dialog = inject(MatDialog);
+
+  // State signals
+  detailedReleases = signal<DetailedRelease[]>([]);
+  coverArt = signal<CoverArtInfo | null>(null);
+  loadingDetails = signal(false);
+  loadingCoverArt = signal(false);
+  error = signal<string | null>(null);
+  isExpanded = signal(false);
+
+  // Computed values
+  primaryType = computed(() => this.releaseGroup()['primary-type'] || 'Other');
+  secondaryTypes = computed(() => this.releaseGroup()['secondary-types']?.join(', ') || '');
+  releaseYear = computed(() => {
+    const firstReleaseDate = this.releaseGroup()['first-release-date'];
+    return firstReleaseDate ? firstReleaseDate.split('-')[0] : 'Unknown';
+  });
+  releaseDate = computed(() => {
+    const firstReleaseDate = this.releaseGroup()['first-release-date'];
+    if (!firstReleaseDate) return 'Unknown date';
+    
+    const date = new Date(firstReleaseDate);
+    if (isNaN(date.getTime())) return firstReleaseDate;
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  });
+  artistCredit = computed(() => {
+    const artistCredit = this.releaseGroup()['artist-credit'];
+    if (!artistCredit || artistCredit.length === 0) return '';
+    
+    return artistCredit
+      .map(credit => credit.name + (credit.joinphrase || ''))
+      .join('');
+  });
+
+
+  private destroy$ = new Subject<void>();
+
+  ngOnInit() {
+    // Initialize expanded state from input if needed
+    const releaseGroup = this.releaseGroup();
+    if (releaseGroup.expanded) {
+      this.isExpanded.set(true);
+    }
+    
+    // Debug album art input
+    console.log(`ðŸŽµ ðŸŽ¨ Release card for "${releaseGroup.title}" - Album art: ${this.discogsAlbumArt() || 'NONE'}`);
+  }
+
+
+  private loadCoverArtForReleaseGroup() {
+    // Get releases for this release group to find cover art
+    this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (releases) => {
+          if (releases.length > 0) {
+            // Load cover art for the first release
+            this.loadCoverArt(releases[0].id);
+          }
+        },
+        error: (error) => {
+          console.log('Could not load releases for cover art:', error);
+          // Don't show error for cover art loading issues
+        }
+      });
+  }
+
+  toggleExpanded() {
+    const releaseGroup = this.releaseGroup();
+    const currentExpanded = this.isExpanded();
+    
+    if (currentExpanded) {
+      this.isExpanded.set(false);
+      this.collapse.emit(releaseGroup.id);
+    } else {
+      this.isExpanded.set(true);
+      this.expand.emit(releaseGroup.id);
+      this.loadDetailedReleases();
+    }
+  }
+
+  private loadDetailedReleases() {
+    if (this.detailedReleases().length > 0) {
+      console.log('Detailed releases already loaded');
+      return;
+    }
+
+    this.loadingDetails.set(true);
+    this.error.set(null);
+
+    console.log('Loading detailed releases for release group:', this.releaseGroup().id);
+    
+    // Check if we already have release data in the release group
+    const releaseGroup = this.releaseGroup();
+    if (releaseGroup.releases && releaseGroup.releases.length > 0) {
+      console.log('Using existing release data from release group:', releaseGroup.releases);
+      this.loadDetailedReleasesFromBasic(releaseGroup.releases);
+    } else {
+      // Fallback to API call if no release data exists
+      console.log('No release data in release group, fetching from API');
+      this.musicBrainzService.getReleaseGroupReleases(this.releaseGroup().id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (releases) => {
+            this.loadDetailedReleasesFromBasic(releases);
+          },
+          error: (error) => {
+            console.error('Error loading releases:', error);
+            this.error.set(error.message || 'Failed to load releases');
+            this.loadingDetails.set(false);
+          }
+        });
+    }
+  }
+
+  private loadDetailedReleasesFromBasic(releases: any[]) {
+    console.log('Found releases for release group:', releases);
+    
+    if (releases.length === 0) {
+      this.error.set('No releases found for this release group');
+      this.loadingDetails.set(false);
+      return;
+    }
+
+    // Load details for first few releases (limit to avoid too many API calls)
+    const releasesToLoad = releases.slice(0, 3);
+    console.log('Loading detailed releases for:', releasesToLoad.map(r => r.id));
+    
+    // Use forkJoin to load all release details in parallel
+    const releaseDetailRequests = releasesToLoad.map(release => 
+      this.musicBrainzService.getReleaseDetails(release.id)
+    );
+
+    forkJoin(releaseDetailRequests)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (detailedReleases) => {
+          console.log('Received detailed releases:', detailedReleases);
+          this.detailedReleases.set(detailedReleases.filter(r => r) as DetailedRelease[]);
+          this.loadingDetails.set(false);
+        },
+        error: (error) => {
+          console.error('Failed to load release details:', error);
+          this.error.set('Failed to load release details');
+          this.loadingDetails.set(false);
+        }
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadCoverArt(releaseId: string) {
+    this.loadingCoverArt.set(true);
+    
+    this.musicBrainzService.getCoverArt(releaseId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (coverArt) => {
+          this.coverArt.set(coverArt);
+          this.loadingCoverArt.set(false);
+        },
+        error: () => {
+          this.loadingCoverArt.set(false);
+          // Don't show error for missing cover art as it's common
+        }
+      });
+  }
+
+
+  openAlbumArtModal() {
+    const releaseGroup = this.releaseGroup();
+    const discogsResourceUrl = this.discogsResourceUrl();
+    const discogsArt = this.discogsAlbumArt();
+    const coverArt = this.coverArt();
+
+    let altText = `Album art for ${releaseGroup.title}`;
+
+    // If we have a Discogs resource URL, fetch the full-size image
+    if (discogsResourceUrl) {
+      this.discogsService.makeDirectUrlRequest<any>(discogsResourceUrl)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (item) => {
+            let imageUri = '';
+            
+            // Try to get the best image from the release/master
+            if (item && item.images && item.images.length > 0) {
+              // Find primary image or use first available
+              const primaryImage = item.images.find((img: any) => img.type === 'primary') || item.images[0];
+              imageUri = primaryImage.uri;
+            } else if (discogsArt) {
+              // Fallback to thumbnail if no full-size images
+              imageUri = discogsArt;
+            }
+
+            if (imageUri) {
+              this.openModalWithImage(imageUri, releaseGroup.title, altText);
+            }
+          },
+          error: (error) => {
+            console.error('Error fetching Discogs resource details:', error);
+            // Fallback to thumbnail on error
+            if (discogsArt) {
+              this.openModalWithImage(discogsArt, releaseGroup.title, altText);
+            }
+          }
+        });
+    } else {
+      // No Discogs resource URL, use available image sources
+      let imageUri = '';
+      
+      if (discogsArt) {
+        imageUri = discogsArt;
+      } else if (coverArt && coverArt.images && coverArt.images.length > 0) {
+        imageUri = coverArt.images[0].image || '';
+      }
+
+      if (imageUri) {
+        this.openModalWithImage(imageUri, releaseGroup.title, altText);
+      }
+    }
+  }
+
+  private openModalWithImage(imageUri: string, title: string, altText: string) {
+    const modalData: ArtistPhotoModalData = {
+      imageUri: imageUri,
+      artistName: title,
+      altText: altText
+    };
+
+    this.dialog.open(ArtistPhotoModalComponent, {
+      data: modalData,
+      panelClass: 'artist-photo-modal',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      hasBackdrop: true,
+      disableClose: false
+    });
+  }
+
+  formatDuration(milliseconds: number): string {
+    if (!milliseconds) return '';
+    
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+
+  getTrackArtists(track: any): string {
+    if (!track.recording['artist-credit'] || track.recording['artist-credit'].length === 0) {
+      return '';
+    }
+    return track.recording['artist-credit'].map((c: any) => c.name).join(', ');
+  }
+}

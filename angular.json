@@ -65,7 +65,8 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "host": "127.0.0.1",
-            "port": 4200
+            "port": 4200,
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {
@@ -83,6 +84,8 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
+            "karmaConfig": "karma.conf.js",
+            "watch": false,
             "polyfills": [
               "zone.js",
               "zone.js/testing"
@@ -128,6 +131,8 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
+            "karmaConfig": "karma.conf.js",
+            "watch": false,
             "tsConfig": "projects/nationwide/my-lib/tsconfig.spec.json",
             "polyfills": [
               "zone.js",
@@ -161,6 +166,8 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
+            "karmaConfig": "karma.conf.js",
+            "watch": false,
             "tsConfig": "projects/nationwide/my-lib-b/tsconfig.spec.json",
             "polyfills": [
               "zone.js",

@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { map, catchError, delay, tap, switchMap } from 'rxjs/operators';
-import { 
-  MusicBrainzArtistSearchResponse, 
+import { environment } from '../../environments/environment';
+import {
+  MusicBrainzArtistSearchResponse,
   MusicBrainzReleaseSearchResponse,
   MusicBrainzReleaseGroupSearchResponse,
   MusicBrainzReleaseDetailResponse,
@@ -31,11 +32,9 @@ import {
   providedIn: 'root'
 })
 export class MusicBrainzService {
-  private readonly baseUrl = 'https://musicbrainz.org/ws/2';
+  private readonly baseUrl = environment.musicBrainzApiUrl;
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
-  private readonly defaultHeaders = new HttpHeaders({
-    'User-Agent': 'AngularPlayground/1.0 (musicbrainz@example.com)'
-  });
+  private readonly defaultHeaders = new HttpHeaders();
   
   // Cache for artist searches
   private artistSearchCache = new Map<string, { data: MusicBrainzArtist[], timestamp: number }>();

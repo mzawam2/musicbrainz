@@ -7,8 +7,16 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
   {
+    path: 'similar-artists',
+    loadComponent: () => import('./components/similar-artists/similar-artists.component').then(m => m.SimilarArtistsComponent)
+  },
+  {
     path: 'discography',
     loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent)
+  },
+  {
+    path: 'playlist-creation',
+    loadComponent: () => import('./components/playlist-creation/playlist-creation.component').then(m => m.PlaylistCreationComponent)
   },
   {
     path: 'label-family-trees',
@@ -17,5 +25,9 @@ export const routes: Routes = [
   {
     path: 'spotify-callback',
     loadComponent: () => import('./components/spotify-callback/spotify-callback.component').then(m => m.SpotifyCallbackComponent)
+  },
+  {
+    path: 'lastfm-callback',
+    loadComponent: () => import('./components/lastfm-callback/lastfm-callback.component').then(m => m.LastfmCallbackComponent)
   }
 ];

@@ -1,6 +1,6 @@
 {
-  "/api/*": {
-    "target": "https://musicbrainz.org/ws/2",
+  "/api": {
+    "target": "http://localhost:5000/ws/2",
     "secure": true,
     "changeOrigin": true,
     "logLevel": "debug",
@@ -9,6 +9,18 @@
     },
     "headers": {
       "User-Agent": "AngularPlayground/1.0.0 (claude-assistant@example.com)"
+    }
+  },
+  "/discogs-api": {
+    "target": "https://api.discogs.com",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/discogs-api": ""
+    },
+    "headers": {
+      "User-Agent": "MusicBrainzApp/1.0"
     }
   }
 }

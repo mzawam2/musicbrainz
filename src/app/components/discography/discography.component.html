@@ -26,12 +26,13 @@
             </span>
           }
         </div>
+
       </div>
 
       <!-- Controls -->
       <div class="discography-controls">
         <!-- Search -->
-        <div class="search-control">
+        <!-- <div class="search-control">
           <label for="discography-search" class="sr-only">Search discography</label>
           <input
             id="discography-search"
@@ -41,10 +42,10 @@
             placeholder="Search releases..."
             class="search-input"
           />
-        </div>
+        </div> -->
 
         <!-- View Mode Toggle -->
-        <div class="view-controls">
+        <!-- <div class="view-controls">
           <div class="view-mode-toggle">
             <button
               type="button"
@@ -65,7 +66,7 @@
               ☰
             </button>
           </div>
-        </div>
+        </div> -->
 
         <!-- Filters and Sort -->
         <div class="filter-controls">
@@ -153,6 +154,139 @@
       </div>
     </div>
 
+    <!-- Spotify Playlist Controls -->
+    <div class="playlist-controls-section">
+      <div class="playlist-main-control">
+        <button 
+          type="button"
+          class="playlist-btn"
+          [class.creating]="isCreatingPlaylist()"
+          [disabled]="!canCreatePlaylist()"
+          (click)="handlePlaylistAction()"
+        >
+          <svg class="spotify-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path fill="currentColor" d="M12 1.5C6.21 1.5 1.5 6.21 1.5 12S6.21 22.5 12 22.5 22.5 17.79 22.5 12 17.79 1.5 12 1.5zm4.8 15.23a.75.75 0 01-1.03.24c-2.82-1.73-6.37-2.12-10.54-1.16a.75.75 0 11-.33-1.46c4.56-1.05 8.5-.61 11.63 1.3.36.22.47.69.27 1.08zm1.37-3.08a.9.9 0 01-1.24.29c-3.24-1.96-8.19-2.53-12.02-1.38a.9.9 0 11-.52-1.73c4.29-1.3 9.8-.67 13.48 1.58.43.26.57.83.3 1.24zm.14-3.2a1.05 1.05 0 01-1.45.35c-3.71-2.21-9.35-2.42-12.72-1.33a1.05 1.05 0 01-.65-2.02c3.97-1.28 10.16-1.03 14.39 1.47.5.3.66.96.43 1.53z"/>
+          </svg>
+          <span class="btn-text">{{ playlistButtonText() }}</span>
+          @if (isCreatingPlaylist()) {
+            <div class="spinner"></div>
+          }
+        </button>
+        
+        @if (isSpotifyAuthenticated()) {
+          <button 
+            type="button"
+            class="playlist-settings-btn"
+            [class.active]="showPlaylistControls()"
+            (click)="togglePlaylistControls()"
+            title="Playlist Settings"
+          >
+            ⚙️
+          </button>
+        }
+      </div>
+
+      <!-- Configuration Panel -->
+      @if (showPlaylistControls() && isSpotifyAuthenticated()) {
+        <div class="playlist-config-panel">
+          <div class="config-grid">
+            <div class="config-group">
+              <label for="tracks-per-album">Tracks per album:</label>
+              <input 
+                id="tracks-per-album"
+                type="range" 
+                min="1" 
+                max="10" 
+                [ngModel]="tracksPerAlbum()"
+                (ngModelChange)="tracksPerAlbum.set($event)"
+                class="range-input"
+              />
+              <span class="range-value">{{ tracksPerAlbum() }}</span>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="includeFullAlbums()"
+                  (change)="includeFullAlbums.set($any($event.target).checked)"
+                />
+                <span>Include full albums</span>
+              </label>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="playlistIsPublic()"
+                  (change)="playlistIsPublic.set($any($event.target).checked)"
+                />
+                <span>Make playlist public</span>
+              </label>
+            </div>
+
+            <div class="config-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [checked]="strictMode()"
+                  (change)="strictMode.set($any($event.target).checked)"
+                />
+                <span>Strict matching</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Success/Error Notifications -->
+    @if (playlistCreated()) {
+      <div class="playlist-notification success">
+        <div class="notification-content">
+          <span class="notification-icon">✅</span>
+          <div class="notification-text">
+            <strong>Playlist created successfully!</strong>
+            <p>{{ playlistCreated()!.name }}</p>
+          </div>
+          <a 
+            [href]="playlistCreated()!.external_urls.spotify" 
+            target="_blank" 
+            class="open-playlist-btn"
+          >
+            Open in Spotify
+          </a>
+          <button 
+            type="button" 
+            class="dismiss-btn"
+            (click)="dismissPlaylistNotification()"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (playlistError()) {
+      <div class="playlist-notification error">
+        <div class="notification-content">
+          <span class="notification-icon">⚠️</span>
+          <div class="notification-text">
+            <strong>Error creating playlist</strong>
+            <p>{{ playlistError() }}</p>
+          </div>
+          <button 
+            type="button" 
+            class="dismiss-btn"
+            (click)="dismissPlaylistNotification()"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    }
+
     <!-- Results -->
     <div class="discography-results">
       @if (filteredReleaseGroups().length === 0) {
@@ -160,27 +294,29 @@
           <p>No releases found matching your criteria.</p>
         </div>
       } @else {
-        <div class="results-count">
-          Showing {{ filteredReleaseGroups().length }} of {{ totalReleases() }} releases
-        </div>
-        
-        <div class="release-container" [class]="'view-' + viewMode()">
-          @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id) {
-            <app-release-card 
+        <!-- Release Grid/List -->
+        <div class="release-container" [class.view-grid]="viewMode() === 'grid'" [class.view-list]="viewMode() === 'list'">
+          @for (releaseGroup of filteredReleaseGroups(); track releaseGroup.id; let i = $index) {
+            <app-release-card
               [releaseGroup]="releaseGroup"
+              [discogsAlbumArt]="releaseGroup.thumb || null"
+              [discogsResourceUrl]="releaseGroup.discogsResourceUrl || null"
+              [allReleaseGroups]="filteredReleaseGroups()"
+              [currentReleaseIndex]="i"
+              [artistName]="selectedArtist()?.name || ''"
               (expand)="onReleaseExpand($event)"
               (collapse)="onReleaseCollapse($event)">
             </app-release-card>
           }
         </div>
+      }
 
-        <!-- Collaboration Network Section -->
-        @if (discographyData()!.collaborations && (discographyData()!.collaborations?.length || 0) > 0) {
-          <app-collaboration-network
-            [collaborations]="discographyData()!.collaborations || []"
-            [artistName]="discographyData()!.artist.name">
-          </app-collaboration-network>
-        }
+      <!-- Collaboration Network Section -->
+      @if (discographyData()!.collaborations && (discographyData()!.collaborations?.length || 0) > 0) {
+        <app-collaboration-network
+          [collaborations]="discographyData()!.collaborations || []"
+          [artistName]="discographyData()!.artist.name">
+        </app-collaboration-network>
       }
     </div>
   }

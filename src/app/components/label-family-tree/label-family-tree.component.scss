@@ -1,22 +1,79 @@
-  .search-header {
-    max-width: 1200px;
-    margin: 0 auto 3rem;
-    text-align: center;
+.image-center {
+  text-align: center;
+}
+.centered-label-name {
+  text-align: center;
+}
 
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(45deg, #fff, #e0e7ff);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      
-      &:focus {
-        outline: none;
-      }
+.centered-meta {
+  text-align: center;
+}
+
+.centered-country {
+  text-align: center;
+}
+
+.discogs-label-urls {
+  border-top: 1px solid #ffffff47;
+  border-bottom: 1px solid #ffffff47;
+  padding: 12px 0px 26px 0px;
+  margin: 25px 0;
+  text-align: left;
+}
+
+/* Discogs label links styled like tags */
+.discogs-label-link {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 6px 16px;
+  margin: 4px 4px 4px 0;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: none;
+}
+
+.discogs-label-link:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.label-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  /* text then image */
+  align-items: flex-start;
+  column-gap: 12px;
+}
+
+.primary-label-image {
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.search-header {
+  max-width: 1200px;
+  text-align: center;
+
+  h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(45deg, #fff, #e0e7ff);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    &:focus {
+      outline: none;
     }
   }
+}
+
 .label-family-tree {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -39,7 +96,7 @@
         background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        
+
         &:focus {
           outline: none;
         }
@@ -70,7 +127,8 @@
 
           .search-input {
             width: 100%;
-            padding: 1rem 3rem 1rem 1.5rem; /* Increase right padding for spinner space */
+            padding: 1rem 3rem 1rem 1.5rem;
+            /* Increase right padding for spinner space */
             border: none;
             border-radius: 50px;
             font-size: 1.1rem;
@@ -79,6 +137,7 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            box-sizing: border-box;
 
             &:focus {
               outline: none;
@@ -273,7 +332,8 @@
       }
     }
 
-    .no-tree-message, .welcome-message {
+    .no-tree-message,
+    .welcome-message {
       text-align: center;
       padding: 4rem 2rem;
 
@@ -347,8 +407,33 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// Artist card styling for root label card
+.artist-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  margin-bottom: 2rem;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white;
+  }
 }
 
 // Tree header actions (Spotify and Export)
@@ -362,7 +447,7 @@
 
   .tree-stats {
     margin-bottom: 1rem;
-    
+
     h3 {
       margin: 0 0 0.25rem 0;
       font-size: 1.3rem;
@@ -373,28 +458,28 @@
 
   .tree-actions {
     width: 100%;
-    
+
     .spotify-controls {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
       gap: 0.75rem;
       align-items: start;
-      
+
       @media (max-width: 1024px) {
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       }
-      
+
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
         gap: 0.5rem;
       }
-      
+
       .track-count-control {
         background: rgba(255, 255, 255, 0.05);
         border-radius: 6px;
         padding: 0.75rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        
+
         label {
           display: block;
           color: white;
@@ -402,11 +487,11 @@
           font-weight: 500;
           margin-bottom: 0.4rem;
         }
-        
+
         .track-input-group {
           display: flex;
           gap: 0.5rem;
-          
+
           .track-count-input {
             flex: 1;
             padding: 0.4rem 0.6rem;
@@ -416,13 +501,13 @@
             color: white;
             font-size: 0.85rem;
             text-align: center;
-            
+
             &:focus {
               outline: none;
               border-color: #1DB954;
               background: rgba(255, 255, 255, 0.2);
             }
-            
+
             &:disabled,
             &.disabled {
               opacity: 0.5;
@@ -430,12 +515,12 @@
               background: rgba(255, 255, 255, 0.05);
               border-color: rgba(255, 255, 255, 0.1);
             }
-            
+
             &::placeholder {
               color: rgba(255, 255, 255, 0.6);
             }
           }
-          
+
           .reset-tracks-btn {
             padding: 0.4rem 0.6rem;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -445,16 +530,16 @@
             cursor: pointer;
             font-size: 0.85rem;
             min-width: 32px;
-            
+
             &:hover:not(:disabled) {
               background: rgba(255, 255, 255, 0.3);
               border-color: rgba(255, 255, 255, 0.5);
             }
-            
+
             &:active:not(:disabled) {
               transform: scale(0.95);
             }
-            
+
             &:disabled {
               opacity: 0.5;
               cursor: not-allowed;
@@ -464,13 +549,13 @@
           }
         }
       }
-      
+
       .all-tracks-control {
         background: rgba(255, 255, 255, 0.05);
         border-radius: 6px;
         padding: 0.75rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        
+
         .checkbox-label {
           display: flex;
           align-items: center;
@@ -480,7 +565,7 @@
           cursor: pointer;
           user-select: none;
           margin-bottom: 0.4rem;
-          
+
           .all-tracks-checkbox {
             appearance: none;
             width: 18px;
@@ -491,11 +576,11 @@
             cursor: pointer;
             position: relative;
             transition: all 0.2s ease;
-            
+
             &:checked {
               background: #1DB954;
               border-color: #1DB954;
-              
+
               &::after {
                 content: '✓';
                 position: absolute;
@@ -507,23 +592,23 @@
                 font-weight: bold;
               }
             }
-            
+
             &:hover {
               border-color: rgba(255, 255, 255, 0.5);
               background: rgba(255, 255, 255, 0.2);
-              
+
               &:checked {
                 background: #1aa34a;
                 border-color: #1aa34a;
               }
             }
           }
-          
+
           .checkbox-text {
             font-weight: 500;
           }
         }
-        
+
         .track-mode-description {
           margin: 0;
           font-size: 0.75rem;
@@ -538,7 +623,7 @@
         border-radius: 6px;
         padding: 0.75rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        
+
         .checkbox-label {
           display: flex;
           align-items: center;
@@ -612,14 +697,76 @@
           font-style: italic;
         }
       }
+
+      .strict-mode-control {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        padding: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: white;
+          font-size: 0.85rem;
+          cursor: pointer;
+          margin-bottom: 0.75rem;
+          user-select: none;
+
+          .strict-mode-checkbox {
+            accent-color: #1DB954;
+          }
+
+          .checkbox-text {
+            font-weight: 500;
+          }
+        }
+
+        .strict-mode-description {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-style: italic;
+        }
+      }
+
     }
+
+    // Discogs Label Primary Image Section
+    .discogs-label-image-section {
+      display: flex;
+      justify-content: center;
+      margin: 1.5rem 0;
+
+      .primary-label-image {
+        max-width: 200px;
+        max-height: 200px;
+        height: auto;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+        &:hover {
+          transform: scale(1.05);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        @media (max-width: 768px) {
+          max-width: 150px;
+          max-height: 150px;
+        }
+      }
+    }
+
 
     .action-buttons {
       grid-column: 1 / -1; // Span all columns
       display: flex;
       gap: 0.75rem;
       margin-top: 0.5rem;
-      
+
       @media (max-width: 768px) {
         flex-direction: column;
       }
@@ -812,6 +959,7 @@
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;

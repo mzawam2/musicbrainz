@@ -85,3 +85,42 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Design services around a single responsibility
 - Use the `providedIn: 'root'` option for singleton services
 - Use the `inject()` function instead of constructor injection
+
+## Current Features in Development
+
+### Last.fm Tag-Based Spotify Playlist Creation (Branch: 002-a-feature-that)
+**Status**: ✅ FEATURE COMPLETE - UI Enhancement in Progress  
+**Description**: Enhanced UI workflow for Last.fm tag-based Spotify playlist creation with search preview
+
+**Implementation Status**:
+- ✅ `LastfmService.getTopArtistsByTag()` - COMPLETE (lines 354-389)
+- ✅ `SpotifyService.createPlaylistFromArtists()` - COMPLETE (lines 1231-1353)
+- ✅ `PlaylistCreationService` - COMPLETE with orchestration and progress tracking
+- ✅ All data models - COMPLETE (`LastfmTagArtist`, `PlaylistCreationRequest`, etc.)
+- 🔄 UI Enhancement - Adding search preview step to existing component
+
+**Current Enhancement**:
+Enhanced UI workflow: Input → **Search/Preview** → Create (new search step added)
+
+**New UI Components**:
+- Search button with loading state
+- Artist results display using `mat-chip` components
+- "No results" handling with user guidance
+- Three-stage workflow with proper validation
+
+**Key Signals (New)**:
+- `isSearching()` - Search loading state
+- `searchResults()` - Array of `LastfmTagArtist`
+- `hasSearched()` - Search completion tracking  
+- `canSearch()` / `canCreate()` - Enhanced validation logic
+
+**Testing Focus**:
+- UI component workflow tests (search → preview → create)
+- Error handling for empty search results
+- Loading state management during search
+- Accessibility compliance for new UI elements
+
+**Recent Changes**:
+- Phase 0 Research: Confirmed complete backend implementation exists
+- Phase 1 Design: Enhanced UI contracts and test scenarios defined
+- UI workflow redesigned for better user transparency and control
