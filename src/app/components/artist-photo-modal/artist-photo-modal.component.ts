@@ -63,6 +63,10 @@ export class ArtistPhotoModalComponent implements OnInit, OnDestroy {
     else if (this.data.carouselData) {
       this.currentIndex.set(this.data.carouselData.currentIndex);
       this.updateCurrentItem();
+      const item = this.currentItem();
+      if (item) {
+        this.currentImageUri.set(item.imageUri);
+      }
       console.log('[ArtistPhotoModal] init(legacy-carousel)', {
         totalItems: this.data.carouselData.items.length,
         initialIndex: this.data.carouselData.currentIndex
